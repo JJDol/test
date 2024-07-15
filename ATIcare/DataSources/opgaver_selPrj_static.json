@@ -1,0 +1,9 @@
+[
+  {
+    "IsComponentScoped": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "Name": "opgaver_selPrj_static",
+    "Type": "CollectionDataSourceInfo"
+  }
+]

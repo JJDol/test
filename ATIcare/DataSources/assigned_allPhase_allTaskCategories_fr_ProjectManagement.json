@@ -1,0 +1,9 @@
+[
+  {
+    "IsComponentScoped": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "Name": "assigned_allPhase_allTaskCategories_fr_ProjectManagement",
+    "Type": "CollectionDataSourceInfo"
+  }
+]

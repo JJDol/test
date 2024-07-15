@@ -1,0 +1,97 @@
+leftNavigationBar_OLD As CanvasComponent:
+    BackgroundMenuColor: =RGBA(0,0,0,0)
+    Fill: |-
+        =//RGBA(75, 110, 128, 1)
+        RGBA(150, 150, 150, 1)
+    Height: =Max(App.Height, App.DesignHeight)
+    NavigationItems: |-
+        =Table(
+        {
+            MenuText: "HOME",
+            MenuIcon: Icon.Home,
+            ScreenToGoTo: App.ActiveScreen,
+            visibleSet: Blank()
+        },
+        {
+            MenuText: "MONITOR",
+            MenuIcon: Icon.ListWatchlistRemind,
+            ScreenToGoTo: App.ActiveScreen,
+            visibleSet: Blank()
+        },
+        {
+            MenuText: "PLAN",
+            MenuIcon: Icon.CalendarBlank,
+            ScreenToGoTo: App.ActiveScreen,
+            visibleSet: Blank()
+        }
+        )
+    selectedMenuBGColor: =gblColorTheme.PrimaryGreenDark
+    Width: =If(expandMenu = true, 110, 40)
+    X: =0
+    Y: =0
+    ZIndex: =1
+
+    expandIcon_1 As icon.Hamburger:
+        Color: =RGBA(255, 36, 145, 1)
+        Height: =40
+        Icon: =Icon.Hamburger
+        OnSelect: =Set(expandMenu, !expandMenu)
+        PaddingBottom: =12
+        PaddingLeft: =12
+        PaddingRight: =12
+        PaddingTop: =12
+        Width: =40
+        ZIndex: =1
+
+    Gallery2_1 As gallery.galleryVertical:
+        '#CopilotOverlayLabel': ="Filtered"
+        Default: =LookUp(leftNavigationBar_OLD.NavigationItems, ScreenToGoTo.Name = App.ActiveScreen.Name)
+        DelayItemLoading: =true
+        Height: =Parent.Height - expandIcon_1.Height
+        Items: =leftNavigationBar_OLD.NavigationItems
+        Layout: =Layout.Vertical
+        LoadingSpinner: =LoadingSpinner.Data
+        OnSelect: |
+            =ThisItem.visibleSet;
+            Navigate(ThisItem.ScreenToGoTo, ScreenTransition.Fade);
+        TemplateFill: =If(ThisItem.IsSelected, leftNavigationBar_OLD.selectedMenuBGColor, leftNavigationBar_OLD.BackgroundMenuColor)
+        TemplatePadding: =0
+        TemplateSize: |
+            =40
+        Width: =If(expandMenu = true, 110, 40)
+        Y: =40
+        ZIndex: =2
+
+        menuIcon_1 As icon.Home:
+            Color: =RGBA(255, 255, 255, 1)
+            Height: =Parent.TemplateHeight
+            Icon: =ThisItem.MenuIcon
+            OnSelect: =Select(Parent)
+            PaddingBottom: =10
+            PaddingLeft: =10
+            PaddingRight: =10
+            PaddingTop: =10
+            Width: =40
+            ZIndex: =1
+
+        menuLabel_1 As label:
+            Color: =RGBA(255, 255, 255, 1)
+            OnSelect: =Select(Parent)
+            Size: =8
+            Text: =ThisItem.MenuText
+            Width: =70
+            X: =40
+            ZIndex: =2
+
+        transparentIcon_1 As icon.Home:
+            Color: =RGBA(0, 0, 0, 0)
+            Height: =40
+            Icon: =ThisItem.MenuIcon
+            OnSelect: =Select(Parent)
+            PaddingBottom: =10
+            PaddingLeft: =10
+            PaddingRight: =10
+            PaddingTop: =10
+            Width: =110
+            ZIndex: =3
+

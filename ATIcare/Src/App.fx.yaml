@@ -1,0 +1,589 @@
+App As appinfo:
+    BackEnabled: =true
+    OnStart: |+
+        =//NavigationMenu
+        
+        Set(gblNavItems,
+            Table(
+            {
+                MenuText: "HOME",
+                MenuIcon: Icon.Home,
+                ScreenToGoTo: Home,
+                expand: Blank(),
+                visPlanner: false,
+                visMonitor: false
+            },
+            {
+                MenuText: "PROJECTS",
+                MenuIcon: Icon.ListWatchlistRemind,
+                ScreenToGoTo: Monitor,
+                expand: Blank(),
+                visPlanner: false,
+                visMonitor: visManagerEdit
+            },
+            {
+                MenuText: "MANUALS",
+                MenuIcon: Icon.Notebook,
+                ScreenToGoTo: Manual,
+                expand: Blank(),
+                visPlanner: true,
+                visMonitor: false
+            }
+        )
+        );
+        
+        //Color Theme
+        Set(
+            gblColorTheme,
+            {
+                // Primary Colors set #1
+                PrimaryDark: ColorValue("#ff2121"),      
+                PrimaryLight: ColorValue("#fcc5bd"),      
+                
+                //Complementary Color set #1
+                ComplementaryDark: ColorValue("#0f163d"),      
+                ComplementaryLight: ColorValue("#59647d"),
+                ComplementaryLight2: ColorValue("#b6b8bf"),
+                ComplementaryLight3: ColorValue("#dfe2ed"), 
+        
+                // Primary Colors set #2
+                PrimaryGreenDark: ColorValue("#96ceb4"),      
+                
+                //Complementary Color set #2
+                Complementary2Dark: ColorValue("#003a5f"),      
+                Complementary2Light: ColorValue("#66869c"),
+                Complementary2Grey: ColorValue("#cccccc"),
+                Complementary2Red: ColorValue("#dc5c47"),          
+                
+                // Accent Colors
+                Black: ColorValue("#000000"),
+                Cyan: ColorValue("#17A2B8"),
+                Green: ColorValue("#28A745"),
+                Orange: ColorValue("#FD7E14"),
+                Red: ColorValue("#DC3545"),
+                Teal: ColorValue("#20C997"),
+                White: ColorValue("#FFFFFF"),
+                Yellow: ColorValue("#FFC107"),
+                
+                // Neutral Colors
+                GrayDark: ColorValue("#484644"),
+                GrayMediumDark: ColorValue("#8A8886"),
+                GrayMedium: ColorValue("#B3b0AD"),
+                GrayMediumLight: ColorValue("#D2D0CE"),
+                GrayLight: ColorValue("#F3F2F1"),
+        
+                // Control Screen Colors
+                ButtonBGColor: ColorValue("#F3F2F1")
+            }
+        );
+        
+        
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ DOCUMENT LIST ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        //Could be used to attach documents' names later
+        ClearCollect(konDocProperty, 
+            {doc: "A1 Konstruktionsgrundlag", weight: 2},
+            {doc: "A2 Statiske beregninger", weight: 5},
+            {doc: "A3 Konstruktionstegninger", weight: 10},
+            {doc: "A5 Konstruktion som udført", weight: 0.5},
+            {doc: "B1 Statisk projektredegørelse (opdateres)", weight: 2},
+            {doc: "B2.1 Kontrolplan for projektering", weight: 1},
+            //{doc: "B2.2 Kontrolplan for udførelse", weight: 1},
+            //{doc: "B2.2.1 Kontrolplan for udførelse", weight: 3},
+            //{doc: "B3.1 Kontrolrapport for projektering", weight: 12},
+            //{doc: "B3.2 Kontrolrapport for udførelse", weight: 5},
+            //{doc: "B3.2.1 Kontrolrapport for udførelse (7,5t)", weight: 2},
+            {doc: "B3.2.2 Kontrolrapport for udførelse", weight: 1},
+            {doc: "Bilag B3.2.2", weight: 0.5},
+            {doc: "S0.1 Starterklæring", weight: 1},
+            {doc: "S0.2 Sluterklæring", weight: 0.5}    
+        );
+        ClearCollect(BraDocProperty, 
+            {doc: "F1 Konstruktionsgrundlag", weight: 5},
+            {doc: "F3 Brandtegninger", weight: 8},
+            {doc: "F4 Funktionsbeskrivelse", weight: 4},
+            {doc: "F5 Konstruktion som udført", weight: 1},
+            {doc: "F6.1 Kontrolplan for design", weight: 1},
+            {doc: "F6.2 Kontrolplan for projektering", weight: 1},
+            {doc: "F6.3 Kontrolplan for udførelse", weight: 1},
+            {doc: "F7.1 Kontrolrapport for design", weight: 1},
+            {doc: "F7.2 Kontrolrapport for projektering", weight: 1},
+            {doc: "F7.3 Kontrolrapport for udførelse", weight: 1},
+            {doc: "F8 Drifts-, kontrol- og vedligeholdelsesplan", weight: 5},
+            {doc: "F0.1 Starterklæring", weight: 0.5},
+            {doc: "F0.2 Sluterklæring", weight: 0.5}  
+        );
+        ClearCollect(MynDocProperty, 
+            {doc: "M2 Adgangsforhold", weight: 4},
+            {doc: "M3 Affaldssystemer", weight: 4},
+            {doc: "M4 Afløb", weight: 4},
+            {doc: "M6 Brugerbetjente anlæg", weight: 4},
+            {doc: "M7 Byggepladsen og udførelsen af byggearbejdet", weight: 4},
+            {doc: "M9 Bygningens indretning", weight: 4},
+            {doc: "M10 Elevatorer", weight: 4},
+            {doc: "M11 Energiforbrug og klimapåvirkning", weight: 4},
+            {doc: "M12 Energiforsyningsanlæg", weight: 4},
+            {doc: "M13 Forureninger", weight: 4},
+            {doc: "M14 Fugt og vådrum", weight: 4},
+            {doc: "M17 Lydforhold", weight: 4},
+            {doc: "M18 Lys og udsyn", weight: 4},
+            {doc: "M19 Termisk indeklima og inst. til varme- og køleanlæg", weight: 4},
+            {doc: "M20 Ubebyggede arealer", weight: 4},
+            {doc: "M21 Vand", weight: 4},
+            {doc: "M22 Ventilation", weight: 4}
+        );
+        
+        ClearCollect(konDocProperty_kk1_myn, 
+            {doc: "A1.1 Konstruktionsgrundlag, bygværk", weight: 2},
+            {doc: "A2.1 Statiske beregninger, standard bygværk", weight: 5},
+            {doc: "A3.1 Konstruktionstegninger, standard", weight: 10},
+            {doc: "A3.2 Konstruktionstegninger - projektspecifikke", weight: 0.5},
+            {doc: "B1 Statisk projektredegørelse", weight: 2}   
+        );
+        ClearCollect(konDocProperty_kk1_hov, 
+            {doc: "A2.2  Statiske beregninger, konstruktionsafsnit - projektspecifikke", weight: 2}  
+        );
+        
+        ClearCollect(konDocProperty_kk2_myn, 
+            {doc: "A1.1 Konstruktionsgrundlag, bygværk", weight: 2},
+            {doc: "A2.1 Statiske beregninger, standard bygværk", weight: 5},
+            {doc: "A3.1 Konstruktionstegninger, standard", weight: 10},
+            {doc: "A3.2 Konstruktionstegninger - projektspecifikke", weight: 0.5},
+            {doc: "B1 Statisk projektredegørelse", weight: 2},
+            {doc: "B2.1 Statisk kontrolplan for projektering", weight: 2},
+            {doc: "S.01  Starterklæring", weight: 2},
+            {doc: "Dokumentliste", weight: 1}
+               
+        );
+        ClearCollect(konDocProperty_kk2_hov, 
+            {doc: "S.02 Sluterklæring", weight: 2},
+            {doc: "A2.2 Statiske beregninger, konstruktionsafsnit - projektspecifikke", weight: 2},
+            {doc: "A5.1 Konstruktioner som produceret", weight: 2},
+            {doc: "B3.2.2 Statisk kontrolrapport for udførelse på stedet", weight: 2},
+            {doc: "Bilag B3.2.2 Procesdokumentation for udførelse på stedet", weight: 2} 
+        );
+        
+        ClearCollect(braDocProperty_myn, 
+            {doc: "F1 Brandteknisk_Grundlag_ITT_DBK_BSR", weight: 5},
+            {doc: "F3.1 Brandtegninger - F(29)3-01-01: Brandsituationsplan", weight: 8},
+            {doc: "F3.2 Brandtegninger - F(29)3.01-02: Brandplan stueetage", weight: 8},
+            {doc: "F3.3 Brandtegninger - F(29)3.01-03: Brandplan 1. sal", weight: 8},
+            {doc: "F3.4 Brandtegninger - F(29)3.01-04: Brandplan 2. sal", weight: 8},
+            {doc: "F3.5 Brandtegninger - F(29)3.01-05: Brandsnit", weight: 8},
+            {doc: "F4 Funktionsbeskrivelse", weight: 4},    
+            {doc: "F6.1 Brandteknisk kontrolplan for design (KPLA-D)", weight: 1},
+            {doc: "F6.2 Brandteknisk kontrolplan for projektering (KPLA-P)", weight: 1},
+            {doc: "F6.3 Brandteknisk kontrolplan for udførelse (KPLA-U)", weight: 1},
+            {doc: "F7.1 Brandteknisk kontrolrapport for design (KRAP-D)", weight: 1},
+            {doc: "F7.2 Brandteknisk kontrolrapport for projektering (KRAP-P)", weight: 1},
+            {doc: "F7.3 Brandteknisk kontrolrapport for udførelse (KRAP-U)", weight: 1},
+            {doc: "F8 Drifts- kontrol- og vedligeholdelsesplan", weight: 5},
+            {doc: "F0.1 Starterklæring inkl. redegørelse for planlagt virke", weight: 0.5},
+            {doc: "F0.2 Sluterklæring inkl. redegørelse for virke", weight: 0.5}  
+        );
+        ClearCollect(braDocProperty_hov, 
+            {doc: "F1 Brandteknisk_Grundlag_ITT_DBK_BSR", weight: 5},
+            {doc: "F3.1 Brandtegninger - F(29)3-01-01: Brandsituationsplan", weight: 8},
+            {doc: "F3.2 Brandtegninger - F(29)3.01-02: Brandplan stueetage", weight: 8},
+            {doc: "F3.3 Brandtegninger - F(29)3.01-03: Brandplan 1. sal", weight: 8},
+            {doc: "F3.4 Brandtegninger - F(29)3.01-04: Brandplan 2. sal", weight: 8},
+            {doc: "F3.5 Brandtegninger - F(29)3.01-05: Brandsnit", weight: 8},
+            {doc: "F4 Funktionsbeskrivelse", weight: 4},
+            {doc: "F6.1 Brandteknisk kontrolplan for design (KPLA-D)", weight: 1},
+            {doc: "F6.2 Brandteknisk kontrolplan for projektering (KPLA-P)", weight: 1},
+            {doc: "F6.3 Brandteknisk kontrolplan for udførelse (KPLA-U)", weight: 1},
+            {doc: "F7.1 Brandteknisk kontrolrapport for design (KRAP-D)", weight: 1},
+            {doc: "F7.2 Brandteknisk kontrolrapport for projektering (KRAP-P)", weight: 1},
+            {doc: "F7.3 Brandteknisk kontrolrapport for udførelse (KRAP-U)", weight: 1},
+            {doc: "F8 Drifts- kontrol- og vedligeholdelsesplan", weight: 5},
+            {doc: "F0.1 Starterklæring inkl. redegørelse for planlagt virke", weight: 0.5},
+            {doc: "F0.2 Sluterklæring inkl. redegørelse for virke", weight: 0.5}  
+        );
+        
+        ClearCollect(controllerList, 
+            {givenName: "Elmira", initial: "EVI"},
+            {givenName: "Jannie", initial: "JKH"},
+            {givenName: "Kristel", initial: "KRE"},
+            {givenName: "Joon", initial: "JPA"},
+            {givenName: "Matias", initial: "MLC"},
+            {givenName: "Pawel", initial: "PZB"},
+            {givenName: "Sara", initial: "SAP"},
+            {givenName: "Torben", initial: "TLA"},
+            {givenName: "External", initial: "EXT"}
+        );
+        
+        ClearCollect(prjLeaderTable,
+            {DisplayName: "Elmira Vilain", Claims: Text(Blank()), Department: Text(Blank()), Email: "evi@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()},
+            {DisplayName: "Jannie Grønneberg Kass Hauge", Claims:Text(Blank()), Department: Text(Blank()), Email: "jkh@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()},
+            {DisplayName: "Kristel Reseke", Claims:Text(Blank()), Department: Text(Blank()), Email: "kre@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()},
+            {DisplayName: "Matias Labarca Clausen", Claims:Text(Blank()), Department: Text(Blank()), Email: "mlc@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()},
+            {DisplayName: "Pawel Zboinski", Claims:Text(Blank()), Department: Text(Blank()), Email: "pzb@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()},
+            {DisplayName: "Joonseok Pak", Claims:Text(Blank()), Department: Text(Blank()), Email: "jpa@aticon.dk", JobTitle: Text(Blank()), Picture: Blank()}
+        );
+        
+        ClearCollect(phaseList, Choices('Project List'.projectPhase));
+        ClearCollect(employeeList, 
+            Filter(
+                Office365Users.SearchUserV2({isSearchTermRequired:false}).value, 
+                    ThisRecord.GivenName <> "Admin", 
+                    ThisRecord.GivenName <> "ATICON-15", 
+                    ThisRecord.GivenName <> "Belinda", 
+                    ThisRecord.GivenName <> "Daniel Sang-Hoon", 
+                    ThisRecord.GivenName <> "Jacob", 
+                    ThisRecord.GivenName <> "kimo", 
+                    ThisRecord.GivenName <> "BN", 
+                    ThisRecord.DisplayName <> "Bogholderi"
+            )
+        );
+        Set(editMode, false);
+        
+        //Set(visControlMenu, !visControlMenu);
+        
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ PROJECT & TASK(OPGAVER) STATUS ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        //Here, this chunk is for the most first step to collect the general information of Projects and Tasks (the data is from SharePoint List)
+        //opgaver
+        //--------------------Create The overall task-related data from SharePoint List
+        ClearCollect(currentUserList, 
+            ForAll('Project List' As firstRecord, 
+                {
+                    prjnavn: firstRecord.Projektnavn,
+                    currentUsers: ForAll(Table(ParseJSON(firstRecord.currentUsers)) As userListRecord, {Name: Text(userListRecord.Value.Name), LogInTime: Text(userListRecord.Value.LogInTime)})
+                }
+            )
+        );
+        
+        
+        ClearCollect(opgaver, 
+            ForAll('Project List' As firstRecord,
+                {   
+                    currentEditor: firstRecord.currentEditor,
+                    currentUsers: ForAll(Table(ParseJSON(firstRecord.currentUsers)) As userListRecord, 
+                        {Name: Text(userListRecord.Value.Name), LogInTime: Text(userListRecord.Value.LogInTime)}),
+                    ID: firstRecord.ID,
+                    PL: firstRecord.PL,
+                    savsnr: firstRecord.'Sagsnr. ATICONs ',
+                    prjnavn: firstRecord.Projektnavn,
+                    prjStatus: firstRecord.projectStatus.Value,
+                    prjType: firstRecord.projectType.Value,
+                    prjPhase: firstRecord.projectPhase.Value,
+                    assignedPhase: ForAll(Table(ParseJSON(firstRecord.assignedPhase)) As phaseRecord, {phase: Text(phaseRecord.Value.phase)}),
+                    bygCategory: firstRecord.bygCategories.Value,
+                    prjEntreprise: firstRecord.Entreprise.Value,
+                    prjRadgivning: firstRecord.Rådgivning.Value,
+                    conClass: firstRecord.Konstruktionsklasse.Value,
+                    brandClass: firstRecord.Brandklasse.Value,
+                    client: firstRecord.Opdragsgiver,
+                    builder: firstRecord.Bygherre,
+                    entrepreneur: firstRecord.entrepreneur,
+                    architect: firstRecord.architect,
+                    engineer: firstRecord.engineer,
+                    brand: firstRecord.brand,
+                    sustainability: firstRecord.baeredygtighed,
+                    tilbudAccepted: firstRecord.tilbudAccepted,
+                    prjDescription: ForAll(Table(ParseJSON(firstRecord.prjDescription)) As descriptionRecord,
+                        {
+                            head: Text(descriptionRecord.Value.head),
+                            body: Text(descriptionRecord.Value.body)
+                        } 
+                    ), 
+                    currentPhaseTask:
+                    ForAll(Table(ParseJSON(firstRecord.currentPhase)) As secondRecord,
+                        {
+                            deadline: Text(secondRecord.Value.deadline),                      
+                            assignedTasks: ForAll(Table(secondRecord.Value.assignedTasks) As assignedRecord,
+                                {
+                                    value: Text(assignedRecord.Value.value)   
+                                }
+                            ),             
+                            taskCategory: ForAll(Table(secondRecord.Value.task) As thirdRecord,
+                                { 
+                                    ARK: ForAll(Table(thirdRecord.Value.ARK) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    KON: ForAll(Table(thirdRecord.Value.KON) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    BRA: ForAll(Table(thirdRecord.Value.BRA) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    MYN: ForAll(Table(thirdRecord.Value.MYN) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    BÆR: ForAll(Table(thirdRecord.Value.BÆR) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    VVS: ForAll(Table(thirdRecord.Value.VVS) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    ),
+                                    UDF: ForAll(Table(thirdRecord.Value.UDF) As forthRecord,
+                                        {
+                                            assignedHours: Value(forthRecord.Value.assignedHours),
+                                            delegation: Value(forthRecord.Value.delegation),
+                                            delegation2: Value(forthRecord.Value.delegation2),
+                                            docCategory: Text(forthRecord.Value.docCategory),
+                                            docs: Text(forthRecord.Value.docs),
+                                            fontColor: Text(forthRecord.Value.fontColor),
+                                            fontItalic: Boolean(forthRecord.Value.fontItalic),
+                                            fontStrike: Boolean(forthRecord.Value.fontStrike),
+                                            kommentator: Text(forthRecord.Value.kommentator),
+                                            ks: Text(forthRecord.Value.ks),
+                                            markColor: Text(forthRecord.Value.markColor),
+                                            modtaget: Text(forthRecord.Value.modtaget),
+                                            indvDeadline: Text(forthRecord.Value.indvDeadline),                                    
+                                            deadlineComment: Text(forthRecord.Value.deadlineComment),
+                                            statusMessage: Text(forthRecord.Value.statusMessage),
+                                            opgaveProgress: Value(forthRecord.Value.opgaveProgress),
+                                            progressByHours: Value(forthRecord.Value.opgaveProgress/100) * Value(forthRecord.Value.assignedHours),
+                                            progressHrsByComplMark: Value(forthRecord.Value.progressHrsByComplMark),
+                                            resources: Text(forthRecord.Value.resources),
+                                            slutDato: Text(forthRecord.Value.slutDato),
+                                            udsendt: Text(forthRecord.Value.udsendt),
+                                            complMark: Boolean(forthRecord.Value.complMark),
+                                            readyForKS: Boolean(forthRecord.Value.readyForKS),
+                                            rejection: Boolean(forthRecord.Value.rejection),
+                                            approval: Boolean(forthRecord.Value.approval),
+                                            extSendt: Text(forthRecord.Value.extSendt),
+                                            extReceive: Text(forthRecord.Value.extReceive),
+                                            log: ForAll(Table(forthRecord.Value.log) As logRecord,
+                                                {text: Text(logRecord.Value.text), date: Text(logRecord.Value.date)})
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            )
+        );
+        
+        //-----------------In case, there is an error making 'No name projects'
+        RemoveIf(opgaver, prjnavn = Blank());
+        //-----------------For numbering the Projects. Could be useful to prioritize the projects.
+        ClearCollect(opgaver,
+            ForAll(Sequence(CountRows(opgaver)) As ThisSequence, 
+                Patch(Last(FirstN(opgaver, ThisSequence.Value)), {rowNumberPlanning: ThisSequence.Value})
+            )
+        );
+        
+        ClearCollect(opgaverWhole, Ungroup(opgaver, currentPhaseTask));
+        
+        // ------------------------- PROJECT & TASK(OPGAVER) STATUS -------------------------
+        
+        ClearCollect(assigned_allPhase_allTaskCategories_fr_ProjectManagement, 
+            ForAll('Project List' As initialRecord,
+                {
+                    prjnavn: Text(initialRecord.Projektnavn),
+                    for:
+                    ForAll(Table(ParseJSON(initialRecord.FOR)) As forRecord, 
+                        {Tasks: ForAll(Table(forRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    ski:
+                    ForAll(Table(ParseJSON(initialRecord.SKI)) As skiRecord, 
+                        {Tasks: ForAll(Table(skiRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    myn:
+                    ForAll(Table(ParseJSON(initialRecord.MYN)) As mynRecord, 
+                        {Tasks: ForAll(Table(mynRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    hov:
+                    ForAll(Table(ParseJSON(initialRecord.HOV)) As hovRecord, 
+                        {Tasks: ForAll(Table(hovRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    udb:
+                    ForAll(Table(ParseJSON(initialRecord.UDB)) As udbRecord, 
+                        {Tasks: ForAll(Table(udbRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    udf:
+                    ForAll(Table(ParseJSON(initialRecord.UDF)) As udfRecord, 
+                        {Tasks: ForAll(Table(udfRecord.Value.assignedTasks), ThisRecord.Value.value)}),
+                    afl:
+                    ForAll(Table(ParseJSON(initialRecord.AFL)) As aflRecord, 
+                        {Tasks: ForAll(Table(aflRecord.Value.assignedTasks), ThisRecord.Value.value)})
+                }
+            )
+        );
+        
+        
+    Theme: =PowerAppsTheme
+
+    Host As hostControl.DefaultHostControlVariant:
+        OnCancel: =false
+        OnEdit: =false
+        OnNew: =false
+        OnSave: =false
+        OnView: =false
+

@@ -1,0 +1,947 @@
+Register As screen:
+    OnVisible: =NewForm(inputForm);
+
+    inputForm As form:
+        BorderColor: =RGBA(0, 0, 0, 1)
+        DataSource: ='Project List'
+        DefaultMode: =FormMode.New
+        Height: =721
+        NumberOfColumns: =1
+        OnSuccess: =NewForm(inputForm);
+        Width: =704
+        X: =60
+        Y: =21
+        ZIndex: =1
+
+        projectLeader_DataCard2 As typedDataCard.comboBoxEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="projectLeader"
+            Default: =ThisItem.projectLeader
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,projectLeader)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =85
+            Required: =false
+            Update: =DataCardValue13.Selected
+            Width: =704
+            X: =0
+            Y: =2
+            ZIndex: =1
+
+            DataCardKey19 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="Project Leader"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue13 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                BorderThickness: =1
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: =Parent.Default
+                DisplayFields: =["DisplayName", "Email"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                Items: =Choices([@'Project List'].projectLeader)
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["DisplayName"]
+                SearchItems: =Choices('Project List'.projectLeader,DataCardValue13.SearchText)
+                SelectMultiple: =false
+                Size: =11
+                Template: =ListItemTemplate.Person
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey19.Y + DataCardKey19.Height + 5
+                ZIndex: =2
+
+            ErrorMessage19 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue13.Y + DataCardValue13.Height
+                ZIndex: =3
+
+            StarVisible19 As label:
+                Align: =Align.Center
+                Height: =DataCardKey19.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey19.Y
+                ZIndex: =4
+
+        projectHours_DataCard1 As typedDataCard.numberEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="projectHours"
+            Default: =ThisItem.Opdragsgiver
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,Opdragsgiver)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =50
+            Required: =false
+            Update: =Value(DataCardValue1.Text)
+            Width: =704
+            X: =0
+            Y: =3
+            ZIndex: =1
+
+            DataCardKey1 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="Project Hours"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue1 As text:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                BorderThickness: =1
+                Default: =Parent.Default
+                DelayOutput: =true
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Format: =TextFormat.Number
+                Height: =30
+                PaddingLeft: =5
+                RadiusBottomLeft: =0
+                RadiusBottomRight: =0
+                RadiusTopLeft: =0
+                RadiusTopRight: =0
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey1.Y + DataCardKey1.Height + 5
+                ZIndex: =2
+
+            ErrorMessage1 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue1.Y + DataCardValue1.Height
+                ZIndex: =3
+
+            StarVisible1 As label:
+                Align: =Align.Center
+                Height: =DataCardKey1.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey1.Y
+                ZIndex: =4
+
+        AssignedScope_DataCard1 As typedDataCard.comboBoxMultiSelectEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="AssignedScope"
+            Default: =ThisItem.AssignedScope
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,AssignedScope)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =124
+            Required: =false
+            Update: =
+            Width: =704
+            X: =0
+            Y: =4
+            ZIndex: =1
+
+            DataCardKey3 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            ErrorMessage3 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =Gallery1_1.Y + Gallery1_1.Height
+                ZIndex: =3
+
+            StarVisible3 As label:
+                Align: =Align.Center
+                Height: =DataCardKey3.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey3.Y
+                ZIndex: =4
+
+            Gallery1_1 As gallery.galleryHorizontal:
+                '#CopilotOverlayLabel': ="Filtered"
+                DelayItemLoading: =true
+                Height: =84
+                Items: =Choices('Project List'.AssignedScope)
+                LoadingSpinner: =LoadingSpinner.Data
+                TemplateSize: =Parent.Width/3.3
+                Width: =Parent.Width*0.95
+                WrapCount: =2
+                X: =DataCardKey2.X
+                Y: =40
+                ZIndex: =5
+
+                Checkbox1_1 As checkbox:
+                    CheckboxSize: =30
+                    Default: =If(ThisItem.Value in ColDocCategory.Value, true)
+                    Height: =32
+                    OnCheck: =Collect(ColDocCategory, ThisItem.Value)
+                    OnSelect: =Select(Parent)
+                    OnUncheck: |
+                        =RemoveIf(ColDocCategory, Value=ThisItem.Value);
+                    Size: =11
+                    Text: =ThisItem.Value
+                    Width: =182
+                    ZIndex: =1
+
+        Dokuments_DataCard1 As typedDataCard.comboBoxMultiSelectEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="Dokuments"
+            Default: =ColDocCategory
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,Dokuments)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =111
+            Required: =false
+            Update: =ColDocCategory
+            Width: =704
+            X: =0
+            Y: =5
+            ZIndex: =1
+
+            DataCardKey2 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="Vælg dokumenter, ATICON skal administrere"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            ErrorMessage2 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =Gallery1.Y + Gallery1.Height
+                ZIndex: =3
+
+            StarVisible2 As label:
+                Align: =Align.Center
+                Height: =DataCardKey2.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey2.Y
+                ZIndex: =4
+
+            Gallery1 As gallery.galleryHorizontal:
+                '#CopilotOverlayLabel': ="Filtered"
+                DelayItemLoading: =true
+                Height: =62
+                Items: =Choices('Project List'.Dokuments)
+                LoadingSpinner: =LoadingSpinner.Data
+                TemplateSize: =Parent.Width/3.3
+                Width: =Parent.Width*0.95
+                X: =DataCardKey2.X
+                Y: =40
+                ZIndex: =5
+
+                Checkbox1 As checkbox:
+                    CheckboxSize: =30
+                    Default: =If(ThisItem.Value in ColDocCategory.Value, true)
+                    OnCheck: =Collect(ColDocCategory, ThisItem.Value)
+                    OnSelect: =Select(Parent)
+                    OnUncheck: |
+                        =RemoveIf(ColDocCategory, Value=ThisItem.Value);
+                    Size: =11
+                    Text: =ThisItem.Value
+                    Width: =182
+                    ZIndex: =1
+
+        KonstruktionsDokumentation_DataCard1 As typedDataCard.comboBoxMultiSelectEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="KonstruktionDocs"
+            Default: =ThisItem.KonstruktionsDokumentation
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,KonstruktionsDokumentation)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =50
+            Required: =false
+            Update: =DataCardValue6.SelectedItems
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "KON")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =6
+            ZIndex: =1
+
+            DataCardKey6 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue6 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@KonstruktionsDokumentation]), ThisItem.KonstruktionsDokumentation)
+                    If("Konstruktion" in ColDocCategory.Value, Choices('Project List'[@KonstruktionsDokumentation]), Blank())
+                DisplayFields: =["Value"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                Items: =Choices([@'Project List'].KonstruktionsDokumentation)
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["Value"]
+                SearchItems: =Choices('Project List'.KonstruktionsDokumentation,DataCardValue6.SearchText)
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey6.Y + DataCardKey6.Height + 5
+                ZIndex: =2
+
+            ErrorMessage6 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue6.Y + DataCardValue6.Height
+                ZIndex: =3
+
+            StarVisible6 As label:
+                Align: =Align.Center
+                Height: =DataCardKey6.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey6.Y
+                ZIndex: =4
+
+        BrandDokumentation_DataCard1 As typedDataCard.comboBoxMultiSelectEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="BrandDokumentation"
+            Default: =ThisItem.BrandDokumentation
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,BrandDokumentation)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =50
+            Required: =false
+            Update: =DataCardValue4.SelectedItems
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "BRA")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =7
+            ZIndex: =1
+
+            DataCardKey4 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue4 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@BrandDokumentation]), ThisItem.BrandDokumentation)
+                    If("Brand" in ColDocCategory.Value, Choices('Project List'[@BrandDokumentation]), Blank())
+                DisplayFields: =["Value"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                IsSearchable: =false
+                Items: =Choices('Project List'[@BrandDokumentation])
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["Value"]
+                SearchItems: =[]
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey4.Y + DataCardKey4.Height + 5
+                ZIndex: =2
+
+            ErrorMessage4 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue4.Y + DataCardValue4.Height
+                ZIndex: =3
+
+            StarVisible4 As label:
+                Align: =Align.Center
+                Height: =DataCardKey4.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey4.Y
+                ZIndex: =4
+
+        MyndighedsDokumentation_DataCard1 As typedDataCard.comboBoxMultiSelectEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="MyndighedsDokumentation"
+            Default: =ThisItem.MyndighedsDokumentation
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,MyndighedsDokumentation)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =50
+            Required: =false
+            Update: =DataCardValue5.SelectedItems
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "MYN")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =8
+            ZIndex: =1
+
+            DataCardKey5 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue5 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@MyndighedsDokumentation]), ThisItem.MyndighedsDokumentation)
+                    If("Myndighed" in ColDocCategory.Value, Choices('Project List'[@MyndighedsDokumentation]), Blank())
+                DisplayFields: =["Value"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                IsSearchable: =false
+                Items: =Choices('Project List'[@MyndighedsDokumentation])
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["Value"]
+                SearchItems: =[]
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey5.Y + DataCardKey5.Height + 5
+                ZIndex: =2
+
+            ErrorMessage5 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue5.Y + DataCardValue5.Height
+                ZIndex: =3
+
+            StarVisible5 As label:
+                Align: =Align.Center
+                Height: =DataCardKey5.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey5.Y
+                ZIndex: =4
+
+        ark As typedDataCard.blankCard:
+            BorderStyle: =BorderStyle.Solid
+            DisplayMode: =DisplayMode.Edit
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =90
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "ARK")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =9
+            ZIndex: =1
+
+            DataCardValue6_1 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@KonstruktionsDokumentation]), ThisItem.KonstruktionsDokumentation)
+                    //If("Konstruktion" in ColDocCategory.Value, Choices('Project List'[@KonstruktionsDokumentation]), Blank())
+                DisplayFields: =["doc"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                IsSearchable: =false
+                Items: =ARKdoc
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["doc"]
+                SearchItems: =[]
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =28
+                Y: =42
+                ZIndex: =1
+
+            DataCardKey6_1 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="ARK documents"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =28
+                Y: =12
+                ZIndex: =2
+
+        "'NRG docs' As typedDataCard.blankCard":
+            BorderStyle: =BorderStyle.Solid
+            DisplayMode: =DisplayMode.Edit
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =90
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "NRG")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =10
+            ZIndex: =1
+
+            DataCardValue6_2 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@KonstruktionsDokumentation]), ThisItem.KonstruktionsDokumentation)
+                    //If("Konstruktion" in ColDocCategory.Value, Choices('Project List'[@KonstruktionsDokumentation]), Blank())
+                DisplayFields: =["doc"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                IsSearchable: =false
+                Items: =NRGdoc
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["doc"]
+                SearchItems: =[]
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =28
+                Y: =50
+                ZIndex: =1
+
+            nrg As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="NRG documents"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =28
+                Y: =20
+                ZIndex: =2
+
+        DataCard3 As typedDataCard.blankCard:
+            BorderStyle: =BorderStyle.Solid
+            DisplayMode: =DisplayMode.Edit
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =90
+            Visible: =If(CountRows(Filter(ColDocCategory,Value = "VVS")) > 0, true, false)
+            Width: =704
+            X: =0
+            Y: =11
+            ZIndex: =1
+
+            DataCardValue6_3 As combobox:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                ChevronBackground: =RGBA(0, 0, 0, 1)
+                DefaultSelectedItems: |-
+                    =//If(inputForm.Mode = FormMode.New, Choices('Project List'[@KonstruktionsDokumentation]), ThisItem.KonstruktionsDokumentation)
+                    //If("Konstruktion" in ColDocCategory.Value, Choices('Project List'[@KonstruktionsDokumentation]), Blank())
+                DisplayFields: =["doc"]
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                IsSearchable: =false
+                Items: =VVSdoc
+                PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                SearchFields: =["doc"]
+                SearchItems: =[]
+                Size: =10
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =28
+                Y: =42
+                ZIndex: =1
+
+            nrg_1 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: ="VVS documents"
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =28
+                Y: =12
+                ZIndex: =2
+
+        "'ATICONs sagsnr._DataCard2' As typedDataCard.textualEditCard":
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="ATICONssagsnr_x002e_"
+            Default: =ThisItem.'Sagsnr. ATICONs '
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,'Sagsnr. ATICONs ')
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =50
+            MaxLength: =DataSourceInfo([@'Project List'], DataSourceInfo.MaxLength, 'Sagsnr. ATICONs ')
+            Required: =false
+            Update: =DataCardValue108.Text
+            Visible: =true
+            Width: =704
+            X: =0
+            Y: =0
+            ZIndex: =3
+
+            DataCardKey109 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =163
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue108 As text:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                BorderThickness: =1
+                Default: =Parent.Default
+                DelayOutput: =true
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                HintText: ="ex) 23.08-03"
+                MaxLength: =Parent.MaxLength
+                PaddingLeft: =5
+                RadiusBottomLeft: =0
+                RadiusBottomRight: =0
+                RadiusTopLeft: =0
+                RadiusTopRight: =0
+                Size: =11
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 56
+                X: =30
+                Y: =DataCardKey109.Y + DataCardKey109.Height + 5
+                ZIndex: =2
+
+            ErrorMessage109 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue108.Y + DataCardValue108.Height
+                ZIndex: =3
+
+            StarVisible109 As label:
+                Align: =Align.Center
+                Height: =DataCardKey109.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey109.Y
+                ZIndex: =4
+
+        Projektnavn_DataCard3 As typedDataCard.textualEditCard:
+            BorderStyle: =BorderStyle.Solid
+            DataField: ="FileName"
+            Default: =ThisItem.Projektnavn
+            DisplayMode: =Parent.DisplayMode
+            DisplayName: =DataSourceInfo([@'Project List'],DataSourceInfo.DisplayName,Projektnavn)
+            Fill: =RGBA(0, 0, 0, 0)
+            Height: =85
+            MaxLength: =DataSourceInfo([@'Project List'], DataSourceInfo.MaxLength, Projektnavn)
+            Required: =false
+            Update: =DataCardValue109.Text
+            Visible: =true
+            Width: =704
+            X: =0
+            Y: =1
+            ZIndex: =3
+
+            DataCardKey110 As label:
+                AutoHeight: =true
+                FontWeight: =FontWeight.Bold
+                Height: =34
+                Size: =11
+                Text: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                Wrap: =false
+                X: =30
+                Y: =10
+                ZIndex: =1
+
+            DataCardValue109 As text:
+                BorderColor: =If(IsBlank(Parent.Error), Parent.BorderColor, Color.Red)
+                BorderThickness: =1
+                Default: =Parent.Default
+                DelayOutput: =true
+                DisplayMode: =Parent.DisplayMode
+                FocusedBorderThickness: =2
+                Height: =30
+                HintText: ="ex) Børnehuset Cirkeline"
+                MaxLength: =Parent.MaxLength
+                OnChange: =ClearCollect(newPrjName, DataCardValue109.Text)
+                PaddingLeft: =5
+                RadiusBottomLeft: =0
+                RadiusBottomRight: =0
+                RadiusTopLeft: =0
+                RadiusTopRight: =0
+                Size: =11
+                Tooltip: =Parent.DisplayName
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardKey110.Y + DataCardKey110.Height + 5
+                ZIndex: =2
+
+            ErrorMessage110 As label:
+                AutoHeight: =true
+                Height: =10
+                Live: =Live.Assertive
+                PaddingBottom: =0
+                PaddingLeft: =0
+                PaddingRight: =0
+                PaddingTop: =0
+                Text: =Parent.Error
+                Visible: =Parent.DisplayMode=DisplayMode.Edit
+                Width: =Parent.Width - 60
+                X: =30
+                Y: =DataCardValue109.Y + DataCardValue109.Height
+                ZIndex: =3
+
+            StarVisible110 As label:
+                Align: =Align.Center
+                Height: =DataCardKey110.Height
+                Text: ="*"
+                Visible: =And(Parent.Required, Parent.DisplayMode=DisplayMode.Edit)
+                Width: =30
+                Wrap: =false
+                Y: =DataCardKey110.Y
+                ZIndex: =4
+
+    saveButton As button:
+        BorderThickness: =0
+        Fill: =RGBA(0, 0, 0, 1)
+        FontWeight: =FontWeight.Normal
+        Height: =30
+        OnSelect: |
+            =SubmitForm(inputForm);
+            Refresh('Project List');
+            Navigate(Monitor);
+            Clear(ColDocCategory);
+        RadiusBottomLeft: =15
+        RadiusBottomRight: =15
+        RadiusTopLeft: =15
+        RadiusTopRight: =15
+        Size: =9
+        Text: ="SAVE"
+        Width: =60
+        X: =776
+        Y: =672
+        ZIndex: =2
+
+    leftNavigationBar_1 As leftNavigationBar:
+        NavigationItems: =gblNavItems
+        ZIndex: =3
+
+    Gallery2_3 As gallery.galleryVertical:
+        '#CopilotOverlayLabel': ="Filtered"
+        Default: =//LookUp(leftNavigationBar.NavigationItems, ScreenToGoTo.Name = App.ActiveScreen.Name)
+        DelayItemLoading: =true
+        Fill: =RGBA(50, 50, 50, 1)
+        Height: =Parent.Height
+        Items: |-
+            =Table(
+                {
+                    MenuText: Blank(),
+                    MenuIcon: Icon.Hamburger,
+                    ScreenToGoTo: Blank(),
+                    expand: !expandMenu,
+                    visPlanner: visPlan,
+                    visMonitor: false
+                },
+                {
+                    MenuText: "HOME",
+                    MenuIcon: Icon.Home,
+                    ScreenToGoTo: Home,
+                    expand: Blank(),
+                    visPlanner: false,
+                    visMonitor: false
+                },
+                {
+                    MenuText: "MONITOR",
+                    MenuIcon: Icon.ListWatchlistRemind,
+                    ScreenToGoTo: Monitor,
+                    expand: Blank(),
+                    visPlanner: false,
+                    visMonitor: visManagerEdit
+                },
+                {
+                    MenuText: "PLAN",
+                    MenuIcon: Icon.CalendarBlank,
+                    ScreenToGoTo: Blank(),
+                    expand: Blank(),
+                    visPlanner: true,
+                    visMonitor: false
+                }
+            )
+        Layout: =Layout.Vertical
+        LoadingSpinner: =LoadingSpinner.Data
+        OnSelect: |
+            =If(ThisItem.visPlanner = true, Set(visPlan, true), Set(visPlan, false));
+            Set(expandMenu, ThisItem.expand);
+            Navigate(ThisItem.ScreenToGoTo, ScreenTransition.Fade);
+        TemplateFill: =If(ThisItem.IsSelected, leftNavigationBar.selectedMenuBGColor, leftNavigationBar.BackgroundMenuColor)
+        TemplatePadding: =0
+        TemplateSize: |
+            =40
+        Width: =If(expandMenu = true, 110, 40)
+        ZIndex: =4
+
+        menuIcon_3 As icon.Home:
+            Color: =If(ThisItem.MenuText = Blank(), RGBA(255, 0, 0, 1), Color.White)
+            Height: =Parent.TemplateHeight
+            Icon: =ThisItem.MenuIcon
+            OnSelect: =Select(Parent)
+            PaddingBottom: =10
+            PaddingLeft: =If(ThisItem.MenuText = Blank(), 12, 5)
+            PaddingRight: =If(ThisItem.MenuText = Blank(), 12, 5)
+            PaddingTop: =10
+            Width: =40
+            ZIndex: =1
+
+        menuLabel_3 As label:
+            Color: =RGBA(255, 255, 255, 1)
+            OnSelect: =Select(Parent)
+            Size: =8
+            Text: =ThisItem.MenuText
+            Width: =70
+            X: =40
+            ZIndex: =2
+
+        transparentIcon_3 As icon.Home:
+            Color: =RGBA(0, 0, 0, 0)
+            Height: =40
+            Icon: =ThisItem.MenuIcon
+            OnSelect: =Select(Parent)
+            PaddingBottom: =10
+            PaddingLeft: =10
+            PaddingRight: =10
+            PaddingTop: =10
+            Width: =40
+            ZIndex: =3
+
+    RichTextEditor1 As richTextEditor:
+        Default: ="Enter some <strong>rich text</strong> here."
+        Height: =582
+        Width: =935
+        X: =381
+        Y: =138
+        ZIndex: =5
+

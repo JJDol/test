@@ -1,0 +1,47 @@
+Home As screen:
+    Fill: =RGBA(75, 110, 128, 1)
+    OnVisible: =Set(expandMenu, false);
+
+    Label3_4 As label:
+        Align: =Align.Center
+        Color: =RGBA(255, 36, 145, 1)
+        FontWeight: =FontWeight.Bold
+        Height: =148
+        Size: =80
+        Text: ="ATICON"
+        Width: =1366
+        Y: =199
+        ZIndex: =1
+
+    Label3_5 As label:
+        Align: =Align.Center
+        Color: =RGBA(255, 36, 145, 1)
+        FontWeight: =FontWeight.Lighter
+        Height: =67
+        Size: =30
+        Text: ="care"
+        Width: =1366
+        Y: =325
+        ZIndex: =2
+
+    Button1_5 As button:
+        BorderThickness: =0
+        Color: =RGBA(0, 0, 0, 1)
+        Fill: =Color.White
+        FocusedBorderThickness: =0
+        FontWeight: =FontWeight.Bold
+        HoverFill: =ColorFade(RGBA(255, 255, 255, 1), -20%)
+        OnSelect: |-
+            =Set(visPlan, false);
+            Navigate(Monitor);
+        RadiusBottomLeft: =30
+        RadiusBottomRight: =30
+        RadiusTopLeft: =30
+        RadiusTopRight: =30
+        Size: =16
+        Text: ="MONITOR"
+        Width: =214
+        X: =576
+        Y: =505
+        ZIndex: =3
+
