@@ -205,8 +205,12 @@ async function generateDocumentHandler(
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const outputFileName = `${project.name}_${template.name}_${timestamp}.docx`;
 
+    console.log(`[GENERATE] Document generated successfully. Filename: ${outputFileName}, Size: ${processedBuffer.length} bytes`);
+
     // Return the generated document for immediate download
-    return new NextResponse(Buffer.from(processedBuffer.buffer) as BodyInit, {
+    // simpler response construction to avoid 405 errors on Vercel
+    return new NextResponse(processedBuffer, {
+      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${outputFileName}"`,
