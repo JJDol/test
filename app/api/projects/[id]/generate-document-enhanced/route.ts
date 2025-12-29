@@ -168,18 +168,29 @@ async function generateDocumentEnhancedHandler(
       currentUserProfile.company_id
     );
 
-    // Generate output filename
+    // Generate output filename - sanitize to avoid special characters breaking HTTP headers
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const outputFileName = `${project.name}_${template.name}_${timestamp}.docx`;
+    const sanitizedProjectName = project.name
+      .replace(/[^\w\s-]/g, '') // Remove special chars except word chars, spaces, hyphens
+      .replace(/\s+/g, '_')      // Replace spaces with underscores
+      .substring(0, 50);         // Limit length
+    const sanitizedTemplateName = template.name
+      .replace(/[^\w\s.-]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 30);
+    const outputFileName = `${sanitizedProjectName}_${sanitizedTemplateName}_${timestamp}.docx`;
 
     // Return the generated document for immediate download
-    // Log for debugging
     console.log(`[GENERATE-ENHANCED] Returning document: ${outputFileName}, buffer size: ${processedBuffer.length}`);
 
+    // Use RFC 5987 encoding for filename to support Unicode characters
+    const encodedFilename = encodeURIComponent(outputFileName);
+
     return new NextResponse(processedBuffer, {
+      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${outputFileName}"`,
+        'Content-Disposition': `attachment; filename="${outputFileName}"; filename*=UTF-8''${encodedFilename}`,
         'Content-Length': String(processedBuffer.length),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
