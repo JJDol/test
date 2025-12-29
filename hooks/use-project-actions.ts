@@ -109,7 +109,15 @@ export function useProjectActions(
       // Get variables for this template
       const templateVariables = project.template_variables?.[category]?.[templateName]?.variables || [];
       
-      const response = await fetch(`/api/projects/${project.id}/generate-document-enhanced`, {
+      // Convert array of variables to object format expected by generate-document endpoint
+      const variablesObject: { [key: string]: any } = {};
+      templateVariables.forEach((variable: any) => {
+        if (variable.name) {
+          variablesObject[variable.name] = variable.type === 'text' ? (variable.value || '') : variable;
+        }
+      });
+
+      const response = await fetch(`/api/projects/${project.id}/generate-document`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +125,7 @@ export function useProjectActions(
         body: JSON.stringify({
           templateName,
           category,
-          variables: templateVariables
+          variables: variablesObject
         }),
       });
 
