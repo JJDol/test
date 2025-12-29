@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
+import { withAuthDynamic, AuthenticatedRequest, RouteContext } from '@/lib/auth/auth-middleware';
 import { createClient } from '@/lib/supabase/server';
 import { storageService } from '@/lib/services/integrations/storage-service';
 import { processDocumentWithSmartProcessor } from '@/lib/services/processors/document-processor';
@@ -8,34 +8,35 @@ import { DocumentVariable } from '@/lib/types/variable-types';
 
 /**
  * LEGACY: Enhanced Document Generation Route
- * 
+ *
  * PURPOSE: This is a legacy version of document generation with some useful improvements
  * that should be extracted before deletion.
- * 
+ *
  * USEFUL ELEMENTS TO EXTRACT:
  * 1. Enhanced variable type handling (image, date, dropdown, checkbox, combobox)
  * 2. Project variable fallbacks (project_name, project_location, project_deadline, project_leader)
  * 3. Better error message structure
- * 
+ *
  * ISSUES WITH THIS ROUTE:
- * - Uses old authentication pattern (withAuth instead of withAuthDynamic)
  * - Incorrect template access control (doesn't enforce company boundaries properly)
- * - Manual pathname parsing instead of URL parameters
  * - Inconsistent company ID usage (user vs project company)
  * - Older response header pattern
- * 
- * TODO: 
+ *
+ * TODO:
  * - Extract useful variable type handling to utils/document-generation/
  * - Extract project variable fallbacks to utils/document-generation/
  * - Extract better error message structure
  * - Delete this route after extraction
  * - Update generate-document and download routes to use extracted utilities
- * 
+ *
  * ROUTE: POST /api/projects/[id]/generate-document-enhanced (LEGACY - TO BE DELETED)
  */
-export const POST = withAuth(async (request: AuthenticatedRequest) => {
+async function generateDocumentEnhancedHandler(
+  request: AuthenticatedRequest,
+  { params }: RouteContext<{ id: string }>
+) {
   try {
-    const projectId = request.nextUrl.pathname.split('/')[3];
+    const { id: projectId } = await params;
     const { templateName, variables, category } = await request.json();
 
     if (!templateName || !category) {
@@ -182,9 +183,12 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
   } catch (error) {
     console.error('Error generating document:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Failed to generate document',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
-}); 
+}
+
+// Apply authentication wrapper for dynamic route
+export const POST = withAuthDynamic(generateDocumentEnhancedHandler); 
