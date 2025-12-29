@@ -5,6 +5,21 @@ import { storageService } from '@/lib/services/integrations/storage-service';
 import { processDocumentWithSmartProcessor } from '@/lib/services/processors/document-processor';
 import { normalizeVariableName } from '@/lib/utils/variable-utils';
 
+// Force Node.js runtime for Vercel
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 60 seconds (max for Hobby plan usually, but good to set)
+
+// Handle OPTIONS for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 // TODO: Extract common document generation logic (template access, variable processing, file response) 
 // to utils/document-generation/ to eliminate duplication with /api/projects/[id]/download/route.ts
 
@@ -12,13 +27,18 @@ async function generateDocumentHandler(
   request: AuthenticatedRequest,
   { params }: RouteContext<{ id: string }>
 ) {
+  // LOG ENTRY POINT
+  console.log('[GENERATE] Handler started for path:', request.nextUrl?.pathname);
+
   try {
     const { id: projectId } = await params;
+    console.log(`[GENERATE] Processing request for project: ${projectId}`);
+
     const { templateName, variables, category } = await request.json();
 
     if (!templateName || !category) {
-      return NextResponse.json({ 
-        message: 'Template name and category are required' 
+      return NextResponse.json({
+        message: 'Template name and category are required'
       }, { status: 400 });
     }
 
@@ -42,8 +62,8 @@ async function generateDocumentHandler(
       .single();
 
     if (projectError || !project) {
-      return NextResponse.json({ 
-        message: 'Project not found or access denied' 
+      return NextResponse.json({
+        message: 'Project not found or access denied'
       }, { status: 404 });
     }
 
@@ -63,7 +83,7 @@ async function generateDocumentHandler(
      * - Company-wide templates are accessible to all company members
      * - Multi-tenancy is enforced (no cross-company access)
      */
-    
+
     // First, try to get template with basic access control
     let { data: template, error: templateError } = await supabase
       .from('document_templates')
@@ -86,8 +106,8 @@ async function generateDocumentHandler(
         .single();
 
       if (projectTemplateError || !projectTemplate) {
-        return NextResponse.json({ 
-          message: 'Template not found' 
+        return NextResponse.json({
+          message: 'Template not found'
         }, { status: 404 });
       }
 
@@ -95,10 +115,10 @@ async function generateDocumentHandler(
       // Projects store template names in category-specific arrays (e.g., architecture_templates, construction_templates)
       const categoryField = `${category.toLowerCase()}_templates`;
       const projectTemplates = project[categoryField] || [];
-      
+
       if (!projectTemplates.includes(templateName)) {
-        return NextResponse.json({ 
-          message: 'Template not found or access denied' 
+        return NextResponse.json({
+          message: 'Template not found or access denied'
         }, { status: 404 });
       }
 
@@ -114,19 +134,19 @@ async function generateDocumentHandler(
       },
       template.file_name
     );
-    
+
     if (templateDownloadError || !templateFile) {
-      return NextResponse.json({ 
-        message: 'Template file not found' 
+      return NextResponse.json({
+        message: 'Template file not found'
       }, { status: 404 });
     }
-    
+
     // Convert Blob to Buffer
     const templateBuffer = Buffer.from(await templateFile.arrayBuffer());
 
     // Prepare variables for processing - normalize the keys and add common project variables
     const allVariables: { [key: string]: any } = {};
-    
+
     // Create a mapping from normalized names to original tag names for content controls
     const tagNameMapping: { [normalizedKey: string]: string } = {};
     if (template.variables && Array.isArray(template.variables)) {
@@ -137,14 +157,14 @@ async function generateDocumentHandler(
         }
       });
     }
-    
+
     console.log(`Template ${template.name} - Tag name mapping:`, tagNameMapping);
-    
+
     // Add all template variables (already resolved with general/local logic)
     // TODO: Figure out if we need normalizing
     Object.entries(variables).forEach(([key, value]) => {
       const normalizedKey = normalizeVariableName(key);
-      
+
       // Handle different variable value formats
       let processedValue: any;
       if (typeof value === 'string') {
@@ -166,10 +186,10 @@ async function generateDocumentHandler(
       } else {
         processedValue = value;
       }
-      
+
       // Store with normalized key for content control processor
       allVariables[normalizedKey] = processedValue;
-      
+
       // Also store with original tag name if it exists in the mapping
       if (tagNameMapping[normalizedKey]) {
         allVariables[tagNameMapping[normalizedKey]] = processedValue;
@@ -195,9 +215,9 @@ async function generateDocumentHandler(
 
     // Use the shared document processing function
     const processedBuffer = await processDocumentWithSmartProcessor(
-      templateBuffer, 
-      allVariables, 
-      template, 
+      templateBuffer,
+      allVariables,
+      template,
       project.company_id
     );
 
@@ -222,7 +242,7 @@ async function generateDocumentHandler(
 
   } catch (error) {
     console.error('Error generating document:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Failed to generate document',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
