@@ -6,10 +6,6 @@ import { processDocumentWithSmartProcessor } from '@/lib/services/processors/doc
 import { normalizeVariableName } from '@/lib/utils/variable-utils';
 import { DocumentVariable } from '@/lib/types/variable-types';
 
-// Force dynamic rendering for this route
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
 /**
  * LEGACY: Enhanced Document Generation Route
  *
