@@ -177,10 +177,14 @@ async function generateDocumentEnhancedHandler(
     const outputFileName = `${project.name}_${template.name}_${timestamp}.docx`;
 
     // Return the generated document for immediate download
-    return new NextResponse(Buffer.from(processedBuffer.buffer) as BodyInit, {
+    // Log for debugging
+    console.log(`[GENERATE-ENHANCED] Returning document: ${outputFileName}, buffer size: ${processedBuffer.length}`);
+
+    return new NextResponse(processedBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${outputFileName}"`,
+        'Content-Length': String(processedBuffer.length),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
