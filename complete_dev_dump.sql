@@ -1,0 +1,1042 @@
+
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE TYPE "public"."project_stage" AS ENUM (
+    'TODO',
+    'IN_PROGRESS',
+    'REVIEW',
+    'COMPLETED'
+);
+
+
+ALTER TYPE "public"."project_stage" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."subscription_tier" AS ENUM (
+    'basic',
+    'pro',
+    'enterprise',
+    'custom'
+);
+
+
+ALTER TYPE "public"."subscription_tier" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."user_role" AS ENUM (
+    'USER',
+    'ADMIN',
+    'MANAGER',
+    'COMPANY_ADMIN'
+);
+
+
+ALTER TYPE "public"."user_role" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  RETURN check_if_super_admin() OR check_if_company_admin();
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_company_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() 
+    AND users.role = 'COMPANY_ADMIN'
+    AND users.company_id = get_current_user_company_id()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_company_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_manager_or_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN check_if_admin() OR check_if_project_manager();
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_manager_or_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_project_manager"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() 
+    AND users.role = 'MANAGER'  -- Using existing MANAGER role
+    AND users.company_id = get_current_user_company_id()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_project_manager"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_project_member"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM projects
+    WHERE 
+      company_id = get_current_user_company_id()  -- Only check company projects
+      AND (
+        leader_id = auth.uid() OR
+        auth.uid() = ANY(workers) OR
+        EXISTS (
+          SELECT 1 FROM jsonb_each(document_assignments) AS assignments
+          WHERE (assignments.value->>'supervisor_id')::uuid = auth.uid()
+        )
+      )
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_project_member"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_if_super_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() 
+    AND users.role = 'ADMIN'
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_if_super_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_current_user_company_id"() RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN (
+    SELECT company_id 
+    FROM users 
+    WHERE id = auth.uid()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_current_user_company_id"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Log the attempt
+  RAISE NOTICE 'Attempting to create user with ID: %, Email: %', NEW.id, NEW.email;
+  
+  -- Simple insert with minimal data and better error handling
+  BEGIN
+    INSERT INTO public.users (id, email, name)
+    VALUES (
+      NEW.id, 
+      NEW.email,
+      COALESCE(NEW.raw_user_meta_data->>'name', 'New User')
+    );
+    
+    RAISE NOTICE 'Successfully created user profile for: %', NEW.email;
+    
+  EXCEPTION WHEN OTHERS THEN
+    -- Log the specific error
+    RAISE NOTICE 'Error creating user profile: %, SQLSTATE: %', SQLERRM, SQLSTATE;
+    -- Don't fail the auth user creation, just log the error
+  END;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_user_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Delete from public.users when auth.users is deleted
+  DELETE FROM public.users WHERE id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_user_delete"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_ai_documents_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_ai_documents_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."ai_documents" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "size" bigint NOT NULL,
+    "type" "text" NOT NULL,
+    "company_id" "uuid" NOT NULL,
+    "user_id" "uuid",
+    "is_company_wide" boolean DEFAULT false NOT NULL,
+    "description" "text",
+    "tags" "text"[],
+    "ingestion_status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "ingestion_progress" integer DEFAULT 0 NOT NULL,
+    "ingestion_error" "text",
+    "chunks_count" integer,
+    "uploaded_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "ai_documents_ingestion_progress_check" CHECK ((("ingestion_progress" >= 0) AND ("ingestion_progress" <= 100))),
+    CONSTRAINT "ai_documents_ingestion_status_check" CHECK (("ingestion_status" = ANY (ARRAY['pending'::"text", 'processing'::"text", 'completed'::"text", 'failed'::"text"])))
+);
+
+
+ALTER TABLE "public"."ai_documents" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_messages" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid",
+    "role" "text" NOT NULL,
+    "content" "text" NOT NULL,
+    "sources" "jsonb" DEFAULT '[]'::"jsonb",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "chat_messages_role_check" CHECK (("role" = ANY (ARRAY['user'::"text", 'assistant'::"text"])))
+);
+
+
+ALTER TABLE "public"."chat_messages" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_sessions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "company_id" "uuid",
+    "user_id" "uuid",
+    "title" "text",
+    "last_message_at" timestamp with time zone DEFAULT "now"(),
+    "temporary_document_ids" "uuid"[],
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."chat_sessions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."companies" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "domain" "text",
+    "subscription_tier" "public"."subscription_tier" DEFAULT 'basic'::"public"."subscription_tier",
+    "max_users" integer DEFAULT 10,
+    "max_projects" integer DEFAULT 100,
+    "max_storage_gb" integer DEFAULT 5,
+    "contact_email" "text",
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"())
+);
+
+
+ALTER TABLE "public"."companies" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."document_feedback" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "company_id" "uuid",
+    "user_id" "uuid",
+    "message_id" "uuid",
+    "document_id" "uuid",
+    "query" "text" NOT NULL,
+    "document_text" "text" NOT NULL,
+    "is_relevant" boolean NOT NULL,
+    "feedback_text" "text",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."document_feedback" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."document_templates" (
+    "name" "text" NOT NULL,
+    "category" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "description" "text",
+    "file_name" "text",
+    "original_file_name" "text",
+    "is_public" boolean DEFAULT true,
+    "user_id" "uuid",
+    "variables_config" "jsonb",
+    "company_id" "uuid" NOT NULL,
+    "variables" "jsonb" DEFAULT '[]'::"jsonb"
+);
+
+
+ALTER TABLE "public"."document_templates" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."document_templates"."variables" IS 'Array of objects containing variable names and their types: [{"name": "var_name", "type": "text|image|table|date|number|signature|conditional"}]';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."documents" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "company_id" "uuid",
+    "name" "text" NOT NULL,
+    "source_type" "text" NOT NULL,
+    "file_path" "text",
+    "file_size" bigint,
+    "content_type" "text",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "qdrant_points" "text"[],
+    "embedding_status" "text" DEFAULT 'pending'::"text",
+    "embedding_error" "text",
+    "is_temporary" boolean DEFAULT false,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "documents_embedding_status_check" CHECK (("embedding_status" = ANY (ARRAY['pending'::"text", 'processing'::"text", 'completed'::"text", 'failed'::"text"]))),
+    CONSTRAINT "documents_source_type_check" CHECK (("source_type" = ANY (ARRAY['br18'::"text", 'upload'::"text", 'template'::"text"])))
+);
+
+
+ALTER TABLE "public"."documents" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_templates" (
+    "name" "text" NOT NULL,
+    "category" "text" NOT NULL,
+    "templates" "text"[] DEFAULT '{}'::"text"[],
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "company_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."project_templates" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."projects" (
+    "id" integer NOT NULL,
+    "name" "text" NOT NULL,
+    "progress" integer DEFAULT 0,
+    "leader_id" "uuid" NOT NULL,
+    "workers" "uuid"[] DEFAULT '{}'::"uuid"[],
+    "deadline" "date" NOT NULL,
+    "stage" "public"."project_stage" DEFAULT 'TODO'::"public"."project_stage" NOT NULL,
+    "is_archived" boolean DEFAULT false,
+    "architecture_templates" "text"[] DEFAULT '{}'::"text"[],
+    "construction_templates" "text"[] DEFAULT '{}'::"text"[],
+    "fire_safety_templates" "text"[] DEFAULT '{}'::"text"[],
+    "plumbing_templates" "text"[] DEFAULT '{}'::"text"[],
+    "electrical_templates" "text"[] DEFAULT '{}'::"text"[],
+    "ventilation_templates" "text"[] DEFAULT '{}'::"text"[],
+    "energy_templates" "text"[] DEFAULT '{}'::"text"[],
+    "documentation_templates" "text"[] DEFAULT '{}'::"text"[],
+    "template_variables" "jsonb" DEFAULT '{}'::"jsonb",
+    "document_assignments" "jsonb" DEFAULT '{}'::"jsonb",
+    "document_supervisors" "jsonb" DEFAULT '{}'::"jsonb",
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "location" "text",
+    "company_id" "uuid" NOT NULL,
+    "general_variables" "jsonb" DEFAULT '{}'::"jsonb",
+    "variable_propagation_settings" "jsonb" DEFAULT '{}'::"jsonb",
+    CONSTRAINT "projects_progress_check" CHECK ((("progress" >= 0) AND ("progress" <= 100)))
+);
+
+
+ALTER TABLE "public"."projects" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."projects_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE "public"."projects_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."projects_id_seq" OWNED BY "public"."projects"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."users" (
+    "id" "uuid" NOT NULL,
+    "name" "text",
+    "email" "text" NOT NULL,
+    "role" "public"."user_role" DEFAULT 'USER'::"public"."user_role" NOT NULL,
+    "assigned_projects" "text"[] DEFAULT '{}'::"text"[],
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "company_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."users" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."projects" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."projects_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."ai_documents"
+    ADD CONSTRAINT "ai_documents_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."chat_sessions"
+    ADD CONSTRAINT "chat_sessions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."companies"
+    ADD CONSTRAINT "companies_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."document_feedback"
+    ADD CONSTRAINT "document_feedback_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."document_templates"
+    ADD CONSTRAINT "document_templates_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "public"."documents"
+    ADD CONSTRAINT "documents_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_templates"
+    ADD CONSTRAINT "project_templates_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_email_key" UNIQUE ("email");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "idx_ai_documents_access_control" ON "public"."ai_documents" USING "btree" ("company_id", "is_company_wide", "user_id");
+
+
+
+CREATE INDEX "idx_ai_documents_company_id" ON "public"."ai_documents" USING "btree" ("company_id");
+
+
+
+CREATE INDEX "idx_ai_documents_created_at" ON "public"."ai_documents" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_ai_documents_ingestion_status" ON "public"."ai_documents" USING "btree" ("ingestion_status");
+
+
+
+CREATE INDEX "idx_ai_documents_is_company_wide" ON "public"."ai_documents" USING "btree" ("is_company_wide");
+
+
+
+CREATE INDEX "idx_ai_documents_uploaded_by" ON "public"."ai_documents" USING "btree" ("uploaded_by");
+
+
+
+CREATE INDEX "idx_ai_documents_user_id" ON "public"."ai_documents" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_chat_messages_created_at" ON "public"."chat_messages" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_chat_messages_session_id" ON "public"."chat_messages" USING "btree" ("session_id");
+
+
+
+CREATE INDEX "idx_chat_sessions_company_id" ON "public"."chat_sessions" USING "btree" ("company_id");
+
+
+
+CREATE INDEX "idx_chat_sessions_last_message_at" ON "public"."chat_sessions" USING "btree" ("last_message_at" DESC);
+
+
+
+CREATE INDEX "idx_chat_sessions_user_id" ON "public"."chat_sessions" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_document_feedback_company_id" ON "public"."document_feedback" USING "btree" ("company_id");
+
+
+
+CREATE INDEX "idx_document_feedback_user_id" ON "public"."document_feedback" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_document_templates_variables" ON "public"."document_templates" USING "gin" ("variables");
+
+
+
+CREATE INDEX "idx_documents_company_id" ON "public"."documents" USING "btree" ("company_id");
+
+
+
+CREATE INDEX "idx_documents_created_by" ON "public"."documents" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_documents_embedding_status" ON "public"."documents" USING "btree" ("embedding_status");
+
+
+
+CREATE INDEX "idx_documents_source_type" ON "public"."documents" USING "btree" ("source_type");
+
+
+
+CREATE OR REPLACE TRIGGER "ai_documents_updated_at_trigger" BEFORE UPDATE ON "public"."ai_documents" FOR EACH ROW EXECUTE FUNCTION "public"."update_ai_documents_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_chat_sessions_updated_at" BEFORE UPDATE ON "public"."chat_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_documents_updated_at" BEFORE UPDATE ON "public"."documents" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+ALTER TABLE ONLY "public"."ai_documents"
+    ADD CONSTRAINT "ai_documents_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."ai_documents"
+    ADD CONSTRAINT "ai_documents_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."ai_documents"
+    ADD CONSTRAINT "ai_documents_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."chat_sessions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_sessions"
+    ADD CONSTRAINT "chat_sessions_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_sessions"
+    ADD CONSTRAINT "chat_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_feedback"
+    ADD CONSTRAINT "document_feedback_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_feedback"
+    ADD CONSTRAINT "document_feedback_document_id_fkey" FOREIGN KEY ("document_id") REFERENCES "public"."documents"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_feedback"
+    ADD CONSTRAINT "document_feedback_message_id_fkey" FOREIGN KEY ("message_id") REFERENCES "public"."chat_messages"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_feedback"
+    ADD CONSTRAINT "document_feedback_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_templates"
+    ADD CONSTRAINT "document_templates_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id");
+
+
+
+ALTER TABLE ONLY "public"."document_templates"
+    ADD CONSTRAINT "document_templates_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."documents"
+    ADD CONSTRAINT "documents_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."documents"
+    ADD CONSTRAINT "documents_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."project_templates"
+    ADD CONSTRAINT "project_templates_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id");
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id");
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_leader_id_fkey" FOREIGN KEY ("leader_id") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id");
+
+
+
+CREATE POLICY "Company admin full access to company document templates" ON "public"."document_templates" USING ("public"."check_if_admin"());
+
+
+
+CREATE POLICY "Company admin full access to company project templates" ON "public"."project_templates" USING ("public"."check_if_admin"());
+
+
+
+CREATE POLICY "Company admin full access to company users" ON "public"."users" USING ("public"."check_if_admin"());
+
+
+
+CREATE POLICY "Company admins can create projects" ON "public"."projects" FOR INSERT TO "authenticated" WITH CHECK ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_company_admin"()));
+
+
+
+CREATE POLICY "Company admins can delete company projects" ON "public"."projects" FOR DELETE TO "authenticated" USING ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_company_admin"()));
+
+
+
+CREATE POLICY "Company admins can update company projects" ON "public"."projects" FOR UPDATE TO "authenticated" USING ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_company_admin"())) WITH CHECK ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_company_admin"()));
+
+
+
+CREATE POLICY "Project leaders update their workers" ON "public"."users" FOR UPDATE USING ((("company_id" = "public"."get_current_user_company_id"()) AND (EXISTS ( SELECT 1
+   FROM "public"."projects"
+  WHERE (("projects"."leader_id" = "auth"."uid"()) AND ("projects"."company_id" = "public"."get_current_user_company_id"()) AND (("auth"."uid"() = ANY ("projects"."workers")) OR ("projects"."leader_id" = "auth"."uid"())))))));
+
+
+
+CREATE POLICY "Project managers access company document templates" ON "public"."document_templates" USING ("public"."check_if_project_manager"());
+
+
+
+CREATE POLICY "Project managers access company project templates" ON "public"."project_templates" USING ("public"."check_if_project_manager"());
+
+
+
+CREATE POLICY "Project managers can manage company projects" ON "public"."projects" TO "authenticated" USING ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_project_manager"())) WITH CHECK ((("company_id" = "public"."get_current_user_company_id"()) AND "public"."check_if_project_manager"()));
+
+
+
+CREATE POLICY "Project managers create project templates" ON "public"."project_templates" FOR INSERT WITH CHECK ((("company_id" = "public"."get_current_user_company_id"()) AND ("public"."check_if_project_manager"() OR "public"."check_if_admin"())));
+
+
+
+CREATE POLICY "Project managers read company users" ON "public"."users" FOR SELECT USING ("public"."check_if_project_manager"());
+
+
+
+CREATE POLICY "Project managers update company users" ON "public"."users" FOR UPDATE USING ("public"."check_if_project_manager"());
+
+
+
+CREATE POLICY "Project members can update assigned projects" ON "public"."projects" FOR UPDATE TO "authenticated" USING ((("company_id" = "public"."get_current_user_company_id"()) AND (("auth"."uid"() = "leader_id") OR ("auth"."uid"() = ANY ("workers"))))) WITH CHECK ((("company_id" = "public"."get_current_user_company_id"()) AND (("auth"."uid"() = "leader_id") OR ("auth"."uid"() = ANY ("workers")))));
+
+
+
+CREATE POLICY "Super admins can access all projects" ON "public"."projects" TO "authenticated" USING ("public"."check_if_super_admin"()) WITH CHECK ("public"."check_if_super_admin"());
+
+
+
+CREATE POLICY "Users can access feedback for their company and shared document" ON "public"."document_feedback" USING ((("company_id" = ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) OR ("company_id" IS NULL)));
+
+
+
+CREATE POLICY "Users can access their company's documents and shared documents" ON "public"."documents" USING ((("company_id" = ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) OR ("company_id" IS NULL)));
+
+
+
+CREATE POLICY "Users can delete their documents or admins can delete company d" ON "public"."ai_documents" FOR DELETE USING ((("company_id" IN ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) AND (("uploaded_by" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."users"
+  WHERE (("users"."id" = "auth"."uid"()) AND ("users"."role" = ANY (ARRAY['COMPANY_ADMIN'::"public"."user_role", 'ADMIN'::"public"."user_role"]))))))));
+
+
+
+CREATE POLICY "Users can only access messages from their company's sessions" ON "public"."chat_messages" USING (("session_id" IN ( SELECT "chat_sessions"."id"
+   FROM "public"."chat_sessions"
+  WHERE ("chat_sessions"."company_id" = ( SELECT "users"."company_id"
+           FROM "public"."users"
+          WHERE ("users"."id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Users can only access their company's chat sessions" ON "public"."chat_sessions" USING (("company_id" = ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can update their documents or admins can update company d" ON "public"."ai_documents" FOR UPDATE USING ((("company_id" IN ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) AND (("uploaded_by" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."users"
+  WHERE (("users"."id" = "auth"."uid"()) AND ("users"."role" = ANY (ARRAY['COMPANY_ADMIN'::"public"."user_role", 'ADMIN'::"public"."user_role"]))))))));
+
+
+
+CREATE POLICY "Users can upload documents" ON "public"."ai_documents" FOR INSERT WITH CHECK ((("company_id" IN ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) AND ("uploaded_by" = "auth"."uid"())));
+
+
+
+CREATE POLICY "Users can view company colleagues" ON "public"."users" FOR SELECT USING ((("company_id" = "public"."get_current_user_company_id"()) OR ("auth"."uid"() = "id")));
+
+
+
+CREATE POLICY "Users can view company documents" ON "public"."ai_documents" FOR SELECT USING ((("company_id" IN ( SELECT "users"."company_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))) AND (("is_company_wide" = true) OR ("user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Users can view their company projects" ON "public"."projects" FOR SELECT TO "authenticated" USING (("company_id" = "public"."get_current_user_company_id"()));
+
+
+
+CREATE POLICY "Users manage own private templates" ON "public"."document_templates" USING ((("is_public" = false) AND ("user_id" = "auth"."uid"()) AND ("company_id" = "public"."get_current_user_company_id"())));
+
+
+
+CREATE POLICY "Users manage public company templates" ON "public"."document_templates" USING ((("is_public" = true) AND ("company_id" = "public"."get_current_user_company_id"())));
+
+
+
+CREATE POLICY "Users view company project templates" ON "public"."project_templates" FOR SELECT USING (("company_id" = "public"."get_current_user_company_id"()));
+
+
+
+ALTER TABLE "public"."ai_documents" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_messages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_sessions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."document_feedback" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."document_templates" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."documents" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_templates" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."projects" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_admin"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_company_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_company_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_company_admin"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_manager_or_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_manager_or_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_manager_or_admin"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_project_manager"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_project_manager"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_project_manager"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_project_member"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_project_member"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_project_member"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_if_super_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_if_super_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_if_super_admin"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_current_user_company_id"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_current_user_company_id"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_current_user_company_id"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_user_delete"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_user_delete"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_user_delete"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_ai_documents_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_ai_documents_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_ai_documents_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."ai_documents" TO "anon";
+GRANT ALL ON TABLE "public"."ai_documents" TO "authenticated";
+GRANT ALL ON TABLE "public"."ai_documents" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_messages" TO "anon";
+GRANT ALL ON TABLE "public"."chat_messages" TO "authenticated";
+GRANT ALL ON TABLE "public"."chat_messages" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_sessions" TO "anon";
+GRANT ALL ON TABLE "public"."chat_sessions" TO "authenticated";
+GRANT ALL ON TABLE "public"."chat_sessions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."companies" TO "anon";
+GRANT ALL ON TABLE "public"."companies" TO "authenticated";
+GRANT ALL ON TABLE "public"."companies" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."document_feedback" TO "anon";
+GRANT ALL ON TABLE "public"."document_feedback" TO "authenticated";
+GRANT ALL ON TABLE "public"."document_feedback" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."document_templates" TO "anon";
+GRANT ALL ON TABLE "public"."document_templates" TO "authenticated";
+GRANT ALL ON TABLE "public"."document_templates" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."documents" TO "anon";
+GRANT ALL ON TABLE "public"."documents" TO "authenticated";
+GRANT ALL ON TABLE "public"."documents" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_templates" TO "anon";
+GRANT ALL ON TABLE "public"."project_templates" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_templates" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."projects" TO "anon";
+GRANT ALL ON TABLE "public"."projects" TO "authenticated";
+GRANT ALL ON TABLE "public"."projects" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."projects_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."projects_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."projects_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT ALL ON TABLE "public"."users" TO "service_role";
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "service_role";
+
+
+
+
+
+
+RESET ALL;
