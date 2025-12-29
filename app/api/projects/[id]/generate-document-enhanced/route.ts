@@ -176,14 +176,16 @@ async function generateDocumentEnhancedHandler(
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const outputFileName = `${project.name}_${template.name}_${timestamp}.docx`;
 
-    // Return the file directly as a response (same as project download)
-    const response = new NextResponse(processedBuffer as BodyInit);
-    
-    // Set response headers
-    response.headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    response.headers.set('Content-Disposition', `attachment; filename="${outputFileName}"`);
-
-    return response;
+    // Return the generated document for immediate download
+    return new NextResponse(Buffer.from(processedBuffer.buffer) as BodyInit, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${outputFileName}"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
 
   } catch (error) {
     console.error('Error generating document:', error);
