@@ -31,6 +31,7 @@ export function useAuth(): UseAuthReturn {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCheckingAuth = useRef(false);
 
@@ -142,6 +143,7 @@ export function useAuth(): UseAuthReturn {
       }
 
       try {
+        setIsProfileLoading(true);
         const supabase = createClient();
         const { data: profile, error: profileError } = await supabase
           .from('users')
@@ -162,6 +164,8 @@ export function useAuth(): UseAuthReturn {
       } catch (error) {
         console.error('Error fetching profile:', error);
         setError("Failed to fetch user profile");
+      } finally {
+        setIsProfileLoading(false);
       }
     };
 
@@ -203,13 +207,16 @@ export function useAuth(): UseAuthReturn {
     };
   }, []);
 
+  // Combined loading state: true until both auth check AND profile fetch complete
+  const combinedLoading = isLoading || isProfileLoading || (!!user && !currentUser);
+
   return {
     currentUser,
     user, // Raw Supabase user for compatibility
     isAdmin,
     isCompanyAdmin,
     isAuthenticated: !!user, // For compatibility with useAuthCheck
-    isLoading,
+    isLoading: combinedLoading,
     error,
     refreshAuth,
     checkAuth // For compatibility with useAuthCheck
