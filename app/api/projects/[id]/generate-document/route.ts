@@ -173,7 +173,8 @@ async function generateDocumentHandler(
         // Handle typed variables (image, date, etc.)
         const typedValue = value as { type: string; value: any };
         if (typedValue.type === 'image' && typedValue.value) {
-          processedValue = typedValue.value;
+          // Keep the full image object for the image processor to detect
+          processedValue = typedValue;
         } else if (typedValue.type === 'date' && typedValue.value) {
           processedValue = typedValue.value;
         } else if (typedValue.type === 'dropdown' || typedValue.type === 'combobox') {

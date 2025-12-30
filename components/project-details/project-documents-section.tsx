@@ -226,6 +226,7 @@ export function ProjectDocumentsSection({
                           globalVariables={project.global_variables?.variables || []}
                           collapsed={collapsedCategorySections[category] || false}
                           canEdit={canEditGeneralVariables()}
+                          projectId={project.id}
                           onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
                           onVariableChange={onVariableChange}
                           onPropagationChange={onPropagationChange}

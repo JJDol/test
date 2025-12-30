@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { DocumentCategory } from "@/lib/types/types";
@@ -50,6 +50,9 @@ export function useProjectData(projectId: string): UseProjectDataReturn {
     currentUser: null as string | null,
     templates: null as string | null,
   });
+
+  // Track if category has been initialized (to prevent re-fetching templates on every project update)
+  const categoryInitializedRef = useRef(false);
 
   // Fetch project data
   const fetchProject = useCallback(async () => {
@@ -182,10 +185,25 @@ export function useProjectData(projectId: string): UseProjectDataReturn {
     router.push(`/protected/dashboard/project/${projectId}?${params.toString()}`, { scroll: false });
   }, [fetchTemplatesForCategory, searchParams, router, projectId]);
 
-  // Refresh project data
-  const refreshProject = useCallback(async () => {
-    await fetchProject();
-  }, [fetchProject]);
+  // Refresh project data (silent = no loading state shown)
+  const refreshProject = useCallback(async (silent: boolean = false) => {
+    if (silent) {
+      // Silent refresh - fetch without triggering loading state
+      try {
+        const response = await fetch(`/api/projects/${projectId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch project");
+        }
+        const data = await response.json();
+        setState(prev => ({ ...prev, project: data }));
+      } catch (error) {
+        console.error("Error refreshing project silently:", error);
+        // Don't show error toast for silent refreshes - the optimistic update is already in place
+      }
+    } else {
+      await fetchProject();
+    }
+  }, [fetchProject, projectId]);
 
   // Actions object
   const actions: ProjectDataActions = {
@@ -205,33 +223,37 @@ export function useProjectData(projectId: string): UseProjectDataReturn {
     fetchCurrentUser();
   }, [fetchProject, fetchUsers, fetchCurrentUser]);
 
-  // Set default category and handle URL parameters
+  // Set default category and handle URL parameters (only on initial load)
   useEffect(() => {
-    if (state.project) {
+    // Only run initialization once when project first loads
+    if (state.project && !categoryInitializedRef.current) {
       // Get the first category from DocumentCategory enum as default
       const defaultCategory = Object.values(DocumentCategory)[0];
-      
+
       // Check if there's a category in the URL
       const categoryFromUrl = searchParams.get('category') as DocumentCategory;
-      
+
       // Set active category: URL parameter first, then default
       let targetCategory = defaultCategory;
       if (categoryFromUrl && Object.values(DocumentCategory).includes(categoryFromUrl)) {
         targetCategory = categoryFromUrl;
       }
-      
-      // Always set the active category on initial load
+
+      // Set the active category on initial load
       setState(prev => ({ ...prev, activeCategory: targetCategory }));
-      
-      // Always ensure URL has category parameter on initial load
+
+      // Ensure URL has category parameter on initial load
       if (!categoryFromUrl || categoryFromUrl !== targetCategory) {
         const params = new URLSearchParams(searchParams);
         params.set('category', targetCategory);
         router.replace(`/protected/dashboard/project/${projectId}?${params.toString()}`, { scroll: false });
       }
-      
+
       // Fetch templates for the target category
       fetchTemplatesForCategory(targetCategory);
+
+      // Mark as initialized
+      categoryInitializedRef.current = true;
     }
   }, [state.project, searchParams, projectId, router, fetchTemplatesForCategory]);
 

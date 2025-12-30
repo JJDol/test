@@ -119,7 +119,7 @@ export function GeneralVariablesSection({
                       // For general variables, just call handleVariableChange with any template that contains this variable
                       // The function will handle the propagation logic
                       const projectTemplateNames = getProjectTemplateNames();
-                      const firstTemplate = allTemplates.find(template => 
+                      const firstTemplate = allTemplates.find(template =>
                         template.variables.some(v => v.name === variable.name) &&
                         projectTemplateNames.includes(template.name)
                       );
@@ -128,14 +128,14 @@ export function GeneralVariablesSection({
                     }
                   }}
                   disabled={!canEdit}
-                  projectId={undefined} // Will be set by parent
-                    templateName={(() => {
-                      const projectTemplateNames = getProjectTemplateNames();
-                      return allTemplates.find(template => 
-                        template.variables.some(v => v.name === variable.name) &&
-                        projectTemplateNames.includes(template.name)
-                      )?.name;
-                    })()}
+                  projectId={project.id}
+                  templateName={(() => {
+                    const projectTemplateNames = getProjectTemplateNames();
+                    return allTemplates.find(template =>
+                      template.variables.some(v => v.name === variable.name) &&
+                      projectTemplateNames.includes(template.name)
+                    )?.name;
+                  })()}
                 />
                 <p className="text-xs text-gray-600">
                   

@@ -49,6 +49,7 @@ interface CategoryVariablesSectionProps {
   globalVariables: DocumentVariable[];
   collapsed: boolean;
   canEdit: boolean;
+  projectId?: string;
   onToggleCollapse: () => void;
   onVariableChange: (templateName: string, name: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
   onPropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
@@ -63,6 +64,7 @@ export function CategoryVariablesSection({
   globalVariables,
   collapsed,
   canEdit,
+  projectId,
   onToggleCollapse,
   onVariableChange,
   onPropagationChange,
@@ -155,14 +157,14 @@ export function CategoryVariablesSection({
                     onChange={(value) => {
                       // Determine if this should be treated as local based on current scope
                       const isCurrentlyLocal = currentScope === VariablePropagationScope.LOCAL;
-                      
-                      onVariableChange(firstTemplate.name, variable.name, value, firstTemplate.category, 
+
+                      onVariableChange(firstTemplate.name, variable.name, value, firstTemplate.category,
                         false, // isGlobal: never global in category section
                         hasCategoryScope && !isCurrentlyLocal // isCategory: only if any template has category scope AND not local
                       );
                     }}
                     disabled={!canEdit}
-                    projectId={undefined}
+                    projectId={projectId}
                     templateName={firstTemplate.name}
                   />
                   
