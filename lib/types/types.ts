@@ -186,7 +186,7 @@ export interface ProjectDataActions {
   fetchCurrentUser: () => Promise<void>;
   fetchTemplatesForCategory: (category: DocumentCategory) => Promise<void>;
   setActiveCategory: (category: DocumentCategory) => void;
-  refreshProject: () => Promise<void>;
+  refreshProject: (silent?: boolean) => Promise<void>;
   updateProjectState: (updater: (prev: ProjectDataState) => ProjectDataState) => void;
 }
 
@@ -367,7 +367,7 @@ export interface UseProjectDetailsReturn {
     fetchCurrentUser: () => Promise<void>;
     fetchTemplatesForCategory: (category: DocumentCategory) => Promise<void>;
     setActiveCategory: (category: DocumentCategory) => void;
-    refreshProject: () => Promise<void>;
+    refreshProject: (silent?: boolean) => Promise<void>;
     
     // Variable actions
     handleVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;

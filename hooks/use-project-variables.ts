@@ -16,15 +16,15 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
 import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
 import { getVariableType } from "@/utils/project-utils";
-import { 
-  Project, 
-  DocumentTemplate, 
-  ProjectVariablesState, 
-  ProjectVariablesActions, 
+import {
+  Project,
+  DocumentTemplate,
+  ProjectVariablesState,
+  ProjectVariablesActions,
   UseProjectVariablesReturn,
   ProjectDataState
 } from "@/lib/types/types";
@@ -33,11 +33,14 @@ import {DocumentVariable} from "@/lib/types/variable-types";
 export function useProjectVariables(
   project: Project | null,
   allTemplates: DocumentTemplate[],
-  onProjectUpdate: () => Promise<void>,
+  onProjectUpdate: (silent?: boolean) => Promise<void>,
   updateProjectState: (updater: (prev: ProjectDataState) => ProjectDataState) => void
 ): UseProjectVariablesReturn {
   const { toast } = useToast();
-  
+
+  // Track if collapsed states have been initialized (to prevent resetting on every update)
+  const collapsedInitializedRef = useRef(false);
+
   // State management
   const [state, setState] = useState<ProjectVariablesState>({
     templateVariables: project?.template_variables || {} as any,
@@ -58,33 +61,43 @@ export function useProjectVariables(
     setState(prev => ({ ...prev, templateVariables: variables }));
   }, []);
 
-  // Initialize collapsed state for all templates and categories when project changes
+  // Initialize collapsed state for all templates and categories when project first loads
+  // Only sync templateVariables on subsequent updates (don't reset collapsed states)
   useEffect(() => {
     if (project?.template_variables) {
       const templateVariables = project.template_variables;
-      
-      // Initialize all templates as collapsed
-      const collapsedTemplates: { [key in DocumentCategory]: boolean } = {} as any;
-      const collapsedCategorySections: { [key in DocumentCategory]: boolean } = {} as any;
-      
-      // Set all templates and categories as collapsed initially
-      Object.keys(templateVariables).forEach(category => {
-        collapsedCategorySections[category as DocumentCategory] = true;
-        
-        const categoryTemplates = templateVariables[category as DocumentCategory];
-        if (categoryTemplates) {
-          Object.keys(categoryTemplates).forEach(templateName => {
-            collapsedTemplates[templateName as DocumentCategory] = true;
-          });
-        }
-      });
-      
-      setState(prev => ({
-        ...prev,
-        templateVariables,
-        collapsedTemplates,
-        collapsedCategorySections
-      }));
+
+      if (!collapsedInitializedRef.current) {
+        // First initialization - set all templates as collapsed
+        const collapsedTemplates: { [key in DocumentCategory]: boolean } = {} as any;
+        const collapsedCategorySections: { [key in DocumentCategory]: boolean } = {} as any;
+
+        Object.keys(templateVariables).forEach(category => {
+          collapsedCategorySections[category as DocumentCategory] = true;
+
+          const categoryTemplates = templateVariables[category as DocumentCategory];
+          if (categoryTemplates) {
+            Object.keys(categoryTemplates).forEach(templateName => {
+              collapsedTemplates[templateName as DocumentCategory] = true;
+            });
+          }
+        });
+
+        setState(prev => ({
+          ...prev,
+          templateVariables,
+          collapsedTemplates,
+          collapsedCategorySections
+        }));
+
+        collapsedInitializedRef.current = true;
+      } else {
+        // Subsequent updates - only sync templateVariables, preserve collapsed states
+        setState(prev => ({
+          ...prev,
+          templateVariables
+        }));
+      }
     }
   }, [project?.template_variables]);
 

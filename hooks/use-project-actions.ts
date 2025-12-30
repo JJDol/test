@@ -33,7 +33,7 @@ import { DocumentVariable } from "@/lib/types/variable-types";
 export function useProjectActions(
   project: Project | null,
   allTemplates: DocumentTemplate[],
-  onProjectUpdate: () => Promise<void>,
+  onProjectUpdate: (silent?: boolean) => Promise<void>,
   updateProjectState: (updater: (prev: ProjectDataState) => ProjectDataState) => void
 ): UseProjectActionsReturn {
   const router = useRouter();
@@ -460,13 +460,24 @@ export function useProjectActions(
         throw new Error(errorData.message || 'Failed to add template');
       }
 
+      // Apply optimistic update immediately
+      const updatedProject = {
+        ...project,
+        [categoryField]: [...currentTemplates, template.name],
+        template_variables: updatedTemplateVariables,
+        variable_propagation_settings: updatedPropagationSettings,
+        global_variables: updatedGlobalVariables,
+        category_variables: updatedCategoryVariables,
+      };
+      updateProjectState(prev => ({ ...prev, project: updatedProject as Project }));
+
       toast({
         title: "Template Added",
         description: `${template.name} has been added to the project requirements with ${template.variables.length} variables. General variable values have been automatically propagated.`,
       });
 
-      // Refresh the project data to ensure everything is in sync
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
     } catch (error) {
       console.error('Error adding template:', error);
       toast({
@@ -525,13 +536,22 @@ export function useProjectActions(
         throw new Error(errorData.message || 'Failed to remove template');
       }
 
+      // Apply optimistic update immediately
+      const updatedProject = {
+        ...project,
+        [categoryField]: updatedTemplates,
+        document_assignments: updatedAssignments,
+        template_variables: updatedTemplateVariables,
+      };
+      updateProjectState(prev => ({ ...prev, project: updatedProject as Project }));
+
       toast({
         title: "Template Removed",
         description: `${template} has been removed from the project requirements.`,
       });
 
-      // Refresh the project data
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
     } catch (error) {
       console.error('Error removing template:', error);
       toast({
@@ -540,7 +560,7 @@ export function useProjectActions(
         variant: "destructive",
       });
     }
-  }, [project, toast, onProjectUpdate]);
+  }, [project, toast, onProjectUpdate, updateProjectState]);
 
   // Handle supervisor check
   const handleSupervisorCheck = useCallback(async (templateName: string, checked: boolean) => {
@@ -647,8 +667,8 @@ export function useProjectActions(
         description: "Document assignments updated successfully",
       });
 
-      // Refresh project data to get the latest state
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
     } catch (error) {
       console.error('Error updating assignments:', error);
       toast({
@@ -681,13 +701,19 @@ export function useProjectActions(
         throw new Error('Failed to archive project');
       }
 
+      // Apply optimistic update
+      updateProjectState(prev => ({
+        ...prev,
+        project: { ...prev.project!, is_archived: true }
+      }));
+
       toast({
         title: "Project Archived",
         description: "The project has been archived successfully.",
       });
 
-      // Refresh the project data
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
     } catch (error) {
       console.error('Error archiving project:', error);
       toast({
@@ -696,7 +722,7 @@ export function useProjectActions(
         variant: "destructive",
       });
     }
-  }, [project, toast, onProjectUpdate]);
+  }, [project, toast, onProjectUpdate, updateProjectState]);
 
   // Handle project deleted
   const handleProjectDeleted = useCallback(() => {
@@ -735,8 +761,8 @@ export function useProjectActions(
         throw new Error(errorData.error || 'Failed to cleanup variables');
       }
 
-      // Refresh project data
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
 
       toast({
         title: "Cleanup Complete",
@@ -780,8 +806,8 @@ export function useProjectActions(
         throw new Error(errorData.error || 'Failed to propagate values');
       }
 
-      // Refresh project data
-      await onProjectUpdate();
+      // Silent refresh to sync with server (no loading screen)
+      await onProjectUpdate(true);
 
       toast({
         title: "Propagation Complete",
