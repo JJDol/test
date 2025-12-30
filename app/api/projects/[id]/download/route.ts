@@ -237,7 +237,7 @@ downloadProjectHandler(
           const templateBuffer = Buffer.from(arrayBuffer);
           
           // Prepare variables for processing - normalize the keys and add common project variables
-          const allVariables: { [key: string]: string | null } = {};
+          const allVariables: { [key: string]: any } = {};
           
           // Create a mapping from normalized names to original tag names for content controls
           const tagNameMapping: { [normalizedKey: string]: string } = {};
@@ -253,19 +253,29 @@ downloadProjectHandler(
           console.log(`Template ${template.name} - Tag name mapping:`, tagNameMapping);
           
           // Add all template variables (already resolved with general/local logic)
-          // Only handle text values for now - storedVariables is DocumentVariable[]
+          // Handle both text values and image objects - storedVariables is DocumentVariable[]
           if (Array.isArray(storedVariables)) {
             storedVariables.forEach((variable: DocumentVariable) => {
-              if (variable && variable.name && typeof variable.value === 'string') {
+              if (variable && variable.name) {
                 const normalizedKey = normalizeVariableName(variable.name);
-                
+                const val = variable.value as any;
+                let processedValue: any;
+
+                // Check if it's an image object
+                if (typeof val === 'object' && val !== null && val.type === 'image') {
+                  // Keep the full image object for the image processor
+                  processedValue = val;
+                } else {
+                  processedValue = val;
+                }
+
                 // Store with normalized key for content control processor
-                allVariables[normalizedKey] = variable.value;
-                
+                allVariables[normalizedKey] = processedValue;
+
                 // Also store with original tag name if it exists in the mapping
                 if (tagNameMapping[normalizedKey]) {
-                  allVariables[tagNameMapping[normalizedKey]] = variable.value;
-                  console.log(`Mapped variable: ${normalizedKey} → ${tagNameMapping[normalizedKey]} = ${variable.value}`);
+                  allVariables[tagNameMapping[normalizedKey]] = processedValue;
+                  console.log(`Mapped variable: ${normalizedKey} → ${tagNameMapping[normalizedKey]}`);
                 }
               }
             });

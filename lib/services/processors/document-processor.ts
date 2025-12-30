@@ -41,22 +41,20 @@ export async function processDocumentWithSmartProcessor(
     
     console.log(`Template ${template.name} - Extraction: ${extractionMethod}`);
 
-    // COMMENTED OUT - Image detection for future use
     // Check if template has image variables
-    // const hasImages = Object.values(variables).some((value: any) => {
-    //   if (typeof value === 'string') {
-    //     return value.includes('/images/') || value.startsWith('data:image/');
-    //   } else if (typeof value === 'object' && value !== null) {
-    //     // Check if it's an image object with a file path
-    //     return value.type === 'image' && 
-    //            typeof value.value === 'string' && 
-    //            (value.value.includes('/images/') || value.value.startsWith('data:image/'));
-    //   }
-    //   return false;
-    // });
-    
-    // For now, assume no images since we only support text
-    const hasImages = false;
+    const hasImages = Object.values(variables).some((value: any) => {
+      if (typeof value === 'string') {
+        return value.includes('/images/') || value.startsWith('data:image/');
+      } else if (typeof value === 'object' && value !== null) {
+        // Check if it's an image object with a file path
+        return value.type === 'image' &&
+               typeof value.value === 'string' &&
+               (value.value.includes('/images/') || value.value.startsWith('data:image/'));
+      }
+      return false;
+    });
+
+    console.log(`Template ${template.name} - Has images: ${hasImages}`);
     
     // Check if template uses Content Controls - FIXED: Check actual template file, not database metadata
     const hasContentControlsInFile = hasContentControlsInBuffer(templateBuffer);
@@ -69,36 +67,36 @@ export async function processDocumentWithSmartProcessor(
     const shouldUseContentControlProcessor = hasContentControlsInFile || hasContentControlsInDB;
     
     let generatedDoc: Buffer;
-    
-    // Simplified processing - only use Content Control processor for text values
-    console.log(`Template ${template.name} - Using Content Control processor for text values only`);
-    generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables);
 
-    // COMMENTED OUT - Complex processing logic for future use
-    // if (shouldUseContentControlProcessor) {
-    //   // Use enhanced Content Control processor for templates with Content Controls
-    //   console.log(`Template ${template.name} uses Content Controls, using enhanced Content Control processor`);
-    //   try {
-    //     const processedBuffer = await processDocumentWithEnhancedVariables(templateBuffer, variables);
-    //     generatedDoc = processedBuffer;
-    //   } catch (error) {
-    //     console.error(`Enhanced Content Control processor failed for ${template.name}, falling back to standard processor:`, error);
-    //     generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables);
-    //   }
-    // } else if (hasImages) {
-    //   // Use docx-templates processor for templates with images but no Content Controls
-    //   console.log(`Template ${template.name} contains images, using docx-templates processor`);
-    //   try {
-    //     generatedDoc = await processDocxWithImages(templateBuffer, variables, companyId);
-    //   } catch (error) {
-    //     console.error(`Docx-templates processor failed for ${template.name}, falling back to standard processor:`, error);
-    //     generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables);
-    //   }
-    // } else {
-    //   // Use standard Content Control processor
-    //   console.log(`Template ${template.name} has no images, using standard processor`);
-    //   generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables);
-    // }
+    if (hasImages) {
+      // Use Content Control processor with image support
+      console.log(`Template ${template.name} contains images, using Content Control processor with image support`);
+      try {
+        generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables, companyId);
+      } catch (error) {
+        console.error(`Content Control processor failed for ${template.name}:`, error);
+        // Try docx-templates as fallback for non-Content Control templates
+        try {
+          generatedDoc = await processDocxWithImages(templateBuffer, variables, companyId);
+        } catch (fallbackError) {
+          console.error(`Docx-templates also failed for ${template.name}:`, fallbackError);
+          throw error;
+        }
+      }
+    } else if (shouldUseContentControlProcessor) {
+      // Use enhanced Content Control processor for templates with Content Controls
+      console.log(`Template ${template.name} uses Content Controls, using enhanced Content Control processor`);
+      try {
+        generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables, companyId);
+      } catch (error) {
+        console.error(`Enhanced Content Control processor failed for ${template.name}, falling back to standard processor:`, error);
+        generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables, companyId);
+      }
+    } else {
+      // Use standard Content Control processor
+      console.log(`Template ${template.name} has no images, using standard processor`);
+      generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables, companyId);
+    }
 
     return generatedDoc;
   } catch (error) {

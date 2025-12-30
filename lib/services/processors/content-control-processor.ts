@@ -10,11 +10,13 @@ import {
   DropdownVariable,
   CheckboxVariable,
 } from '@/lib/types/variable-types';
+import { storageService } from '@/lib/services/integrations/storage-service';
 
 
 export async function processDocumentWithEnhancedVariables(
   templateBuffer: Buffer,
-  variables: { [key: string]: string | null }
+  variables: { [key: string]: string | null },
+  companyId?: string
 ): Promise<Buffer> {
   console.log('🔄 Starting enhanced document processing...');
 
@@ -22,7 +24,7 @@ export async function processDocumentWithEnhancedVariables(
   const strippedTemplate = stripTypeInformationFromTemplate(templateBuffer);
 
   // Process content controls and curly brackets
-  const processedBuffer = await processEnhancedContentControlsAndCurlyBrackets(strippedTemplate, variables);
+  const processedBuffer = await processEnhancedContentControlsAndCurlyBrackets(strippedTemplate, variables, companyId);
 
   console.log('Enhanced document processing complete');
   return processedBuffer;
@@ -34,11 +36,13 @@ export async function processDocumentWithEnhancedVariables(
  * Now includes proper relationship management for images
  * @param templateBuffer The DOCX template as a buffer
  * @param variables Object containing variable values
+ * @param companyId Company ID for accessing images from storage
  * @returns Processed DOCX as a buffer
  */
 async function processEnhancedContentControlsAndCurlyBrackets(
   templateBuffer: Buffer,
-  variables: { [key: string]: string | null }
+  variables: { [key: string]: string | null },
+  companyId?: string
 ): Promise<Buffer> {
   const zip = new PizZip(templateBuffer);
 
@@ -69,7 +73,8 @@ async function processEnhancedContentControlsAndCurlyBrackets(
           xmlContent,
           variables,
           relationshipManager,
-          xmlPath
+          xmlPath,
+          companyId
         );
 
         if (processedInThisFile > 0) {
@@ -179,6 +184,7 @@ class RelationshipManager {
   private existingRelationships: Map<string, string> = new Map();
   private nextRelId = 1;
   private relsXml: string | null = null;
+  private addedImageExtensions: Set<string> = new Set();
 
   constructor(zip: PizZip) {
     this.zip = zip;
@@ -235,6 +241,9 @@ class RelationshipManager {
   addImage(imageBuffer: Buffer, filename: string): string {
     const imageExtension = this.getImageExtension(filename);
     const imageName = `image${this.nextRelId}${imageExtension}`;
+
+    // Track the extension for Content_Types.xml update
+    this.addedImageExtensions.add(imageExtension.replace('.', ''));
 
     // Ensure media directory exists (create empty directory if needed)
     if (!this.zip.file('word/media/')) {
@@ -315,8 +324,76 @@ class RelationshipManager {
       } else {
         console.error('Could not find Relationships element in XML');
       }
+
+      // Also update Content_Types.xml for image extensions
+      this.updateContentTypes();
     } catch (error) {
       console.error('Error updating relationships:', error);
+    }
+  }
+
+  /**
+   * Update [Content_Types].xml to include image content types
+   */
+  private updateContentTypes(): void {
+    if (this.addedImageExtensions.size === 0) return;
+
+    try {
+      const contentTypesFile = this.zip.file('[Content_Types].xml');
+      if (!contentTypesFile) {
+        console.warn('[Content_Types].xml not found');
+        return;
+      }
+
+      const { DOMParser, XMLSerializer } = require('xmldom');
+      const parser = new DOMParser();
+      const serializer = new XMLSerializer();
+
+      let contentTypesXml = contentTypesFile.asText();
+      const doc = parser.parseFromString(contentTypesXml, 'text/xml');
+      const typesElement = doc.getElementsByTagName('Types')[0];
+
+      if (!typesElement) {
+        console.error('Could not find Types element in [Content_Types].xml');
+        return;
+      }
+
+      // Map of extensions to content types
+      const contentTypeMap: { [key: string]: string } = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'bmp': 'image/bmp',
+        'tiff': 'image/tiff',
+        'webp': 'image/webp'
+      };
+
+      // Get existing Default elements
+      const existingDefaults = doc.getElementsByTagName('Default');
+      const existingExtensions = new Set<string>();
+      for (let i = 0; i < existingDefaults.length; i++) {
+        const ext = existingDefaults[i].getAttribute('Extension');
+        if (ext) existingExtensions.add(ext.toLowerCase());
+      }
+
+      // Add missing content types
+      for (const ext of Array.from(this.addedImageExtensions)) {
+        if (!existingExtensions.has(ext.toLowerCase()) && contentTypeMap[ext.toLowerCase()]) {
+          const defaultElement = doc.createElement('Default');
+          defaultElement.setAttribute('Extension', ext.toLowerCase());
+          defaultElement.setAttribute('ContentType', contentTypeMap[ext.toLowerCase()]);
+          typesElement.appendChild(defaultElement);
+          console.log(`[Content_Types] Added content type for .${ext}: ${contentTypeMap[ext.toLowerCase()]}`);
+        }
+      }
+
+      // Update the file
+      const updatedXml = serializer.serializeToString(doc);
+      this.zip.file('[Content_Types].xml', updatedXml);
+      console.log('[Content_Types] Updated successfully');
+    } catch (error) {
+      console.error('Error updating [Content_Types].xml:', error);
     }
   }
 }
@@ -425,13 +502,15 @@ function wrapContentControlsInParagraphs(xmlContent: string): string {
  * @param variables Object containing variable values
  * @param relationshipManager Manager for handling image relationships
  * @param xmlPath Path of the XML file being processed
+ * @param companyId Company ID for accessing images from storage
  * @returns Updated XML content with content controls populated
  */
 async function processEnhancedContentControlsWithTypeAwarenessAndCount(
   xmlContent: string,
   variables: { [key: string]: string | null },
   relationshipManager: RelationshipManager,
-  xmlPath: string
+  xmlPath: string,
+  companyId?: string
 ): Promise<{ processedXml: string; processedCount: number }> {
   try {
     const { DOMParser, XMLSerializer } = require('xmldom');
@@ -457,7 +536,34 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
 
     console.log(`[DOCX] Found ${contentControls.length} content controls to process`);
 
+    // Log all variable names we have
+    console.log(`[DOCX] Available variables: ${Object.keys(variables).join(', ')}`);
+
+    // Log variables that look like images
+    const imageVars = Object.entries(variables).filter(([k, v]) => {
+      if (typeof v === 'object' && v !== null) {
+        return (v as any).type === 'image';
+      }
+      return typeof v === 'string' && v.includes('/images/');
+    });
+    console.log(`[DOCX] Image variables found: ${imageVars.map(([k]) => k).join(', ')}`);
+
     let processedCount = 0;
+
+    // Collect all content control tags first for debugging
+    const allTags: string[] = [];
+    for (let i = 0; i < contentControls.length; i++) {
+      const sdt = contentControls[i] as Element;
+      const sdtPr = sdt.getElementsByTagName('w:sdtPr')[0];
+      if (sdtPr) {
+        const tagElement = sdtPr.getElementsByTagName('w:tag')[0];
+        if (tagElement) {
+          const tagValue = tagElement.getAttribute('w:val') || '';
+          allTags.push(tagValue);
+        }
+      }
+    }
+    console.log(`[DOCX] Content control tags: ${allTags.filter(t => t.toLowerCase().includes('sign') || t.toLowerCase().includes('image')).join(', ')}`);
 
     for (let i = 0; i < contentControls.length; i++) {
       // PER-CONTROL ERROR HANDLING
@@ -515,6 +621,19 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
         // Determine type
         const controlType = detectEnhancedContentControlType(sdtPr);
 
+        // Debug logging for image variables
+        if (variableName.includes('sign') || variableName.includes('image')) {
+          console.log(`[DOCX DEBUG] Variable: ${variableName}`);
+          console.log(`[DOCX DEBUG] Control Type: ${controlType}`);
+          console.log(`[DOCX DEBUG] Variable Value Type: ${typeof variableValue}`);
+          console.log(`[DOCX DEBUG] Variable Value: ${JSON.stringify(variableValue)?.substring(0, 200)}`);
+          console.log(`[DOCX DEBUG] Company ID: ${companyId}`);
+          // Log the sdtPr content to see what's there
+          const { XMLSerializer } = require('xmldom');
+          const serializer = new XMLSerializer();
+          console.log(`[DOCX DEBUG] sdtPr XML: ${serializer.serializeToString(sdtPr).substring(0, 500)}`);
+        }
+
         if (!variableValue) {
           // Handle missing value
           if (controlType !== 'image') {
@@ -524,10 +643,190 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
           continue;
         }
 
-        // Handle Text
+        // Check if this is an image variable
+        let imagePath: string | null = null;
+        if (typeof variableValue === 'object' && variableValue !== null) {
+          const objValue = variableValue as any;
+          if (objValue.type === 'image' && objValue.value) {
+            // Handle nested structure: value can be a string path or an object with value property
+            if (typeof objValue.value === 'string') {
+              imagePath = objValue.value;
+            } else if (typeof objValue.value === 'object' && objValue.value.value) {
+              // Nested structure: { type: 'image', value: { type: 'image', value: 'path/to/image' } }
+              imagePath = typeof objValue.value.value === 'string' ? objValue.value.value : null;
+            }
+          }
+        } else if (typeof variableValue === 'string' && variableValue.includes('/images/')) {
+          imagePath = variableValue;
+        }
+
+        // Handle image insertion for image content controls
+        if (controlType === 'image' && imagePath && companyId) {
+          try {
+            console.log(`[DOCX] Processing image for ${variableName}, extracted path: ${imagePath}`);
+
+            // Download image from storage
+            const { data: imageFile, error: imageError } = await storageService.downloadFile(
+              { companyId: companyId, isPublic: false },
+              imagePath
+            );
+
+            if (imageError || !imageFile) {
+              console.error(`[DOCX] Error downloading image ${imagePath}:`, imageError);
+              continue;
+            }
+
+            // Convert to buffer
+            const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
+            const filename = imagePath.split('/').pop() || 'image.png';
+
+            console.log(`[DOCX] Image buffer size: ${imageBuffer.length} bytes for ${filename}`);
+
+            if (imageBuffer.length === 0) {
+              console.error(`[DOCX] Image buffer is empty for ${variableName}`);
+              continue;
+            }
+
+            // Add image to document and get relationship ID
+            const relationshipId = relationshipManager.addImage(imageBuffer, filename);
+
+            // Calculate dimensions
+            const sizeOf = require('image-size');
+            let widthEmu = 1905000; // Default ~2 inches
+            let heightEmu = 1905000;
+            try {
+              const dimensions = sizeOf(imageBuffer);
+              if (dimensions.width && dimensions.height) {
+                // Convert pixels to EMUs (914400 EMUs per inch, assume 96 DPI)
+                const maxWidthInches = 2;
+                const maxHeightInches = 1.5;
+                const widthInches = dimensions.width / 96;
+                const heightInches = dimensions.height / 96;
+                const aspectRatio = widthInches / heightInches;
+
+                if (widthInches > maxWidthInches || heightInches > maxHeightInches) {
+                  if (aspectRatio > maxWidthInches / maxHeightInches) {
+                    widthEmu = maxWidthInches * 914400;
+                    heightEmu = widthEmu / aspectRatio;
+                  } else {
+                    heightEmu = maxHeightInches * 914400;
+                    widthEmu = heightEmu * aspectRatio;
+                  }
+                } else {
+                  widthEmu = widthInches * 914400;
+                  heightEmu = heightInches * 914400;
+                }
+              }
+            } catch (e) {
+              console.log('[DOCX] Could not determine image dimensions, using defaults');
+            }
+
+            // Check if content control is inside a paragraph (inline) or block-level
+            // Picture content controls in tables/paragraphs need just a run, not a full paragraph
+            let isInlineContext = false;
+            let parentNode: Node | null = sdt.parentNode;
+            while (parentNode) {
+              const nodeName = parentNode.nodeName;
+              if (nodeName === 'w:p' || nodeName === 'w:tc' || nodeName === 'w:r') {
+                isInlineContext = true;
+                break;
+              }
+              if (nodeName === 'w:body' || nodeName === 'w:document') {
+                break;
+              }
+              parentNode = parentNode.parentNode;
+            }
+
+            console.log(`[DOCX] Image context: ${isInlineContext ? 'inline (run only)' : 'block (with paragraph)'}`);
+
+            // Try to find existing blip in the sdtContent and update its reference
+            // This preserves Word's original image structure
+            const existingBlips = sdtContent.getElementsByTagName('a:blip');
+            if (existingBlips.length > 0) {
+              // Update existing blip reference
+              for (let b = 0; b < existingBlips.length; b++) {
+                const blip = existingBlips[b];
+                // Update the r:embed attribute
+                blip.setAttribute('r:embed', relationshipId);
+                // Remove any existing extLst that might reference placeholders
+                const extLists = blip.getElementsByTagName('a:extLst');
+                for (let e = extLists.length - 1; e >= 0; e--) {
+                  blip.removeChild(extLists[e]);
+                }
+              }
+
+              // Update dimensions in wp:extent (drawing size)
+              const wpExtents = sdtContent.getElementsByTagName('wp:extent');
+              for (let e = 0; e < wpExtents.length; e++) {
+                wpExtents[e].setAttribute('cx', String(Math.round(widthEmu)));
+                wpExtents[e].setAttribute('cy', String(Math.round(heightEmu)));
+              }
+
+              // Update dimensions in a:ext (picture size)
+              const aExts = sdtContent.getElementsByTagName('a:ext');
+              for (let e = 0; e < aExts.length; e++) {
+                aExts[e].setAttribute('cx', String(Math.round(widthEmu)));
+                aExts[e].setAttribute('cy', String(Math.round(heightEmu)));
+              }
+
+              // Remove the showingPlcHdr element from sdtPr to hide the placeholder icon
+              const showingPlcHdrElements = sdtPr.getElementsByTagName('w:showingPlcHdr');
+              for (let p = showingPlcHdrElements.length - 1; p >= 0; p--) {
+                showingPlcHdrElements[p].parentNode?.removeChild(showingPlcHdrElements[p]);
+              }
+
+              console.log(`[DOCX] ✅ Updated existing blip reference for ${variableName} with relationship ${relationshipId}, dimensions: ${Math.round(widthEmu)}x${Math.round(heightEmu)} EMUs`);
+            } else {
+              // No existing blip - use placeholder approach
+              // Clear sdtContent and insert a unique placeholder that we'll replace after serialization
+              while (sdtContent.firstChild) {
+                sdtContent.removeChild(sdtContent.firstChild);
+              }
+
+              // Create a unique placeholder marker
+              const placeholderId = `__IMAGE_PLACEHOLDER_${relationshipId}_${Math.round(widthEmu)}_${Math.round(heightEmu)}_${isInlineContext ? 'inline' : 'block'}__`;
+
+              // Add placeholder as text content
+              const placeholderRun = doc.createElement('w:r');
+              const placeholderText = doc.createElement('w:t');
+              placeholderText.appendChild(doc.createTextNode(placeholderId));
+              placeholderRun.appendChild(placeholderText);
+              sdtContent.appendChild(placeholderRun);
+
+              console.log(`[DOCX] ✅ Added placeholder for image ${variableName} with relationship ${relationshipId}`);
+            }
+            processedCount++;
+            continue;
+          } catch (imgError) {
+            console.error(`[DOCX] Error processing image for ${variableName}:`, imgError);
+          }
+        }
+
+        // Handle Text - check for image objects
         let textValue = '';
-        if (typeof variableValue === 'string') textValue = variableValue;
-        else if (variableValue) textValue = String(variableValue);
+        if (typeof variableValue === 'string') {
+          // Skip if this is an image path - don't show as text
+          if (variableValue.includes('/images/')) {
+            textValue = '';
+          } else {
+            textValue = variableValue;
+          }
+        } else if (variableValue && typeof variableValue === 'object') {
+          // Check if it's an image object
+          const objValue = variableValue as any;
+          if (objValue.type === 'image' && objValue.value) {
+            // For image objects in non-image content controls, skip or show placeholder
+            textValue = '';
+            console.log(`[DOCX] Image variable ${variableName} - skipping text insertion`);
+          } else if (objValue.value !== undefined) {
+            // Other typed objects - extract value
+            textValue = String(objValue.value);
+          } else {
+            textValue = '';
+          }
+        } else if (variableValue) {
+          textValue = String(variableValue);
+        }
 
         if (textValue) {
           const textTextNode = doc.createElement('w:t');
@@ -558,12 +857,38 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
     // Most Word templates are already valid. If this causes issues, we can add a lighter wrap pass.
 
     console.log(`[DOCX] Serialization...`);
-    const processedXml = serializer.serializeToString(doc);
+    let processedXml = serializer.serializeToString(doc);
+
+    // Replace image placeholders with actual image XML
+    // Pattern: __IMAGE_PLACEHOLDER_{relationshipId}_{width}_{height}_{context}__
+    const placeholderRegex = /<w:r[^>]*><w:t[^>]*>__IMAGE_PLACEHOLDER_(rId\d+)_(\d+)_(\d+)_(inline|block)__<\/w:t><\/w:r>/g;
+    processedXml = processedXml.replace(placeholderRegex, (match: string, relId: string, width: string, height: string, context: string) => {
+      console.log(`[DOCX] Replacing placeholder with image XML: ${relId}, ${width}x${height}, ${context}`);
+      return getImageXmlForReplacement(relId, parseInt(width), parseInt(height), context === 'inline');
+    });
+
     return { processedXml, processedCount };
 
   } catch (error) {
     console.error('Error in single-pass processing:', error);
     return { processedXml: xmlContent, processedCount: 0 };
+  }
+}
+
+/**
+ * Generate image XML string for placeholder replacement
+ * Includes all necessary namespace declarations for Word compatibility
+ */
+function getImageXmlForReplacement(relationshipId: string, width: number, height: number, isInline: boolean): string {
+  // Must include xmlns:wp declaration on the wp:inline element since it may not be declared at document root
+  const drawingXml = `<w:drawing xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${width}" cy="${height}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Picture 1"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${relationshipId}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${width}" cy="${height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+
+  const runXml = `<w:r><w:rPr><w:noProof/></w:rPr>${drawingXml}</w:r>`;
+
+  if (isInline) {
+    return runXml;
+  } else {
+    return `<w:p>${runXml}</w:p>`;
   }
 }
 
@@ -725,12 +1050,29 @@ function detectEnhancedContentControlType(sdtPr: any): 'text' | 'richtext' | 'im
 
 /**
  * Create image content XML with proper relationship ID
+ * Includes all required namespace declarations for Word compatibility
+ * @param relationshipId The relationship ID for the image
+ * @param width Width in EMUs
+ * @param height Height in EMUs
+ * @param inlineOnly If true, returns just a run (w:r) without paragraph wrapper - for inline contexts
  */
-function createImageContentXmlWithRelationship(relationshipId: string, width?: number, height?: number): string {
+function createImageContentXmlWithRelationship(relationshipId: string, width?: number, height?: number, inlineOnly?: boolean): string {
   const defaultWidth = width || 1905000; // ~2 inches in EMUs
   const defaultHeight = height || 1905000;
 
-  return `<w:p><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${defaultWidth}" cy="${defaultHeight}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Picture 1"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${defaultWidth}" cy="${defaultHeight}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  // Common namespace declarations
+  const namespaces = `xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"`;
+
+  // The drawing content (same for both inline and block)
+  const drawingContent = `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${defaultWidth}" cy="${defaultHeight}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Picture 1"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${defaultWidth}" cy="${defaultHeight}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+
+  if (inlineOnly) {
+    // Return just the run for inline contexts (inside paragraphs, table cells)
+    return `<w:r ${namespaces}><w:rPr><w:noProof/></w:rPr>${drawingContent}</w:r>`;
+  } else {
+    // Return full paragraph for block-level contexts
+    return `<w:p ${namespaces}><w:r><w:rPr><w:noProof/></w:rPr>${drawingContent}</w:r></w:p>`;
+  }
 }
 
 /**
