@@ -10,10 +10,11 @@
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentTemplate } from "@/lib/types/types";
-import { ChevronDown, DownloadIcon, Pencil, Trash2, UploadCloud } from "lucide-react";
+import { ChevronDown, DownloadIcon, Loader2, Pencil, Trash2, UploadCloud } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { getVariableTypeStyle } from "@/utils/variable-type-styles";
 
@@ -33,9 +34,10 @@ export function DocumentTemplateCard({
   onDelete,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
-
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
+    setIsDownloading(true);
     try {
       console.log('Starting template download for:', template.name);
 
@@ -93,6 +95,8 @@ export function DocumentTemplateCard({
         description: error instanceof Error ? error.message : "Failed to download template",
         variant: "destructive",
       });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -133,10 +137,15 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-9 w-9 text-foreground/70 hover:text-foreground"
-              title="Download"
+              title={isDownloading ? "Downloading..." : "Download"}
               onClick={handleDownload}
+              disabled={isDownloading}
             >
-              <DownloadIcon className="h-5 w-5" />
+              {isDownloading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <DownloadIcon className="h-5 w-5" />
+              )}
             </Button>
             <Button
               variant="ghost"

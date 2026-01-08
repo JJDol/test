@@ -21,22 +21,28 @@ import { Button } from "@/components/ui/button";
 import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
 import Image from "next/image";
 
-interface CategorySelectorProps {
-  selectedCategory: DocumentCategory | 'ALL';
-  onCategoryChange: (category: DocumentCategory | 'ALL') => void;
+type AllOptionValue = 'ALL' | 'GLOBAL';
+
+interface CategorySelectorProps<T extends AllOptionValue = 'ALL'> {
+  selectedCategory: DocumentCategory | T;
+  onCategoryChange: (category: DocumentCategory | T) => void;
   showAllOption?: boolean;
   className?: string;
+  allLabel?: string;
+  allValue?: T;
 }
 
-export function CategorySelector({
+export function CategorySelector<T extends AllOptionValue = 'ALL'>({
   selectedCategory,
   onCategoryChange,
   showAllOption = true,
-  className = ""
-}: CategorySelectorProps) {
-  const categories = showAllOption 
-    ? ['ALL', ...Object.values(DocumentCategory)] as (DocumentCategory | 'ALL')[]
-    : Object.values(DocumentCategory);
+  className = "",
+  allLabel = "All",
+  allValue = "ALL" as T
+}: CategorySelectorProps<T>) {
+  const categories = showAllOption
+    ? [allValue, ...Object.values(DocumentCategory)] as (DocumentCategory | T)[]
+    : Object.values(DocumentCategory) as (DocumentCategory | T)[];
 
   const imgMap: Record<string, string> = {
     [DocumentCategory.ARCHITECTURE]: '/images/categories/architecture.svg',
@@ -53,8 +59,9 @@ export function CategorySelector({
     <div className={`flex items-center gap-3 mb-6 flex-wrap ${className}`}>
       {categories.map((cat) => {
         const isActive = selectedCategory === cat;
-        const label = cat === 'ALL' ? 'All' : getCategoryDisplayName(cat as DocumentCategory);
-        
+        const isAllOption = cat === allValue;
+        const label = isAllOption ? allLabel : getCategoryDisplayName(cat as DocumentCategory);
+
         return (
           <Button
             key={cat as string}
@@ -62,7 +69,7 @@ export function CategorySelector({
             onClick={() => onCategoryChange(cat)}
             className="flex items-center gap-2"
           >
-            {cat !== 'ALL' && (
+            {!isAllOption && (
               <span
                 className={`h-8 w-8 rounded-md flex items-center justify-center ${
                   isActive ? 'bg-foreground/20' : 'bg-foreground/10'
