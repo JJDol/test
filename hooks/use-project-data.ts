@@ -68,9 +68,8 @@ export function useProjectData(projectId: string): UseProjectDataReturn {
       
       setState(prev => ({ ...prev, project: data }));
 
-      // Fetch all templates for progress calculation
-      // TODO: Create new API route for this which fetches all templates for the project
-      const allTemplatesResponse = await fetch('/api/document-templates');
+      // Fetch all templates for progress calculation (include archived since project may use them)
+      const allTemplatesResponse = await fetch('/api/document-templates?includeArchived=true');
       if (!allTemplatesResponse.ok) {
         throw new Error("Failed to fetch all templates");
       }

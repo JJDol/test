@@ -24,6 +24,7 @@ interface DocumentTemplateCardProps {
   onToggleExpanded: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onReupload: () => void;
 }
 
 export function DocumentTemplateCard({
@@ -32,6 +33,7 @@ export function DocumentTemplateCard({
   onToggleExpanded,
   onEdit,
   onDelete,
+  onReupload,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
@@ -121,6 +123,11 @@ export function DocumentTemplateCard({
             <Badge variant={template.is_public ? "default" : "secondary"}>
               {template.is_public ? "Public" : "Private"}
             </Badge>
+            {template.current_version && template.current_version > 1 && (
+              <Badge variant="outline" className="text-xs">
+                v{template.current_version}
+              </Badge>
+            )}
           </div>
           {template.description ? (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
@@ -150,9 +157,9 @@ export function DocumentTemplateCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-foreground/50 hover:text-foreground"
-              title="Reupload (coming soon)"
-              disabled
+              className="h-9 w-9 text-foreground/70 hover:text-foreground"
+              title="Upload New Version"
+              onClick={onReupload}
             >
               <UploadCloud className="h-5 w-5" />
             </Button>

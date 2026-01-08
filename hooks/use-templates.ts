@@ -56,15 +56,19 @@ interface TemplateDialogState {
   upload: boolean;
   edit: boolean;
   confirmDelete: boolean;
+  reupload: boolean;
 }
 
 interface TemplatesState {
   templates: DocumentTemplate[];
+  archivedTemplates: DocumentTemplate[];
+  showArchived: boolean;
   viewMode: ViewMode;
   selectedCategory: DocumentCategory | 'ALL';
   expandedTemplates: Record<string, boolean>;
   templateToEdit: DocumentTemplate | null;
   templateToDelete: DocumentTemplate | null;
+  templateToReupload: DocumentTemplate | null;
   editName: string;
   editDescription: string;
   editCategory: DocumentCategory;
@@ -74,11 +78,15 @@ interface TemplatesState {
 interface TemplatesActions {
   // Data operations
   fetchTemplates: () => Promise<void>;
+  fetchArchivedTemplates: () => Promise<void>;
   deleteTemplate: (template: DocumentTemplate) => void;
   confirmDelete: () => Promise<void>;
+  archiveTemplate: () => Promise<void>;
+  unarchiveTemplate: (template: DocumentTemplate) => Promise<void>;
   cancelDelete: () => void;
   updateTemplate: () => Promise<void>;
   handleUploadComplete: () => Promise<void>;
+  toggleShowArchived: () => void;
   
   // UI state management
   setViewMode: (mode: ViewMode) => void;
@@ -90,10 +98,13 @@ interface TemplatesActions {
   closeUploadDialog: () => void;
   openEditDialog: (template: DocumentTemplate) => void;
   closeEditDialog: () => void;
+  openReuploadDialog: (template: DocumentTemplate) => void;
+  closeReuploadDialog: () => void;
+  handleReuploadComplete: () => Promise<void>;
   setEditName: (name: string) => void;
   setEditDescription: (description: string) => void;
   setEditCategory: (category: DocumentCategory) => void;
-  
+
   // Error handling
   retryOnError: () => Promise<void>;
 }
@@ -101,19 +112,23 @@ interface TemplatesActions {
 interface UseTemplatesReturn {
   // State
   templates: DocumentTemplate[];
+  archivedTemplates: DocumentTemplate[];
+  showArchived: boolean;
   viewMode: ViewMode;
   selectedCategory: DocumentCategory | 'ALL';
   expandedTemplates: Record<string, boolean>;
   templateToEdit: DocumentTemplate | null;
   templateToDelete: DocumentTemplate | null;
+  templateToReupload: DocumentTemplate | null;
   editName: string;
   editDescription: string;
   editCategory: DocumentCategory;
   dialogs: TemplateDialogState;
-  
+
   // Loading states
   loading: {
     templates: boolean;
+    archivedTemplates: boolean;
     deleting: boolean;
     updating: boolean;
     overall: boolean;
@@ -147,11 +162,14 @@ export function useTemplates(): UseTemplatesReturn {
   // State management
   const [state, setState] = useState<TemplatesState>({
     templates: [],
+    archivedTemplates: [],
+    showArchived: false,
     viewMode: 'all',
     selectedCategory: 'ALL',
     expandedTemplates: {},
     templateToEdit: null,
     templateToDelete: null,
+    templateToReupload: null,
     editName: '',
     editDescription: '',
     editCategory: DocumentCategory.ARCHITECTURE,
@@ -159,11 +177,13 @@ export function useTemplates(): UseTemplatesReturn {
       upload: false,
       edit: false,
       confirmDelete: false,
+      reupload: false,
     },
   });
 
   const [loadingStates, setLoadingStates] = useState({
     templates: true,
+    archivedTemplates: false,
     deleting: false,
     updating: false,
   });
@@ -343,11 +363,144 @@ export function useTemplates(): UseTemplatesReturn {
     }
   };
 
+  // Archive template (soft delete)
+  const handleArchiveTemplate = async () => {
+    if (!state.templateToDelete) return;
+
+    try {
+      setLoadingStates(prev => ({ ...prev, deleting: true }));
+      setErrors(prev => ({ ...prev, delete: null }));
+
+      console.log('[useTemplates] Archiving template:', state.templateToDelete.name);
+
+      const response = await fetch(`/api/document-templates/${encodeURIComponent(state.templateToDelete.name)}/archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to archive template');
+      }
+
+      toast({
+        title: "Success",
+        description: "Template archived successfully. You can restore it later.",
+      });
+
+      // Refresh templates list
+      await fetchTemplates();
+
+    } catch (error) {
+      console.error('[useTemplates] Error archiving template:', error);
+      setErrors(prev => ({
+        ...prev,
+        delete: error instanceof Error ? error.message : "Failed to archive template"
+      }));
+
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to archive template",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, deleting: false }));
+      setState(prev => ({
+        ...prev,
+        dialogs: { ...prev.dialogs, confirmDelete: false },
+        templateToDelete: null
+      }));
+    }
+  };
+
+  // Fetch archived templates
+  const fetchArchivedTemplates = useCallback(async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, archivedTemplates: true }));
+
+      console.log('[useTemplates] Fetching archived templates...');
+
+      const response = await fetch('/api/document-templates?includeArchived=true');
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Filter only archived templates
+      const archivedOnly = data.filter((t: DocumentTemplate) => t.is_archived === true);
+      console.log('[useTemplates] Fetched archived templates count:', archivedOnly.length);
+
+      setState(prev => ({
+        ...prev,
+        archivedTemplates: archivedOnly.map((template: any) => ({
+          ...template,
+          category: template.category as DocumentCategory,
+          variables: template.variables || []
+        }))
+      }));
+
+    } catch (error) {
+      console.error('[useTemplates] Error fetching archived templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch archived templates",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, archivedTemplates: false }));
+    }
+  }, [toast]);
+
+  // Unarchive template
+  const handleUnarchiveTemplate = async (template: DocumentTemplate) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, updating: true }));
+
+      console.log('[useTemplates] Unarchiving template:', template.name);
+
+      const response = await fetch(`/api/document-templates/${encodeURIComponent(template.name)}/archive`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to unarchive template');
+      }
+
+      toast({
+        title: "Success",
+        description: "Template restored successfully.",
+      });
+
+      // Refresh both lists
+      await fetchTemplates();
+      await fetchArchivedTemplates();
+
+    } catch (error) {
+      console.error('[useTemplates] Error unarchiving template:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to unarchive template",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, updating: false }));
+    }
+  };
+
   // Actions
   const actions: TemplatesActions = {
     // Data operations
     fetchTemplates,
-    
+    fetchArchivedTemplates,
+
     deleteTemplate: (template: DocumentTemplate) => {
       setState(prev => ({
         ...prev,
@@ -357,7 +510,22 @@ export function useTemplates(): UseTemplatesReturn {
     },
     
     confirmDelete: handleDeleteTemplate,
-    
+
+    archiveTemplate: handleArchiveTemplate,
+
+    unarchiveTemplate: handleUnarchiveTemplate,
+
+    toggleShowArchived: () => {
+      setState(prev => {
+        const newShowArchived = !prev.showArchived;
+        // Fetch archived templates when showing them for the first time
+        if (newShowArchived && prev.archivedTemplates.length === 0) {
+          fetchArchivedTemplates();
+        }
+        return { ...prev, showArchived: newShowArchived };
+      });
+    },
+
     cancelDelete: () => {
       setState(prev => ({
         ...prev,
@@ -432,7 +600,36 @@ export function useTemplates(): UseTemplatesReturn {
         templateToEdit: null
       }));
     },
-    
+
+    openReuploadDialog: (template: DocumentTemplate) => {
+      setState(prev => ({
+        ...prev,
+        templateToReupload: template,
+        dialogs: { ...prev.dialogs, reupload: true }
+      }));
+    },
+
+    closeReuploadDialog: () => {
+      setState(prev => ({
+        ...prev,
+        dialogs: { ...prev.dialogs, reupload: false },
+        templateToReupload: null
+      }));
+    },
+
+    handleReuploadComplete: async () => {
+      try {
+        setState(prev => ({
+          ...prev,
+          dialogs: { ...prev.dialogs, reupload: false },
+          templateToReupload: null
+        }));
+        await fetchTemplates();
+      } catch (error) {
+        console.error('[useTemplates] Error refreshing templates after reupload:', error);
+      }
+    },
+
     setEditName: (name: string) => {
       setState(prev => ({ ...prev, editName: name }));
     },
@@ -484,25 +681,29 @@ export function useTemplates(): UseTemplatesReturn {
   };
 
   // Loading and error state consolidation
-  const overallLoading = loadingStates.templates || loadingStates.deleting || loadingStates.updating;
+  const overallLoading = loadingStates.templates || loadingStates.archivedTemplates || loadingStates.deleting || loadingStates.updating;
   const overallError = errors.templates || errors.delete || errors.update;
 
   return {
     // State
     templates: state.templates,
+    archivedTemplates: state.archivedTemplates,
+    showArchived: state.showArchived,
     viewMode: state.viewMode,
     selectedCategory: state.selectedCategory,
     expandedTemplates: state.expandedTemplates,
     templateToEdit: state.templateToEdit,
     templateToDelete: state.templateToDelete,
+    templateToReupload: state.templateToReupload,
     editName: state.editName,
     editDescription: state.editDescription,
     editCategory: state.editCategory,
     dialogs: state.dialogs,
-    
+
     // Loading states
     loading: {
       templates: loadingStates.templates,
+      archivedTemplates: loadingStates.archivedTemplates,
       deleting: loadingStates.deleting,
       updating: loadingStates.updating,
       overall: overallLoading,

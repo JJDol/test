@@ -83,27 +83,30 @@ export function TemplatesContent() {
           <DocumentTemplatesTab
             // State
             templates={documentTemplatesHook.templates}
+            archivedTemplates={documentTemplatesHook.archivedTemplates}
+            showArchived={documentTemplatesHook.showArchived}
             viewMode={documentTemplatesHook.viewMode}
             selectedCategory={documentTemplatesHook.selectedCategory}
             expandedTemplates={documentTemplatesHook.expandedTemplates}
             templateToEdit={documentTemplatesHook.templateToEdit}
             templateToDelete={documentTemplatesHook.templateToDelete}
+            templateToReupload={documentTemplatesHook.templateToReupload}
             editName={documentTemplatesHook.editName}
             editDescription={documentTemplatesHook.editDescription}
             editCategory={documentTemplatesHook.editCategory}
             dialogs={documentTemplatesHook.dialogs}
-            
+
             // Loading states
             loading={documentTemplatesHook.loading}
-            
+
             // Error states
             error={documentTemplatesHook.error}
-            
+
             // Computed values
             filteredTemplates={documentTemplatesHook.filteredTemplates}
             templatesByCategory={documentTemplatesHook.templatesByCategory}
             templateStats={documentTemplatesHook.templateStats}
-            
+
             // Actions
             actions={documentTemplatesHook.actions}
           />
