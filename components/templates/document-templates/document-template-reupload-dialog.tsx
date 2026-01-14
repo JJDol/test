@@ -450,14 +450,14 @@ export function DocumentTemplateReuploadDialog({
                       </Badge>
                       <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       <Select
-                        value={variableMappings[v.name] || ""}
-                        onValueChange={(value) => handleMappingChange(v.name, value)}
+                        value={variableMappings[v.name] || "__discard__"}
+                        onValueChange={(value) => handleMappingChange(v.name, value === "__discard__" ? "" : value)}
                       >
                         <SelectTrigger className="w-48">
                           <SelectValue placeholder="Map to new variable..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Don't map (discard data)</SelectItem>
+                          <SelectItem value="__discard__">Don't map (discard data)</SelectItem>
                           {newVariables.map((nv) => (
                             <SelectItem key={nv.name} value={nv.name}>
                               {nv.name}

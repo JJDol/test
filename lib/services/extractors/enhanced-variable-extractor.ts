@@ -65,65 +65,80 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
   
   enhancedVariables.forEach(variable => {
     const normalizedName = normalizeVariableName(variable.tag);
-    
+
+    // Skip if the variable name is empty or only whitespace
+    if (!normalizedName || normalizedName.trim() === '') {
+      console.warn('Skipping variable with empty name');
+      return;
+    }
+
     // Skip if we've already processed this tag
     if (processedTags.has(normalizedName)) {
       return;
     }
     processedTags.add(normalizedName);
     
+    // Store original tag for mapping (important for document generation)
+    const originalTag = variable.tag;
+
     switch (variable.type) {
       case 'text':
         documentVariables.push({
           name: normalizedName,
           type: 'text',
-          value: variable.currentContent || ''
-        } as TextVariable);
+          value: variable.currentContent || '',
+          originalTag: originalTag
+        } as TextVariable & { originalTag: string });
         break;
-        
+
       case 'image':
         documentVariables.push({
           name: normalizedName,
           type: 'image',
           value: variable.currentContent || '',
-          filename: variable.currentContent
-        } as ImageVariable);
+          filename: variable.currentContent,
+          originalTag: originalTag
+        } as ImageVariable & { originalTag: string });
         break;
-        
+
       case 'date':
         documentVariables.push({
           name: normalizedName,
           type: 'date',
           value: variable.currentContent || '',
-          dateFormat: variable.dateFormat
-        } as DateVariable);
-        break;        
+          dateFormat: variable.dateFormat,
+          originalTag: originalTag
+        } as DateVariable & { originalTag: string });
+        break;
       case 'dropdown':
         documentVariables.push({
           name: normalizedName,
           type: 'dropdown',
           value: variable.currentContent || '',
           displayText: variable.currentContent,
-          dropdownOptions: variable.dropdownOptions
-        } as DropdownVariable);
+          dropdownOptions: variable.dropdownOptions,
+          originalTag: originalTag
+        } as DropdownVariable & { originalTag: string });
         break;
-        
+
       case 'checkbox':
         documentVariables.push({
           name: normalizedName,
           type: 'checkbox',
           checked: variable.currentContent === 'true' || variable.currentContent === '1',
-          value: variable.currentContent === 'true' || variable.currentContent === '1'
-        } as CheckboxVariable);
+          value: variable.currentContent === 'true' || variable.currentContent === '1',
+          originalTag: originalTag
+        } as CheckboxVariable & { originalTag: string });
         break;
-        
+
       default:
         // Fallback to text
         documentVariables.push({
           name: normalizedName,
           type: 'text',
-          value: variable.currentContent || ''
-        } as TextVariable);
+          value: variable.currentContent || '',
+          originalTag: originalTag
+        } as TextVariable & { originalTag: string });
     }
   });
   

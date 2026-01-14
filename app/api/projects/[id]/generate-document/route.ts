@@ -36,6 +36,9 @@ async function generateDocumentHandler(
 
     const { templateName, variables, category } = await request.json();
 
+    console.log(`[GENERATE] Request body:`, { templateName, category });
+    console.log(`[GENERATE] Variables received:`, JSON.stringify(variables, null, 2));
+
     if (!templateName || !category) {
       return NextResponse.json({
         message: 'Template name and category are required'

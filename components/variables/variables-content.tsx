@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { CategorySelector } from "@/components/ui/category-selector";
 import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
 import { BaseVariable } from "@/lib/types/variable-types";
@@ -78,13 +78,16 @@ export function VariablesContent() {
     description: "",
   });
   const [variableDrafts, setVariableDrafts] = useState<
-    Record<string, { name: string; type: BaseVariable["type"] }>
+    Record<string, { name: string; type: BaseVariable["type"]; dropdownOptions: { displayText: string; value: string }[] }>
   >({});
-  const [globalDraft, setGlobalDraft] = useState<{ name: string; type: BaseVariable["type"] }>({
+  const [globalDraft, setGlobalDraft] = useState<{ name: string; type: BaseVariable["type"]; dropdownOptions: { displayText: string; value: string }[] }>({
     name: "",
     type: "text",
+    dropdownOptions: [],
   });
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [dropdownOptionInputs, setDropdownOptionInputs] = useState<Record<string, string>>({});
+  const [globalDropdownOptionInput, setGlobalDropdownOptionInput] = useState("");
 
   const templateCount = useMemo(() => templates.length, [templates]);
   const totalDocumentTypes = useMemo(
@@ -439,7 +442,103 @@ export function VariablesContent() {
     loadExecutionControlDefaults();
   }, []);
 
-  const handleSaveDocumentType = () => {
+  // Database persistence functions
+  const saveGlobalVariablesToDb = async (variables: GlobalVariableDefinition[]) => {
+    try {
+      const supabase = createClient();
+      const variablesForDb = variables.map(v => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        description: v.description,
+        dropdownOptions: v.dropdownOptions,
+      }));
+
+      const { error } = await supabase
+        .from("document_default_variables")
+        .upsert(
+          {
+            category: "GLOBAL",
+            document_type: "GLOBAL",
+            variables: variablesForDb,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "category,document_type" }
+        );
+
+      if (error) {
+        console.error("Failed to save global variables:", error);
+      }
+    } catch (e) {
+      console.error("Unexpected error saving global variables:", e);
+    }
+  };
+
+  const getCategoryDbName = (category: DocumentCategory): string => {
+    const mapping: Record<DocumentCategory, string> = {
+      [DocumentCategory.ARCHITECTURE]: "ARCHITECTURE",
+      [DocumentCategory.CONSTRUCTIONS]: "CONSTRUCTION",
+      [DocumentCategory.FIRE]: "FIRE",
+      [DocumentCategory.AUTHORITY_PROCESSING]: "AUTHORITY PROCESSING",
+      [DocumentCategory.ENERGY]: "ENERGY",
+      [DocumentCategory.HVAC]: "HVAC",
+      [DocumentCategory.EXECUTION_CONTROL]: "EXECUTION CONTROL",
+    };
+    return mapping[category] || category;
+  };
+
+  const saveDocumentTypeToDb = async (
+    category: DocumentCategory,
+    documentType: DocumentTypeDefinition
+  ) => {
+    try {
+      const supabase = createClient();
+      const variablesForDb = documentType.variables.map(v => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        dropdownOptions: v.dropdownOptions,
+      }));
+
+      const { error } = await supabase
+        .from("document_default_variables")
+        .upsert(
+          {
+            category: getCategoryDbName(category),
+            document_type: documentType.name,
+            description: documentType.description,
+            variables: variablesForDb,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "category,document_type" }
+        );
+
+      if (error) {
+        console.error("Failed to save document type:", error);
+      }
+    } catch (e) {
+      console.error("Unexpected error saving document type:", e);
+    }
+  };
+
+  const deleteDocumentTypeFromDb = async (category: DocumentCategory, documentTypeName: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("document_default_variables")
+        .delete()
+        .eq("category", getCategoryDbName(category))
+        .eq("document_type", documentTypeName);
+
+      if (error) {
+        console.error("Failed to delete document type:", error);
+      }
+    } catch (e) {
+      console.error("Unexpected error deleting document type:", e);
+    }
+  };
+
+  const handleSaveDocumentType = async () => {
     if (!dialogState) return;
 
     const trimmedName = formValues.name.trim();
@@ -474,23 +573,34 @@ export function VariablesContent() {
       return next;
     });
 
+    // Save to database
+    await saveDocumentTypeToDb(dialogState.category, updatedType);
+
     setDialogState(null);
   };
 
-  const handleDeleteDocumentType = (category: DocumentCategory, id: string) => {
+  const handleDeleteDocumentType = async (category: DocumentCategory, id: string) => {
     const confirmed = window.confirm("Delete this document type? This cannot be undone.");
     if (!confirmed) {
       return;
     }
+
+    // Find the document type name before deleting
+    const docType = documentTypes[category]?.find(type => type.id === id);
 
     setDocumentTypes(prev => {
       const next = { ...prev };
       next[category] = (next[category] ?? []).filter(type => type.id !== id);
       return next;
     });
+
+    // Delete from database
+    if (docType) {
+      await deleteDocumentTypeFromDb(category, docType.name);
+    }
   };
 
-  const handleAddGlobalVariable = () => {
+  const handleAddGlobalVariable = async () => {
     const trimmedName = globalDraft.name.trim();
     if (!trimmedName) {
       return;
@@ -501,14 +611,37 @@ export function VariablesContent() {
       name: trimmedName,
       type: globalDraft.type,
       lastUpdated: "just now",
+      dropdownOptions: globalDraft.type === "dropdown" ? globalDraft.dropdownOptions : undefined,
     };
 
-    setGlobalVariables(prev => [...prev, newVariable]);
-    setGlobalDraft(prev => ({ ...prev, name: "" }));
+    const updatedVariables = [...globalVariables, newVariable];
+    setGlobalVariables(updatedVariables);
+    setGlobalDraft({ name: "", type: "text", dropdownOptions: [] });
+
+    // Save to database
+    await saveGlobalVariablesToDb(updatedVariables);
   };
 
-  const handleDeleteGlobalVariable = (id: string) => {
-    setGlobalVariables(prev => prev.filter(variable => variable.id !== id));
+  const handleDeleteGlobalVariable = async (id: string) => {
+    const updatedVariables = globalVariables.filter(variable => variable.id !== id);
+    setGlobalVariables(updatedVariables);
+
+    // Save to database
+    await saveGlobalVariablesToDb(updatedVariables);
+  };
+
+  const handleGlobalDropdownOptionAdd = (option: { displayText: string; value: string }) => {
+    setGlobalDraft(prev => ({
+      ...prev,
+      dropdownOptions: [...prev.dropdownOptions, option],
+    }));
+  };
+
+  const handleGlobalDropdownOptionRemove = (index: number) => {
+    setGlobalDraft(prev => ({
+      ...prev,
+      dropdownOptions: prev.dropdownOptions.filter((_, i) => i !== index),
+    }));
   };
 
   const variableTypeOptions: BaseVariable["type"][] = [
@@ -517,7 +650,6 @@ export function VariablesContent() {
     "date",
     "number",
     "dropdown",
-    "checkbox",
   ];
 
   const getDraftKey = (category: DocumentCategory, typeId: string) =>
@@ -534,17 +666,41 @@ export function VariablesContent() {
       ...prev,
       [key]: {
         name: field === "name" ? value : prev[key]?.name ?? "",
-        type:
-          field === "type"
-            ? (value as BaseVariable["type"])
-            : prev[key]?.type ?? "text",
+        type: field === "type" ? (value as BaseVariable["type"]) : prev[key]?.type ?? "text",
+        dropdownOptions: field === "type" && value !== "dropdown" ? [] : prev[key]?.dropdownOptions ?? [],
       },
     }));
   };
 
-  const handleAddVariable = (category: DocumentCategory, typeId: string) => {
+  const handleVariableDropdownOptionAdd = (category: DocumentCategory, typeId: string, option: { displayText: string; value: string }) => {
     const key = getDraftKey(category, typeId);
-    const draft = variableDrafts[key] ?? { name: "", type: "text" };
+    setVariableDrafts(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        name: prev[key]?.name ?? "",
+        type: prev[key]?.type ?? "dropdown",
+        dropdownOptions: [...(prev[key]?.dropdownOptions ?? []), option],
+      },
+    }));
+  };
+
+  const handleVariableDropdownOptionRemove = (category: DocumentCategory, typeId: string, index: number) => {
+    const key = getDraftKey(category, typeId);
+    setVariableDrafts(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        name: prev[key]?.name ?? "",
+        type: prev[key]?.type ?? "dropdown",
+        dropdownOptions: (prev[key]?.dropdownOptions ?? []).filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const handleAddVariable = async (category: DocumentCategory, typeId: string) => {
+    const key = getDraftKey(category, typeId);
+    const draft = variableDrafts[key] ?? { name: "", type: "text", dropdownOptions: [] };
     const trimmedName = draft.name.trim();
     if (!trimmedName) {
       return;
@@ -554,41 +710,59 @@ export function VariablesContent() {
       id: `${typeId}-${Date.now()}`,
       name: trimmedName,
       type: draft.type,
+      dropdownOptions: draft.type === "dropdown" ? draft.dropdownOptions : undefined,
+    };
+
+    // Find the document type and update it
+    const docType = documentTypes[category]?.find(type => type.id === typeId);
+    if (!docType) return;
+
+    const updatedDocType: DocumentTypeDefinition = {
+      ...docType,
+      variables: [...docType.variables, newVariable],
     };
 
     setDocumentTypes(prev => {
       const next = { ...prev };
       next[category] = next[category].map(type =>
-        type.id === typeId
-          ? { ...type, variables: [...type.variables, newVariable] }
-          : type
+        type.id === typeId ? updatedDocType : type
       );
       return next;
     });
 
     setVariableDrafts(prev => ({
       ...prev,
-      [key]: { name: "", type: draft.type },
+      [key]: { name: "", type: draft.type, dropdownOptions: [] },
     }));
+
+    // Save to database
+    await saveDocumentTypeToDb(category, updatedDocType);
   };
 
-  const handleDeleteVariable = (
+  const handleDeleteVariable = async (
     category: DocumentCategory,
     typeId: string,
     variableId: string
   ) => {
+    // Find the document type and update it
+    const docType = documentTypes[category]?.find(type => type.id === typeId);
+    if (!docType) return;
+
+    const updatedDocType: DocumentTypeDefinition = {
+      ...docType,
+      variables: docType.variables.filter(variable => variable.id !== variableId),
+    };
+
     setDocumentTypes(prev => {
       const next = { ...prev };
       next[category] = next[category].map(type =>
-        type.id === typeId
-          ? {
-              ...type,
-              variables: type.variables.filter(variable => variable.id !== variableId),
-            }
-          : type
+        type.id === typeId ? updatedDocType : type
       );
       return next;
     });
+
+    // Save to database
+    await saveDocumentTypeToDb(category, updatedDocType);
   };
 
   const getDefaultCollapsed = (sectionId: string) =>
@@ -699,41 +873,113 @@ export function VariablesContent() {
             )}
 
             <form
-              className="grid gap-2 sm:grid-cols-[1fr_160px_auto]"
+              className="space-y-3"
               onSubmit={event => {
                 event.preventDefault();
                 handleAddVariable(category, type.id);
               }}
             >
-              <Input
-                placeholder="Variable name"
-                value={variableDrafts[getDraftKey(category, type.id)]?.name ?? ""}
-                onChange={event =>
-                  handleVariableDraftChange(category, type.id, "name", event.target.value)
-                }
-                aria-label="Variable name"
-              />
-              <Select
-                value={variableDrafts[getDraftKey(category, type.id)]?.type ?? "text"}
-                onValueChange={value =>
-                  handleVariableDraftChange(category, type.id, "type", value)
-                }
-              >
-                <SelectTrigger aria-label="Variable type">
-                  <SelectValue placeholder="Variable type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variableTypeOptions.map(option => (
-                    <SelectItem key={option} value={option}>
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="submit" className="sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Add
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
+                <Input
+                  placeholder="Variable name"
+                  value={variableDrafts[getDraftKey(category, type.id)]?.name ?? ""}
+                  onChange={event =>
+                    handleVariableDraftChange(category, type.id, "name", event.target.value)
+                  }
+                  aria-label="Variable name"
+                />
+                <Select
+                  value={variableDrafts[getDraftKey(category, type.id)]?.type ?? "text"}
+                  onValueChange={value =>
+                    handleVariableDraftChange(category, type.id, "type", value)
+                  }
+                >
+                  <SelectTrigger aria-label="Variable type">
+                    <SelectValue placeholder="Variable type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {variableTypeOptions.map(option => (
+                      <SelectItem key={option} value={option}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="submit" className="sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+
+              {(variableDrafts[getDraftKey(category, type.id)]?.type ?? "text") === "dropdown" && (
+                <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                  <p className="text-xs font-medium text-muted-foreground">Dropdown Options</p>
+
+                  {(variableDrafts[getDraftKey(category, type.id)]?.dropdownOptions ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {(variableDrafts[getDraftKey(category, type.id)]?.dropdownOptions ?? []).map((opt, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                        >
+                          {opt.displayText}
+                          <button
+                            type="button"
+                            onClick={() => handleVariableDropdownOptionRemove(category, type.id, idx)}
+                            className="hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add option..."
+                      value={dropdownOptionInputs[getDraftKey(category, type.id)] ?? ""}
+                      onChange={event =>
+                        setDropdownOptionInputs(prev => ({
+                          ...prev,
+                          [getDraftKey(category, type.id)]: event.target.value,
+                        }))
+                      }
+                      onKeyDown={event => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          const value = (dropdownOptionInputs[getDraftKey(category, type.id)] ?? "").trim();
+                          if (value) {
+                            handleVariableDropdownOptionAdd(category, type.id, { displayText: value, value });
+                            setDropdownOptionInputs(prev => ({
+                              ...prev,
+                              [getDraftKey(category, type.id)]: "",
+                            }));
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const value = (dropdownOptionInputs[getDraftKey(category, type.id)] ?? "").trim();
+                        if (value) {
+                          handleVariableDropdownOptionAdd(category, type.id, { displayText: value, value });
+                          setDropdownOptionInputs(prev => ({
+                            ...prev,
+                            [getDraftKey(category, type.id)]: "",
+                          }));
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </form>
           </div>
         )}
@@ -806,41 +1052,106 @@ export function VariablesContent() {
             )}
 
             <form
-              className="grid gap-2 sm:grid-cols-[1fr_160px_auto]"
+              className="space-y-3"
               onSubmit={event => {
                 event.preventDefault();
                 handleAddGlobalVariable();
               }}
             >
-              <Input
-                placeholder="Variable name"
-                value={globalDraft.name}
-                onChange={event =>
-                  setGlobalDraft(prev => ({ ...prev, name: event.target.value }))
-                }
-                aria-label="Global variable name"
-              />
-              <Select
-                value={globalDraft.type}
-                onValueChange={value =>
-                  setGlobalDraft(prev => ({ ...prev, type: value as BaseVariable["type"] }))
-                }
-              >
-                <SelectTrigger aria-label="Global variable type">
-                  <SelectValue placeholder="Variable type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variableTypeOptions.map(option => (
-                    <SelectItem key={option} value={option}>
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="submit" className="sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Add
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
+                <Input
+                  placeholder="Variable name"
+                  value={globalDraft.name}
+                  onChange={event =>
+                    setGlobalDraft(prev => ({ ...prev, name: event.target.value }))
+                  }
+                  aria-label="Global variable name"
+                />
+                <Select
+                  value={globalDraft.type}
+                  onValueChange={value =>
+                    setGlobalDraft(prev => ({
+                      ...prev,
+                      type: value as BaseVariable["type"],
+                      dropdownOptions: value !== "dropdown" ? [] : prev.dropdownOptions,
+                    }))
+                  }
+                >
+                  <SelectTrigger aria-label="Global variable type">
+                    <SelectValue placeholder="Variable type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {variableTypeOptions.map(option => (
+                      <SelectItem key={option} value={option}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="submit" className="sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+
+              {globalDraft.type === "dropdown" && (
+                <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                  <p className="text-xs font-medium text-muted-foreground">Dropdown Options</p>
+
+                  {globalDraft.dropdownOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {globalDraft.dropdownOptions.map((opt, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                        >
+                          {opt.displayText}
+                          <button
+                            type="button"
+                            onClick={() => handleGlobalDropdownOptionRemove(idx)}
+                            className="hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add option..."
+                      value={globalDropdownOptionInput}
+                      onChange={event => setGlobalDropdownOptionInput(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          const value = globalDropdownOptionInput.trim();
+                          if (value) {
+                            handleGlobalDropdownOptionAdd({ displayText: value, value });
+                            setGlobalDropdownOptionInput("");
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const value = globalDropdownOptionInput.trim();
+                        if (value) {
+                          handleGlobalDropdownOptionAdd({ displayText: value, value });
+                          setGlobalDropdownOptionInput("");
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </form>
           </>
         )}

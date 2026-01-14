@@ -68,6 +68,12 @@ async function processEnhancedContentControlsAndCurlyBrackets(
         const beforeCount = (xmlContent.match(/<w:sdt[^>]*>/g) || []).length;
         totalContentControls += beforeCount;
 
+        // Skip files with no content controls to avoid unnecessary re-serialization
+        if (beforeCount === 0) {
+          console.log(`[DOCX] Skipping ${xmlPath} - no content controls found`);
+          continue;
+        }
+
         // Process content controls in this XML file and get the count of processed controls
         const { processedXml, processedCount: processedInThisFile } = await processEnhancedContentControlsWithTypeAwarenessAndCount(
           xmlContent,
@@ -80,10 +86,11 @@ async function processEnhancedContentControlsAndCurlyBrackets(
         if (processedInThisFile > 0) {
           console.log(`✅ Processed ${processedInThisFile} enhanced content controls in ${xmlPath}`);
           processedCount += processedInThisFile;
+          // Only update the XML file if we actually processed something
+          zip.file(xmlPath, processedXml);
+        } else {
+          console.log(`[DOCX] No variables matched in ${xmlPath}, keeping original`);
         }
-
-        // Update the XML file in the zip
-        zip.file(xmlPath, processedXml);
 
       } catch (error) {
         console.error(`Error processing ${xmlPath}:`, error);
@@ -97,6 +104,16 @@ async function processEnhancedContentControlsAndCurlyBrackets(
 
   if (totalContentControls > 0 && processedCount === 0) {
     console.warn('⚠️  Warning: Found content controls but none were processed - check variable names');
+    // CRITICAL: If no content controls were processed, return the ORIGINAL template buffer
+    // This completely avoids any XML re-serialization that could corrupt the document
+    console.log(`[DOCX] Returning original template buffer to prevent corruption`);
+    return templateBuffer;
+  }
+
+  // If no content controls at all, also return original
+  if (totalContentControls === 0) {
+    console.log(`[DOCX] No content controls in document, returning original buffer`);
+    return templateBuffer;
   }
 
   console.log(`[DOCX] Re-generating intermediate ZIP...`);
@@ -108,11 +125,25 @@ async function processEnhancedContentControlsAndCurlyBrackets(
   // Then process any remaining curly brackets using Docxtemplater
   let intermediateBuffer: Buffer;
   try {
-    intermediateBuffer = zip.generate({ type: 'nodebuffer' });
+    // Use DEFLATE compression for Word compatibility
+    intermediateBuffer = zip.generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
     console.log(`[DOCX] Intermediate ZIP generated. Size: ${intermediateBuffer.length}`);
   } catch (error) {
     console.error('[DOCX] Error generating intermediate ZIP:', error);
     throw error;
+  }
+
+  // Check if document has any curly bracket variables that need Docxtemplater
+  const mainDocXml = zip.file('word/document.xml')?.asText() || '';
+  const hasCurlyBrackets = /\{\{[^}]+\}\}/.test(mainDocXml);
+
+  if (!hasCurlyBrackets) {
+    console.log(`[DOCX] No curly bracket variables found, skipping Docxtemplater`);
+    return intermediateBuffer;
   }
 
   // Preprocess to strip type information from remaining curly brackets
@@ -165,7 +196,8 @@ async function processEnhancedContentControlsAndCurlyBrackets(
     console.log(`[DOCX] Generating final ZIP...`);
     const finalBuffer = doc.getZip().generate({
       type: 'nodebuffer',
-      compression: 'DEFLATE'
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }  // Use moderate compression (default is 6)
     });
     console.log(`[DOCX] Final ZIP generated. Size: ${finalBuffer.length}`);
     return finalBuffer;
@@ -279,7 +311,8 @@ class RelationshipManager {
   }
 
   /**
-   * Update the relationships XML file
+   * Update the relationships XML file using string-based insertion
+   * Avoids xmldom serialization to prevent XML corruption
    */
   updateRelationships(): void {
     if (!this.relsXml) {
@@ -288,42 +321,31 @@ class RelationshipManager {
     }
 
     try {
-      const { DOMParser, XMLSerializer } = require('xmldom');
-      const parser = new DOMParser();
-      const serializer = new XMLSerializer();
-      const doc = parser.parseFromString(this.relsXml, 'text/xml');
+      let updatedXml = this.relsXml;
 
-      const relationshipsElement = doc.getElementsByTagName('Relationships')[0];
-      if (relationshipsElement) {
-        // Add new relationships
-        for (const [id, target] of Array.from(this.newRelationships.entries())) {
-          // Check if relationship already exists using xmldom methods
-          const existingRels = doc.getElementsByTagName('Relationship');
-          let existingRel = null;
-          for (let i = 0; i < existingRels.length; i++) {
-            if (existingRels[i].getAttribute('Id') === id) {
-              existingRel = existingRels[i];
-              break;
-            }
-          }
-
-          if (!existingRel) {
-            const newRel = doc.createElement('Relationship');
-            newRel.setAttribute('Id', id);
-            newRel.setAttribute('Type', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image');
-            newRel.setAttribute('Target', target);
-            relationshipsElement.appendChild(newRel);
-            console.log(`Added new relationship: ${id} -> ${target}`);
-          }
+      // Add new relationships using string insertion
+      for (const [id, target] of Array.from(this.newRelationships.entries())) {
+        // Check if this relationship ID already exists
+        if (updatedXml.includes(`Id="${id}"`)) {
+          console.log(`Relationship ${id} already exists, skipping`);
+          continue;
         }
 
-        // Update the relationships file
-        const updatedXml = serializer.serializeToString(doc);
-        this.zip.file('word/_rels/document.xml.rels', updatedXml);
-        console.log(`Updated relationships file with ${this.newRelationships.size} new relationships`);
-      } else {
-        console.error('Could not find Relationships element in XML');
+        // Create the new relationship XML element
+        const newRelXml = `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${target}"/>`;
+
+        // Insert before the closing </Relationships> tag
+        updatedXml = updatedXml.replace(
+          /<\/Relationships>/,
+          `${newRelXml}</Relationships>`
+        );
+
+        console.log(`Added new relationship: ${id} -> ${target}`);
       }
+
+      // Update the relationships file
+      this.zip.file('word/_rels/document.xml.rels', updatedXml);
+      console.log(`Updated relationships file with ${this.newRelationships.size} new relationships`);
 
       // Also update Content_Types.xml for image extensions
       this.updateContentTypes();
@@ -334,6 +356,7 @@ class RelationshipManager {
 
   /**
    * Update [Content_Types].xml to include image content types
+   * Uses string-based insertion to avoid XML corruption
    */
   private updateContentTypes(): void {
     if (this.addedImageExtensions.size === 0) return;
@@ -345,18 +368,7 @@ class RelationshipManager {
         return;
       }
 
-      const { DOMParser, XMLSerializer } = require('xmldom');
-      const parser = new DOMParser();
-      const serializer = new XMLSerializer();
-
       let contentTypesXml = contentTypesFile.asText();
-      const doc = parser.parseFromString(contentTypesXml, 'text/xml');
-      const typesElement = doc.getElementsByTagName('Types')[0];
-
-      if (!typesElement) {
-        console.error('Could not find Types element in [Content_Types].xml');
-        return;
-      }
 
       // Map of extensions to content types
       const contentTypeMap: { [key: string]: string } = {
@@ -369,28 +381,34 @@ class RelationshipManager {
         'webp': 'image/webp'
       };
 
-      // Get existing Default elements
-      const existingDefaults = doc.getElementsByTagName('Default');
-      const existingExtensions = new Set<string>();
-      for (let i = 0; i < existingDefaults.length; i++) {
-        const ext = existingDefaults[i].getAttribute('Extension');
-        if (ext) existingExtensions.add(ext.toLowerCase());
-      }
-
-      // Add missing content types
+      // Add missing content types using string insertion
       for (const ext of Array.from(this.addedImageExtensions)) {
-        if (!existingExtensions.has(ext.toLowerCase()) && contentTypeMap[ext.toLowerCase()]) {
-          const defaultElement = doc.createElement('Default');
-          defaultElement.setAttribute('Extension', ext.toLowerCase());
-          defaultElement.setAttribute('ContentType', contentTypeMap[ext.toLowerCase()]);
-          typesElement.appendChild(defaultElement);
-          console.log(`[Content_Types] Added content type for .${ext}: ${contentTypeMap[ext.toLowerCase()]}`);
+        const extLower = ext.toLowerCase();
+        const contentType = contentTypeMap[extLower];
+
+        if (!contentType) continue;
+
+        // Check if this extension already exists
+        if (contentTypesXml.includes(`Extension="${extLower}"`) ||
+            contentTypesXml.includes(`Extension="${ext}"`)) {
+          console.log(`[Content_Types] Extension .${ext} already exists, skipping`);
+          continue;
         }
+
+        // Create the new Default element
+        const newDefaultXml = `<Default Extension="${extLower}" ContentType="${contentType}"/>`;
+
+        // Insert before the closing </Types> tag
+        contentTypesXml = contentTypesXml.replace(
+          /<\/Types>/,
+          `${newDefaultXml}</Types>`
+        );
+
+        console.log(`[Content_Types] Added content type for .${ext}: ${contentType}`);
       }
 
       // Update the file
-      const updatedXml = serializer.serializeToString(doc);
-      this.zip.file('[Content_Types].xml', updatedXml);
+      this.zip.file('[Content_Types].xml', contentTypesXml);
       console.log('[Content_Types] Updated successfully');
     } catch (error) {
       console.error('Error updating [Content_Types].xml:', error);
@@ -496,8 +514,98 @@ function wrapContentControlsInParagraphs(xmlContent: string): string {
 
 
 /**
+ * Find all content controls in XML, properly handling nested structures
+ * Returns array of objects with start/end positions and content
+ */
+function findAllContentControls(xml: string): Array<{
+  start: number;
+  end: number;
+  content: string;
+}> {
+  const results: Array<{ start: number; end: number; content: string }> = [];
+  let searchPos = 0;
+
+  while (searchPos < xml.length) {
+    // Find next <w:sdt> or <w:sdt ...> (but NOT <w:sdtContent> or <w:sdtPr>)
+    let startIdx = -1;
+    let tempPos = searchPos;
+
+    while (tempPos < xml.length) {
+      const idx = xml.indexOf('<w:sdt', tempPos);
+      if (idx === -1) break;
+
+      // Check the character after '<w:sdt' to ensure it's not 'Content' or 'Pr' or 'EndPr'
+      const nextChar = xml[idx + 6]; // Character after '<w:sdt'
+      if (nextChar === '>' || nextChar === ' ' || nextChar === '\n' || nextChar === '\r' || nextChar === '\t') {
+        // This is a proper <w:sdt> tag
+        startIdx = idx;
+        break;
+      }
+      // Otherwise it's <w:sdtContent>, <w:sdtPr>, or <w:sdtEndPr> - skip it
+      tempPos = idx + 1;
+    }
+
+    if (startIdx === -1) break;
+
+    // Find the end of the opening tag
+    const openTagEnd = xml.indexOf('>', startIdx);
+    if (openTagEnd === -1) break;
+
+    // Track nesting depth to find matching </w:sdt>
+    let depth = 1;
+    let pos = openTagEnd + 1;
+
+    while (depth > 0 && pos < xml.length) {
+      // Find next <w:sdt> (not <w:sdtContent> etc.)
+      let nextOpen = -1;
+      let tempOpenPos = pos;
+      while (tempOpenPos < xml.length) {
+        const idx = xml.indexOf('<w:sdt', tempOpenPos);
+        if (idx === -1) break;
+        const nextChar = xml[idx + 6];
+        if (nextChar === '>' || nextChar === ' ' || nextChar === '\n' || nextChar === '\r' || nextChar === '\t') {
+          nextOpen = idx;
+          break;
+        }
+        tempOpenPos = idx + 1;
+      }
+
+      const nextClose = xml.indexOf('</w:sdt>', pos);
+
+      if (nextClose === -1) {
+        // Malformed XML - no closing tag found
+        break;
+      }
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        // Found nested opening tag
+        depth++;
+        pos = nextOpen + 6;
+      } else {
+        // Found closing tag
+        depth--;
+        if (depth === 0) {
+          const endIdx = nextClose + 9; // '</w:sdt>'.length = 9
+          results.push({
+            start: startIdx,
+            end: endIdx,
+            content: xml.substring(startIdx, endIdx)
+          });
+        }
+        pos = nextClose + 9;
+      }
+    }
+
+    searchPos = startIdx + 1;
+  }
+
+  return results;
+}
+
+/**
  * Processes Enhanced Content Controls with type-aware handling to prevent corruption
- * Uses DOM-based processing for text and proper relationship management for images
+ * Uses STRING-BASED replacement to preserve original XML structure
+ * Properly handles NESTED content controls by tracking nesting depth
  * @param xmlContent The document.xml content as string
  * @param variables Object containing variable values
  * @param relationshipManager Manager for handling image relationships
@@ -513,366 +621,369 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
   companyId?: string
 ): Promise<{ processedXml: string; processedCount: number }> {
   try {
-    const { DOMParser, XMLSerializer } = require('xmldom');
-    const parser = new DOMParser();
-    const serializer = new XMLSerializer();
+    console.log(`[DOCX] Processing ${xmlPath} with nested-aware string replacement...`);
 
-    // OPTIMIZATION: Combine wrapping and processing into one DOM operation
-    // Parse once instead of twice (wrapContentControlsInParagraphs parsed it too)
-    console.log(`[DOCX] Parsing XML for ${xmlPath}...`);
-    const doc = parser.parseFromString(xmlContent, 'text/xml');
-
-    // First, wrap content controls (operating on the same DOM)
-    // Inline the logic from wrapContentControlsInParagraphs to avoid re-parsing
-    // (We'll implement the wrapping logic directly here or use a helper that takes 'doc')
-    // For safety in this refactor, we'll assume the structure is mostly correct or handle it 
-    // BUT to be safe given the crash, let's process the DOM directly
-
-    // Find all content controls (w:sdt)
-    // LIVE NodeList warning: traversing while modifying can be dangerous.
-    // Convert to array first
-    const contentControlsList = doc.getElementsByTagName('w:sdt');
-    const contentControls = Array.from(contentControlsList); // Static array snapshot
-
-    console.log(`[DOCX] Found ${contentControls.length} content controls to process`);
-
-    // Log all variable names we have
-    console.log(`[DOCX] Available variables: ${Object.keys(variables).join(', ')}`);
-
-    // Log variables that look like images
-    const imageVars = Object.entries(variables).filter(([k, v]) => {
-      if (typeof v === 'object' && v !== null) {
-        return (v as any).type === 'image';
-      }
-      return typeof v === 'string' && v.includes('/images/');
-    });
-    console.log(`[DOCX] Image variables found: ${imageVars.map(([k]) => k).join(', ')}`);
-
-    let processedCount = 0;
-
-    // Collect all content control tags first for debugging
-    const allTags: string[] = [];
-    for (let i = 0; i < contentControls.length; i++) {
-      const sdt = contentControls[i] as Element;
-      const sdtPr = sdt.getElementsByTagName('w:sdtPr')[0];
-      if (sdtPr) {
-        const tagElement = sdtPr.getElementsByTagName('w:tag')[0];
-        if (tagElement) {
-          const tagValue = tagElement.getAttribute('w:val') || '';
-          allTags.push(tagValue);
-        }
+    // Build a map of variable names to values for quick lookup
+    const variableMap = new Map<string, any>();
+    for (const [key, value] of Object.entries(variables)) {
+      if (value !== undefined && value !== null && value !== '') {
+        variableMap.set(normalizeVariableName(key), value);
+        variableMap.set(key, value); // Also store original key
       }
     }
-    console.log(`[DOCX] Content control tags: ${allTags.filter(t => t.toLowerCase().includes('sign') || t.toLowerCase().includes('image')).join(', ')}`);
 
-    for (let i = 0; i < contentControls.length; i++) {
-      // PER-CONTROL ERROR HANDLING
-      try {
-        const sdt = contentControls[i] as Element;
+    console.log(`[DOCX] Available variables: ${Array.from(variableMap.keys()).join(', ')}`);
 
-        // Check if node still exists in tree (might have been removed if nested?)
-        // Usually fine since we snapshot, but good to check parent
-        if (!sdt.parentNode) continue;
+    // Debug: Log all variable values
+    for (const [key, value] of Array.from(variableMap.entries())) {
+      const valuePreview = typeof value === 'string' ? value.substring(0, 50) : JSON.stringify(value).substring(0, 50);
+      console.log(`[DOCX] Variable "${key}" = "${valuePreview}"`);
+    }
 
-        const sdtPr = sdt.getElementsByTagName('w:sdtPr')[0];
-        if (!sdtPr) continue;
+    // Find all content controls with proper nesting handling
+    const allControls = findAllContentControls(xmlContent);
+    console.log(`[DOCX] Found ${allControls.length} content controls (including nested)`);
 
-        const tagElement = sdtPr.getElementsByTagName('w:tag')[0];
-        if (!tagElement || !tagElement.getAttribute('w:val')) continue;
+    // Collect all replacements with their positions
+    const replacements: Array<{
+      start: number;
+      end: number;
+      originalContent: string;
+      newContent: string;
+      variableName: string;
+    }> = [];
 
-        const tagValue = tagElement.getAttribute('w:val') || '';
-        const [rawName] = tagValue.split('|');
-        const variableName = normalizeVariableName(rawName?.trim() || '');
+    // Debug: Log first few content controls to understand structure
+    if (allControls.length > 0) {
+      console.log(`[DOCX] First control preview (500 chars): ${allControls[0].content.substring(0, 500)}`);
+    }
 
-        // Log less frequently to save buffer
-        if (i % 10 === 0) console.log(`[DOCX] Processing item ${i}/${contentControls.length}: ${variableName}`);
+    for (const control of allControls) {
+      const fullMatch = control.content;
 
-        // Get variable value
-        let variableValue = variables[variableName];
-        if (variableValue === undefined || variableValue === null || variableValue === '') {
-          variableValue = variables[rawName?.trim() || ''];
-        }
+      // Extract tag value from w:tag element
+      // Look for the FIRST w:tag in the sdtPr section (before sdtContent)
+      // Try multiple patterns for sdtPr extraction
+      let sdtPrMatch = fullMatch.match(/<w:sdtPr\b[^>]*>([\s\S]*?)<\/w:sdtPr>/);
 
-        // Find sdtContent
-        const sdtContent = sdt.getElementsByTagName('w:sdtContent')[0];
-        if (!sdtContent) continue;
+      // If not found, try without namespace or with different structure
+      if (!sdtPrMatch) {
+        // Maybe sdtPr has attributes we're not capturing
+        sdtPrMatch = fullMatch.match(/<w:sdtPr>([\s\S]*?)<\/w:sdtPr>/);
+      }
 
-        // Preserve formatting
-        let originalRunProps: Element | null = null;
-        let originalRunAttributes: { [key: string]: string } | null = null;
-        const runs = sdtContent.getElementsByTagName('w:r');
-        if (runs.length > 0) {
-          const firstRun = runs[0];
-          const rPr = firstRun.getElementsByTagName('w:rPr')[0];
-          if (rPr) originalRunProps = rPr.cloneNode(true) as Element;
-
-          originalRunAttributes = {};
-          // @ts-ignore
-          if (firstRun.attributes) {
-            // @ts-ignore
-            for (let a = 0; a < firstRun.attributes.length; a++) {
-              // @ts-ignore
-              const attr = firstRun.attributes[a];
-              originalRunAttributes[attr.name] = attr.value;
+      // Try to find sdtPr with proper nesting handling (in case of nested content)
+      if (!sdtPrMatch) {
+        const sdtPrStart = fullMatch.indexOf('<w:sdtPr');
+        if (sdtPrStart !== -1) {
+          const sdtPrEnd = fullMatch.indexOf('</w:sdtPr>', sdtPrStart);
+          if (sdtPrEnd !== -1) {
+            const sdtPrContent = fullMatch.substring(sdtPrStart, sdtPrEnd + 11);
+            const innerMatch = sdtPrContent.match(/<w:sdtPr[^>]*>([\s\S]*)/);
+            if (innerMatch) {
+              sdtPrMatch = [sdtPrContent, innerMatch[1].replace(/<\/w:sdtPr>$/, '')];
             }
           }
         }
+      }
 
-        // Determine type
-        const controlType = detectEnhancedContentControlType(sdtPr);
+      if (!sdtPrMatch) {
+        // Log first 300 chars to see the structure
+        console.log(`[DOCX] Skipping control - no sdtPr found. Preview: ${fullMatch.substring(0, 300)}`);
+        continue;
+      }
 
-        // Debug logging for image variables
-        if (variableName.includes('sign') || variableName.includes('image')) {
-          console.log(`[DOCX DEBUG] Variable: ${variableName}`);
-          console.log(`[DOCX DEBUG] Control Type: ${controlType}`);
-          console.log(`[DOCX DEBUG] Variable Value Type: ${typeof variableValue}`);
-          console.log(`[DOCX DEBUG] Variable Value: ${JSON.stringify(variableValue)?.substring(0, 200)}`);
-          console.log(`[DOCX DEBUG] Company ID: ${companyId}`);
-          // Log the sdtPr content to see what's there
-          const { XMLSerializer } = require('xmldom');
-          const serializer = new XMLSerializer();
-          console.log(`[DOCX DEBUG] sdtPr XML: ${serializer.serializeToString(sdtPr).substring(0, 500)}`);
-        }
+      const sdtPrContent = sdtPrMatch[1];
 
-        if (!variableValue) {
-          // Handle missing value
-          if (controlType !== 'image') {
-            replaceContentControlContent(sdtContent, doc, variableName, undefined, originalRunProps, originalRunAttributes);
-            processedCount++;
-          }
-          continue;
-        }
+      // Try multiple patterns for tag extraction
+      // Pattern 1: <w:tag w:val="..."/>
+      // Pattern 2: <w:tag val="..."/> (without namespace)
+      // Pattern 3: Use <w:alias> as fallback
+      let tagMatch = sdtPrContent.match(/<w:tag\s+w:val="([^"]*)"/);
+      if (!tagMatch) {
+        tagMatch = sdtPrContent.match(/<w:tag\s+val="([^"]*)"/);
+      }
+      if (!tagMatch) {
+        // Try alias as fallback
+        tagMatch = sdtPrContent.match(/<w:alias\s+w:val="([^"]*)"/);
+      }
+      if (!tagMatch) {
+        tagMatch = sdtPrContent.match(/<w:alias\s+val="([^"]*)"/);
+      }
 
-        // Check if this is an image variable
+      if (!tagMatch) {
+        // Log first 200 chars of sdtPr for debugging
+        console.log(`[DOCX] Skipping control - no tag/alias found. sdtPr preview: ${sdtPrContent.substring(0, 200)}`);
+        continue;
+      }
+
+      const tagValue = tagMatch[1];
+      const [rawName] = tagValue.split('|');
+      const variableName = normalizeVariableName(rawName?.trim() || '');
+
+      console.log(`[DOCX] Found control: tag="${tagValue}", normalized="${variableName}"`);
+
+      // Debug: Check if this variable exists in our map
+      const hasNormalized = variableMap.has(variableName);
+      const hasRaw = variableMap.has(rawName?.trim() || '');
+      console.log(`[DOCX] Variable lookup: normalized=${hasNormalized}, raw=${hasRaw}`);
+
+      // Skip empty variable names
+      if (!variableName || variableName.trim() === '') {
+        continue;
+      }
+
+      // Get variable value
+      let variableValue = variableMap.get(variableName) || variableMap.get(rawName?.trim() || '');
+
+      if (!variableValue) {
+        console.log(`[DOCX] Skipping ${variableName} - no value provided`);
+        continue;
+      }
+
+      // Determine control type from sdtPr
+      const isImageControl = sdtPrContent.includes('<w:picture') || sdtPrContent.includes('<w:picture/>');
+      const isDateControl = sdtPrContent.includes('<w:date');
+      const isDropdownControl = sdtPrContent.includes('<w:dropDownList');
+      const isCheckboxControl = sdtPrContent.includes(':checkbox');
+
+      // Handle image controls
+      if (isImageControl && companyId) {
         let imagePath: string | null = null;
         if (typeof variableValue === 'object' && variableValue !== null) {
           const objValue = variableValue as any;
           if (objValue.type === 'image' && objValue.value) {
-            // Handle nested structure: value can be a string path or an object with value property
-            if (typeof objValue.value === 'string') {
-              imagePath = objValue.value;
-            } else if (typeof objValue.value === 'object' && objValue.value.value) {
-              // Nested structure: { type: 'image', value: { type: 'image', value: 'path/to/image' } }
-              imagePath = typeof objValue.value.value === 'string' ? objValue.value.value : null;
-            }
+            imagePath = typeof objValue.value === 'string' ? objValue.value :
+                       (typeof objValue.value?.value === 'string' ? objValue.value.value : null);
           }
         } else if (typeof variableValue === 'string' && variableValue.includes('/images/')) {
           imagePath = variableValue;
         }
 
-        // Handle image insertion for image content controls
-        if (controlType === 'image' && imagePath && companyId) {
+        if (imagePath) {
           try {
-            console.log(`[DOCX] Processing image for ${variableName}, extracted path: ${imagePath}`);
+            console.log(`[DOCX] Processing image for ${variableName}: ${imagePath}`);
 
-            // Download image from storage
             const { data: imageFile, error: imageError } = await storageService.downloadFile(
               { companyId: companyId, isPublic: false },
               imagePath
             );
 
-            if (imageError || !imageFile) {
-              console.error(`[DOCX] Error downloading image ${imagePath}:`, imageError);
-              continue;
-            }
+            if (!imageError && imageFile) {
+              const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
+              if (imageBuffer.length > 0) {
+                const filename = imagePath.split('/').pop() || 'image.png';
+                const relationshipId = relationshipManager.addImage(imageBuffer, filename);
 
-            // Convert to buffer
-            const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
-            const filename = imagePath.split('/').pop() || 'image.png';
+                // Update blip reference in the original XML using string replacement
+                let updatedMatch = fullMatch;
 
-            console.log(`[DOCX] Image buffer size: ${imageBuffer.length} bytes for ${filename}`);
+                // Replace r:embed attribute in a:blip
+                updatedMatch = updatedMatch.replace(
+                  /(<a:blip[^>]*\s+r:embed=")([^"]*)(")/g,
+                  `$1${relationshipId}$3`
+                );
 
-            if (imageBuffer.length === 0) {
-              console.error(`[DOCX] Image buffer is empty for ${variableName}`);
-              continue;
-            }
+                // Remove w:showingPlcHdr element
+                updatedMatch = updatedMatch.replace(/<w:showingPlcHdr\s*\/>/g, '');
+                updatedMatch = updatedMatch.replace(/<w:showingPlcHdr><\/w:showingPlcHdr>/g, '');
 
-            // Add image to document and get relationship ID
-            const relationshipId = relationshipManager.addImage(imageBuffer, filename);
-
-            // Calculate dimensions
-            const sizeOf = require('image-size');
-            let widthEmu = 1905000; // Default ~2 inches
-            let heightEmu = 1905000;
-            try {
-              const dimensions = sizeOf(imageBuffer);
-              if (dimensions.width && dimensions.height) {
-                // Convert pixels to EMUs (914400 EMUs per inch, assume 96 DPI)
-                const maxWidthInches = 2;
-                const maxHeightInches = 1.5;
-                const widthInches = dimensions.width / 96;
-                const heightInches = dimensions.height / 96;
-                const aspectRatio = widthInches / heightInches;
-
-                if (widthInches > maxWidthInches || heightInches > maxHeightInches) {
-                  if (aspectRatio > maxWidthInches / maxHeightInches) {
-                    widthEmu = maxWidthInches * 914400;
-                    heightEmu = widthEmu / aspectRatio;
-                  } else {
-                    heightEmu = maxHeightInches * 914400;
-                    widthEmu = heightEmu * aspectRatio;
-                  }
-                } else {
-                  widthEmu = widthInches * 914400;
-                  heightEmu = heightInches * 914400;
+                if (updatedMatch !== fullMatch) {
+                  replacements.push({
+                    start: control.start,
+                    end: control.end,
+                    originalContent: fullMatch,
+                    newContent: updatedMatch,
+                    variableName
+                  });
+                  console.log(`[DOCX] ✅ Updated image reference for ${variableName}`);
                 }
               }
-            } catch (e) {
-              console.log('[DOCX] Could not determine image dimensions, using defaults');
             }
-
-            // Check if content control is inside a paragraph (inline) or block-level
-            // Picture content controls in tables/paragraphs need just a run, not a full paragraph
-            let isInlineContext = false;
-            let parentNode: Node | null = sdt.parentNode;
-            while (parentNode) {
-              const nodeName = parentNode.nodeName;
-              if (nodeName === 'w:p' || nodeName === 'w:tc' || nodeName === 'w:r') {
-                isInlineContext = true;
-                break;
-              }
-              if (nodeName === 'w:body' || nodeName === 'w:document') {
-                break;
-              }
-              parentNode = parentNode.parentNode;
-            }
-
-            console.log(`[DOCX] Image context: ${isInlineContext ? 'inline (run only)' : 'block (with paragraph)'}`);
-
-            // Try to find existing blip in the sdtContent and update its reference
-            // This preserves Word's original image structure
-            const existingBlips = sdtContent.getElementsByTagName('a:blip');
-            if (existingBlips.length > 0) {
-              // Update existing blip reference
-              for (let b = 0; b < existingBlips.length; b++) {
-                const blip = existingBlips[b];
-                // Update the r:embed attribute
-                blip.setAttribute('r:embed', relationshipId);
-                // Remove any existing extLst that might reference placeholders
-                const extLists = blip.getElementsByTagName('a:extLst');
-                for (let e = extLists.length - 1; e >= 0; e--) {
-                  blip.removeChild(extLists[e]);
-                }
-              }
-
-              // Update dimensions in wp:extent (drawing size)
-              const wpExtents = sdtContent.getElementsByTagName('wp:extent');
-              for (let e = 0; e < wpExtents.length; e++) {
-                wpExtents[e].setAttribute('cx', String(Math.round(widthEmu)));
-                wpExtents[e].setAttribute('cy', String(Math.round(heightEmu)));
-              }
-
-              // Update dimensions in a:ext (picture size)
-              const aExts = sdtContent.getElementsByTagName('a:ext');
-              for (let e = 0; e < aExts.length; e++) {
-                aExts[e].setAttribute('cx', String(Math.round(widthEmu)));
-                aExts[e].setAttribute('cy', String(Math.round(heightEmu)));
-              }
-
-              // Remove the showingPlcHdr element from sdtPr to hide the placeholder icon
-              const showingPlcHdrElements = sdtPr.getElementsByTagName('w:showingPlcHdr');
-              for (let p = showingPlcHdrElements.length - 1; p >= 0; p--) {
-                showingPlcHdrElements[p].parentNode?.removeChild(showingPlcHdrElements[p]);
-              }
-
-              console.log(`[DOCX] ✅ Updated existing blip reference for ${variableName} with relationship ${relationshipId}, dimensions: ${Math.round(widthEmu)}x${Math.round(heightEmu)} EMUs`);
-            } else {
-              // No existing blip - use placeholder approach
-              // Clear sdtContent and insert a unique placeholder that we'll replace after serialization
-              while (sdtContent.firstChild) {
-                sdtContent.removeChild(sdtContent.firstChild);
-              }
-
-              // Create a unique placeholder marker
-              const placeholderId = `__IMAGE_PLACEHOLDER_${relationshipId}_${Math.round(widthEmu)}_${Math.round(heightEmu)}_${isInlineContext ? 'inline' : 'block'}__`;
-
-              // Add placeholder as text content
-              const placeholderRun = doc.createElement('w:r');
-              const placeholderText = doc.createElement('w:t');
-              placeholderText.appendChild(doc.createTextNode(placeholderId));
-              placeholderRun.appendChild(placeholderText);
-              sdtContent.appendChild(placeholderRun);
-
-              console.log(`[DOCX] ✅ Added placeholder for image ${variableName} with relationship ${relationshipId}`);
-            }
-            processedCount++;
-            continue;
           } catch (imgError) {
             console.error(`[DOCX] Error processing image for ${variableName}:`, imgError);
           }
         }
+        continue;
+      }
 
-        // Handle Text - check for image objects
-        let textValue = '';
-        if (typeof variableValue === 'string') {
-          // Skip if this is an image path - don't show as text
-          if (variableValue.includes('/images/')) {
-            textValue = '';
-          } else {
-            textValue = variableValue;
-          }
-        } else if (variableValue && typeof variableValue === 'object') {
-          // Check if it's an image object
-          const objValue = variableValue as any;
-          if (objValue.type === 'image' && objValue.value) {
-            // For image objects in non-image content controls, skip or show placeholder
-            textValue = '';
-            console.log(`[DOCX] Image variable ${variableName} - skipping text insertion`);
-          } else if (objValue.value !== undefined) {
-            // Other typed objects - extract value
-            textValue = String(objValue.value);
-          } else {
-            textValue = '';
-          }
-        } else if (variableValue) {
-          textValue = String(variableValue);
+      // Handle text content controls - extract text value
+      let textValue = '';
+      if (typeof variableValue === 'string') {
+        if (!variableValue.includes('/images/')) {
+          textValue = variableValue;
         }
-
-        if (textValue) {
-          const textTextNode = doc.createElement('w:t');
-          textTextNode.appendChild(doc.createTextNode(textValue));
-          const textRunNode = doc.createElement('w:r');
-
-          if (originalRunAttributes) {
-            Object.entries(originalRunAttributes).forEach(([k, v]) => textRunNode.setAttribute(k, v));
-          }
-          if (originalRunProps) textRunNode.appendChild(originalRunProps.cloneNode(true));
-
-          textRunNode.appendChild(textTextNode);
-          replaceContentControlContent(sdtContent, doc, variableName, textRunNode, originalRunProps, originalRunAttributes);
-          processedCount++;
+      } else if (variableValue && typeof variableValue === 'object') {
+        const objValue = variableValue as any;
+        if (objValue.type !== 'image' && objValue.value !== undefined) {
+          textValue = String(objValue.value);
         }
+      } else if (variableValue) {
+        textValue = String(variableValue);
+      }
 
-      } catch (itemError) {
-        console.error(`[DOCX] Error processing item ${i}:`, itemError);
-        // Continue processing other items!
+      if (!textValue) {
+        continue;
+      }
+
+      // Escape XML special characters
+      const escapedValue = escapeXml(textValue);
+
+      // Find the sdtContent section - need to handle nested controls
+      // Look for the DIRECT sdtContent (not one from a nested control)
+      const sdtContentStart = fullMatch.indexOf('<w:sdtContent');
+      if (sdtContentStart === -1) continue;
+
+      // Find the matching </w:sdtContent> by tracking depth
+      let depth = 1;
+      let pos = fullMatch.indexOf('>', sdtContentStart) + 1;
+      let sdtContentEnd = -1;
+
+      while (depth > 0 && pos < fullMatch.length) {
+        const nextOpen = fullMatch.indexOf('<w:sdtContent', pos);
+        const nextClose = fullMatch.indexOf('</w:sdtContent>', pos);
+
+        if (nextClose === -1) break;
+
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          depth++;
+          pos = nextOpen + 13;
+        } else {
+          depth--;
+          if (depth === 0) {
+            sdtContentEnd = nextClose + 15; // '</w:sdtContent>'.length
+          }
+          pos = nextClose + 15;
+        }
+      }
+
+      if (sdtContentEnd === -1) continue;
+
+      const sdtContentFull = fullMatch.substring(sdtContentStart, sdtContentEnd);
+
+      // Extract inner content (between opening and closing tags)
+      const innerStart = sdtContentFull.indexOf('>') + 1;
+      const innerEnd = sdtContentFull.lastIndexOf('</w:sdtContent>');
+      const sdtContentInner = sdtContentFull.substring(innerStart, innerEnd);
+
+      // Try to preserve the run structure
+      let newSdtContent = sdtContentFull;
+
+      // Check if there's existing text content to replace (but not in nested controls)
+      // Find w:t elements that are NOT inside nested w:sdt
+      const hasDirectTextContent = hasDirectTextElements(sdtContentInner);
+
+      if (hasDirectTextContent) {
+        // Replace text in w:t elements while preserving structure
+        // But only replace in the FIRST w:t we find (at the top level)
+        newSdtContent = replaceFirstDirectText(sdtContentFull, escapedValue);
+      } else if (!sdtContentInner.includes('<w:sdt')) {
+        // No nested controls and no w:t - create new run
+        const newRunXml = `<w:r><w:t>${escapedValue}</w:t></w:r>`;
+        const openTagEnd = sdtContentFull.indexOf('>') + 1;
+        newSdtContent = sdtContentFull.substring(0, openTagEnd) + newRunXml + '</w:sdtContent>';
+      } else {
+        // Has nested controls but no direct text - skip this one
+        console.log(`[DOCX] Skipping ${variableName} - contains nested controls without direct text`);
+        continue;
+      }
+
+      if (newSdtContent !== sdtContentFull) {
+        const newFullMatch = fullMatch.replace(sdtContentFull, newSdtContent);
+        replacements.push({
+          start: control.start,
+          end: control.end,
+          originalContent: fullMatch,
+          newContent: newFullMatch,
+          variableName
+        });
+        console.log(`[DOCX] ✅ Replaced text for ${variableName}: "${textValue.substring(0, 50)}${textValue.length > 50 ? '...' : ''}"`);
       }
     }
 
-    // Ensure all w:sdt are validly placed (Paragraph Wrapping)
-    // We do this AFTER processing to avoid re-parsing issues
-    // Just ensure top-level SDTs are wrapped
-    // NOTE: For safety against the crash, we are skipping the complex 'wrapContentControlsInParagraphs'
-    // logic which re-parses the whole doc. 
-    // Most Word templates are already valid. If this causes issues, we can add a lighter wrap pass.
+    // Sort replacements by position (descending) to avoid index shifting issues
+    replacements.sort((a, b) => b.start - a.start);
 
-    console.log(`[DOCX] Serialization...`);
-    let processedXml = serializer.serializeToString(doc);
+    // Apply all replacements
+    let processedXml = xmlContent;
+    let processedCount = 0;
 
-    // Replace image placeholders with actual image XML
-    // Pattern: __IMAGE_PLACEHOLDER_{relationshipId}_{width}_{height}_{context}__
-    const placeholderRegex = /<w:r[^>]*><w:t[^>]*>__IMAGE_PLACEHOLDER_(rId\d+)_(\d+)_(\d+)_(inline|block)__<\/w:t><\/w:r>/g;
-    processedXml = processedXml.replace(placeholderRegex, (match: string, relId: string, width: string, height: string, context: string) => {
-      console.log(`[DOCX] Replacing placeholder with image XML: ${relId}, ${width}x${height}, ${context}`);
-      return getImageXmlForReplacement(relId, parseInt(width), parseInt(height), context === 'inline');
-    });
+    for (const { start, end, originalContent, newContent, variableName } of replacements) {
+      // Verify the content at this position matches what we expect
+      const currentContent = processedXml.substring(start, end);
+      if (currentContent === originalContent) {
+        processedXml = processedXml.substring(0, start) + newContent + processedXml.substring(end);
+        processedCount++;
+      } else {
+        console.warn(`[DOCX] Content mismatch for ${variableName}, skipping replacement`);
+      }
+    }
+
+    console.log(`[DOCX] Processed ${processedCount} content controls in ${xmlPath}`);
 
     return { processedXml, processedCount };
 
   } catch (error) {
-    console.error('Error in single-pass processing:', error);
+    console.error('Error in string-based processing:', error);
     return { processedXml: xmlContent, processedCount: 0 };
   }
+}
+
+/**
+ * Check if content has direct w:t elements (not inside nested w:sdt)
+ */
+function hasDirectTextElements(content: string): boolean {
+  // Remove nested sdt content first
+  let cleaned = content;
+  let prevLength = 0;
+
+  // Iteratively remove nested w:sdt elements
+  while (cleaned.length !== prevLength) {
+    prevLength = cleaned.length;
+    cleaned = cleaned.replace(/<w:sdt\b[^>]*>[\s\S]*?<\/w:sdt>/g, '');
+  }
+
+  return cleaned.includes('<w:t');
+}
+
+/**
+ * Replace text in the first direct w:t element (not inside nested w:sdt)
+ */
+function replaceFirstDirectText(sdtContentFull: string, newText: string): string {
+  // Find positions of all nested w:sdt elements
+  const nestedRanges: Array<{ start: number; end: number }> = [];
+  const nestedControls = findAllContentControls(sdtContentFull);
+
+  // Skip the first one if it's the entire sdtContent (shouldn't happen, but safety check)
+  for (const nc of nestedControls) {
+    if (nc.start > 0) { // Only add if it's truly nested
+      nestedRanges.push({ start: nc.start, end: nc.end });
+    }
+  }
+
+  // Find all w:t elements
+  const tRegex = /<w:t([^>]*)>([^<]*)<\/w:t>/g;
+  let result = sdtContentFull;
+  let replaced = false;
+
+  result = sdtContentFull.replace(tRegex, (match, attrs, text, offset) => {
+    // Check if this w:t is inside a nested control
+    const isNested = nestedRanges.some(range => offset >= range.start && offset < range.end);
+
+    if (isNested) {
+      return match; // Keep original
+    }
+
+    if (!replaced) {
+      replaced = true;
+      return `<w:t${attrs}>${newText}</w:t>`;
+    }
+
+    // Clear subsequent direct w:t elements
+    return `<w:t${attrs}></w:t>`;
+  });
+
+  return result;
 }
 
 /**
@@ -880,8 +991,15 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
  * Includes all necessary namespace declarations for Word compatibility
  */
 function getImageXmlForReplacement(relationshipId: string, width: number, height: number, isInline: boolean): string {
-  // Must include xmlns:wp declaration on the wp:inline element since it may not be declared at document root
-  const drawingXml = `<w:drawing xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${width}" cy="${height}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Picture 1"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${relationshipId}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${width}" cy="${height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+  // All namespace declarations needed for the image elements
+  // These are declared inline to ensure Word can parse them correctly
+  const wpNs = 'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
+  const aNs = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
+  const picNs = 'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+  const rNs = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+
+  // Build the drawing XML with all required namespace declarations on the wp:inline element
+  const drawingXml = `<w:drawing><wp:inline ${wpNs} ${aNs} ${picNs} ${rNs} distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${width}" cy="${height}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Picture 1"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${width}" cy="${height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
 
   const runXml = `<w:r><w:rPr><w:noProof/></w:rPr>${drawingXml}</w:r>`;
 

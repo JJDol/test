@@ -36,6 +36,25 @@ export async function processDocumentWithSmartProcessor(
   try {
     console.log(`Processing template: ${template.name}`);
 
+    // Validate input template is a valid DOCX before processing
+    try {
+      const inputValidationZip = new PizZip(templateBuffer);
+      const hasInputDocXml = inputValidationZip.file('word/document.xml') !== null;
+      const hasInputContentTypes = inputValidationZip.file('[Content_Types].xml') !== null;
+
+      if (!hasInputDocXml || !hasInputContentTypes) {
+        console.error(`[INPUT VALIDATION FAILED] Template ${template.name}: Stored template is corrupted - document.xml: ${hasInputDocXml}, [Content_Types].xml: ${hasInputContentTypes}`);
+        throw new Error('Stored template file is corrupted or invalid. Please re-upload the template.');
+      }
+      console.log(`[INPUT VALIDATION OK] Template ${template.name}: Input template is valid (${templateBuffer.length} bytes)`);
+    } catch (inputValidationError) {
+      if (inputValidationError instanceof Error && inputValidationError.message.includes('Stored template')) {
+        throw inputValidationError;
+      }
+      console.error(`[INPUT VALIDATION ERROR] Template ${template.name}: Cannot parse template as ZIP:`, inputValidationError);
+      throw new Error('Stored template file is corrupted or invalid. Please re-upload the template.');
+    }
+
     // Determine processing method (avoid creating multiple buffer copies)
     const extractionMethod = 'content-control';
     
@@ -96,6 +115,72 @@ export async function processDocumentWithSmartProcessor(
       // Use standard Content Control processor
       console.log(`Template ${template.name} has no images, using standard processor`);
       generatedDoc = await processDocumentWithEnhancedVariables(templateBuffer, variables, companyId);
+    }
+
+    // Validate the generated document is a valid DOCX (ZIP file)
+    try {
+      const validationZip = new PizZip(generatedDoc);
+      const hasDocumentXml = validationZip.file('word/document.xml') !== null;
+      const hasContentTypes = validationZip.file('[Content_Types].xml') !== null;
+
+      if (!hasDocumentXml || !hasContentTypes) {
+        console.error(`[VALIDATION FAILED] Template ${template.name}: Missing required files - document.xml: ${hasDocumentXml}, [Content_Types].xml: ${hasContentTypes}`);
+        throw new Error('Generated document is missing required files');
+      }
+
+      // Check document.xml is valid XML
+      const docXml = validationZip.file('word/document.xml')?.asText();
+      if (docXml && docXml.includes('__IMAGE_PLACEHOLDER_')) {
+        console.error(`[VALIDATION FAILED] Template ${template.name}: Document contains unprocessed image placeholders`);
+        throw new Error('Document contains unprocessed image placeholders');
+      }
+
+      // Validate XML is well-formed using DOMParser
+      const { DOMParser } = require('xmldom');
+      const parser = new DOMParser({
+        errorHandler: {
+          warning: (msg: string) => console.warn(`[XML WARNING] ${template.name}:`, msg),
+          error: (msg: string) => console.error(`[XML ERROR] ${template.name}:`, msg),
+          fatalError: (msg: string) => console.error(`[XML FATAL] ${template.name}:`, msg)
+        }
+      });
+
+      // Check main document.xml
+      if (docXml) {
+        const docParsed = parser.parseFromString(docXml, 'text/xml');
+        const parseErrors = docParsed.getElementsByTagName('parsererror');
+        if (parseErrors.length > 0) {
+          console.error(`[VALIDATION FAILED] Template ${template.name}: document.xml has parse errors`);
+          throw new Error('Generated document.xml has XML parse errors');
+        }
+      }
+
+      // Check [Content_Types].xml
+      const contentTypesXml = validationZip.file('[Content_Types].xml')?.asText();
+      if (contentTypesXml) {
+        const ctParsed = parser.parseFromString(contentTypesXml, 'text/xml');
+        const ctParseErrors = ctParsed.getElementsByTagName('parsererror');
+        if (ctParseErrors.length > 0) {
+          console.error(`[VALIDATION FAILED] Template ${template.name}: [Content_Types].xml has parse errors`);
+          throw new Error('Generated [Content_Types].xml has XML parse errors');
+        }
+      }
+
+      // Check word/_rels/document.xml.rels
+      const relsXml = validationZip.file('word/_rels/document.xml.rels')?.asText();
+      if (relsXml) {
+        const relsParsed = parser.parseFromString(relsXml, 'text/xml');
+        const relsParseErrors = relsParsed.getElementsByTagName('parsererror');
+        if (relsParseErrors.length > 0) {
+          console.error(`[VALIDATION FAILED] Template ${template.name}: document.xml.rels has parse errors`);
+          throw new Error('Generated document.xml.rels has XML parse errors');
+        }
+      }
+
+      console.log(`[VALIDATION OK] Template ${template.name}: Generated document is valid (${generatedDoc.length} bytes)`);
+    } catch (validationError) {
+      console.error(`[VALIDATION ERROR] Template ${template.name}:`, validationError);
+      throw validationError;
     }
 
     return generatedDoc;
