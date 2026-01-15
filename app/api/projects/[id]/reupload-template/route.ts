@@ -1,13 +1,13 @@
 /**
- * Document Template Reupload Route
+ * Project Template Reupload Route
  *
- * PURPOSE: Upload a new version of an existing document template
- * - Extracts variables from new file
- * - Compares with existing version to generate changes summary
- * - Creates new version record in template_versions
- * - Updates the main template record
+ * PURPOSE: Upload a customized version of a template for a specific project
+ * - Extracts variables from uploaded file
+ * - Compares with original template to show changes
+ * - Stores as project-specific template (doesn't affect global template)
+ * - Updates project's custom_templates field
  *
- * ROUTE: POST /api/document-templates/[name]/reupload
+ * ROUTE: POST /api/projects/[id]/reupload-template
  */
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
@@ -64,14 +64,14 @@ function compareVariables(
   return { added, removed, modified };
 }
 
-async function reuploadTemplateHandler(
+async function reuploadProjectTemplateHandler(
   request: AuthenticatedRequest,
-  { params }: RouteContext<{ name: string }>
+  { params }: RouteContext<{ id: string }>
 ) {
   let blobUrl: string = '';
 
   try {
-    const { name: templateName } = await params;
+    const { id: projectId } = await params;
     const supabase = await createClient();
 
     // Get current user profile
@@ -87,21 +87,27 @@ async function reuploadTemplateHandler(
       return NextResponse.json({ error: "User not assigned to a company" }, { status: 403 });
     }
 
-    // Get existing template
-    const { data: template, error: templateError } = await supabase
-      .from('document_templates')
+    // Get project
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
       .select('*')
-      .eq('name', templateName)
+      .eq('id', projectId)
+      .eq('company_id', currentUserProfile.company_id)
       .single();
 
-    if (templateError || !template) {
-      return NextResponse.json({ message: 'Template not found' }, { status: 404 });
+    if (projectError || !project) {
+      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
     }
 
-    // Check permissions - only owner can update personal templates, admins/managers for public
-    if (!template.is_public && template.user_id !== request.user.id) {
+    // Check permissions - only project leader, admin, or company admin can reupload
+    const canReupload =
+      currentUserProfile.role === 'ADMIN' ||
+      currentUserProfile.role === 'COMPANY_ADMIN' ||
+      project.leader_id === request.user.id;
+
+    if (!canReupload) {
       return NextResponse.json({
-        message: 'You do not have permission to update this template'
+        message: 'You do not have permission to customize templates for this project'
       }, { status: 403 });
     }
 
@@ -110,25 +116,30 @@ async function reuploadTemplateHandler(
     const file = formData.get('file') as File;
     blobUrl = formData.get('blobUrl') as string;
     const fileName = formData.get('fileName') as string;
-    const variableMappings = formData.get('variableMappings') as string;
+    const templateName = formData.get('templateName') as string;
 
-    // Parse variable mappings if provided (for renamed variables)
-    let mappings: Record<string, string> = {};
-    if (variableMappings) {
-      try {
-        mappings = JSON.parse(variableMappings);
-      } catch (e) {
-        console.warn('Failed to parse variable mappings:', e);
-      }
+    if (!templateName) {
+      return NextResponse.json({ message: 'Template name is required' }, { status: 400 });
     }
 
     if (!file && !blobUrl) {
       return NextResponse.json({ message: 'No file provided' }, { status: 400 });
     }
 
+    // Get original template to compare variables
+    const { data: originalTemplate, error: templateError } = await supabase
+      .from('document_templates')
+      .select('*')
+      .eq('name', templateName)
+      .single();
+
+    if (templateError || !originalTemplate) {
+      return NextResponse.json({ message: 'Original template not found' }, { status: 404 });
+    }
+
     // Get file buffer
     let fileBuffer: ArrayBuffer;
-    const originalFilename = file?.name || fileName || template.original_file_name || 'template.docx';
+    const originalFilename = file?.name || fileName || `${templateName}.docx`;
 
     if (file) {
       fileBuffer = await file.arrayBuffer();
@@ -148,7 +159,7 @@ async function reuploadTemplateHandler(
       throw new Error('No file or blob URL provided');
     }
 
-    // Extract variables from new file
+    // Extract variables from uploaded file
     const buffer = Buffer.from(fileBuffer);
     const newVariables = extractTemplateVariables(buffer);
 
@@ -170,22 +181,9 @@ async function reuploadTemplateHandler(
       currentContent: 'currentContent' in variable ? variable.currentContent : undefined,
     }));
 
-    // Compare with existing variables
-    const oldVariables = template.variables || [];
-    const changesSummary = compareVariables(oldVariables, formattedVariables);
-
-    // Add variable mappings to changes summary
-    if (Object.keys(mappings).length > 0) {
-      for (const removedVar of changesSummary.removed) {
-        if (mappings[removedVar.name]) {
-          removedVar.mappedTo = mappings[removedVar.name];
-        }
-      }
-    }
-
-    // Calculate new version number
-    const currentVersion = template.current_version || 1;
-    const newVersion = currentVersion + 1;
+    // Compare with original template variables
+    const originalVariables = originalTemplate.variables || [];
+    const changesSummary = compareVariables(originalVariables, formattedVariables);
 
     // Sanitize filename for storage
     let sanitizedFileName = originalFilename
@@ -203,30 +201,22 @@ async function reuploadTemplateHandler(
       .replace(/^_|_$/g, '')
       .substring(0, 100);
 
-    // Add version to filename to avoid conflicts
+    // Build file path for project-specific template
     const fileExt = sanitizedFileName.substring(sanitizedFileName.lastIndexOf('.'));
     const fileBase = sanitizedFileName.substring(0, sanitizedFileName.lastIndexOf('.'));
-    const versionedFileName = `${fileBase}_v${newVersion}${fileExt}`;
+    const projectFileName = `project-templates/${projectId}/${fileBase}_custom${fileExt}`;
 
-    // Build file path
-    let filePath = versionedFileName;
-    if (!template.is_public) {
-      filePath = `${request.user.id}/${versionedFileName}`;
-    }
-
-    // Upload new file to storage
-    // Use upsert: true to handle cases where a previous upload attempt failed
-    // and left a partial file with the same version number
+    // Upload file to storage
     const { error: uploadError } = await storageService.uploadFile(
       {
         companyId: currentUserProfile.company_id,
-        isPublic: template.is_public
+        isPublic: false // Project-specific templates are always private
       },
-      filePath,
+      projectFileName,
       fileBuffer,
       {
         contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        upsert: true
+        upsert: true // Allow overwriting if re-customizing
       }
     );
 
@@ -238,44 +228,35 @@ async function reuploadTemplateHandler(
       }, { status: 500 });
     }
 
-    // Create version record
-    const { error: versionError } = await supabase
-      .from('template_versions')
-      .insert({
-        template_name: templateName,
-        version: newVersion,
-        file_name: filePath,
-        original_file_name: originalFilename,
+    // Update project's custom_templates field
+    const currentCustomTemplates = project.custom_templates || {};
+    const lockedVersion = project.template_version_locks?.[templateName] || originalTemplate.current_version || 1;
+
+    const updatedCustomTemplates = {
+      ...currentCustomTemplates,
+      [templateName]: {
+        file_name: projectFileName,
         variables: formattedVariables,
-        changes_summary: changesSummary,
-        created_by: request.user.id,
-        company_id: currentUserProfile.company_id
-      });
+        original_version: lockedVersion,
+        created_at: new Date().toISOString()
+      }
+    };
 
-    if (versionError) {
-      console.error('Version insert error:', versionError);
-      // Clean up uploaded file
-      await storageService.deleteFile(
-        { companyId: currentUserProfile.company_id, isPublic: template.is_public },
-        filePath
-      );
-      throw versionError;
-    }
-
-    // Update main template record
     const { error: updateError } = await supabase
-      .from('document_templates')
+      .from('projects')
       .update({
-        file_name: filePath,
-        original_file_name: originalFilename,
-        variables: formattedVariables,
-        current_version: newVersion,
+        custom_templates: updatedCustomTemplates,
         updated_at: new Date().toISOString()
       })
-      .eq('name', templateName);
+      .eq('id', projectId);
 
     if (updateError) {
-      console.error('Template update error:', updateError);
+      console.error('Project update error:', updateError);
+      // Clean up uploaded file
+      await storageService.deleteFile(
+        { companyId: currentUserProfile.company_id, isPublic: false },
+        projectFileName
+      );
       throw updateError;
     }
 
@@ -289,23 +270,23 @@ async function reuploadTemplateHandler(
     }
 
     return NextResponse.json({
-      message: 'Template updated successfully',
-      version: newVersion,
+      message: 'Project template customized successfully',
+      templateName,
       changes: changesSummary,
-      template: {
-        name: templateName,
-        current_version: newVersion,
-        variables: formattedVariables
+      customTemplate: {
+        file_name: projectFileName,
+        variables: formattedVariables,
+        original_version: lockedVersion
       }
     });
 
   } catch (error) {
-    console.error('Error reuploading template:', error);
+    console.error('Error reuploading project template:', error);
     return NextResponse.json({
-      message: 'Failed to reupload template',
+      message: 'Failed to customize project template',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
 
-export const POST = withAuthDynamic(reuploadTemplateHandler);
+export const POST = withAuthDynamic(reuploadProjectTemplateHandler);

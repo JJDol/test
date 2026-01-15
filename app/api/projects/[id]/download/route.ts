@@ -212,13 +212,52 @@ downloadProjectHandler(
         try {
           console.log(`Processing template: ${template.name}`);
 
+          // Check for custom template, version lock, and get the appropriate file
+          // Priority: 1. Custom template, 2. Version lock, 3. Current version
+          let templateFileName = template.file_name;
+          let templateVariables = template.variables;
+          let isCustomTemplate = false;
+
+          // First, check if project has a custom template for this template name
+          if (project.custom_templates && project.custom_templates[template.name]) {
+            const customTemplate = project.custom_templates[template.name];
+            console.log(`[DOWNLOAD] Using custom project template for ${template.name}`);
+            templateFileName = customTemplate.file_name;
+            templateVariables = customTemplate.variables;
+            isCustomTemplate = true;
+          }
+          // If no custom template, check for version lock
+          else if (project.template_version_locks && project.template_version_locks[template.name]) {
+            const lockedVersion = project.template_version_locks[template.name];
+            console.log(`[DOWNLOAD] Using locked version ${lockedVersion} for template ${template.name}`);
+
+            // Fetch version-specific file from template_versions table
+            const { data: versionData, error: versionError } = await supabase
+              .from('template_versions')
+              .select('file_name, variables')
+              .eq('template_name', template.name)
+              .eq('version', lockedVersion)
+              .single();
+
+            if (!versionError && versionData) {
+              templateFileName = versionData.file_name;
+              templateVariables = versionData.variables;
+              console.log(`[DOWNLOAD] Found version ${lockedVersion} file: ${templateFileName}`);
+            } else {
+              console.warn(`[DOWNLOAD] Locked version ${lockedVersion} not found for ${template.name}, using current version`);
+            }
+          } else {
+            console.log(`[DOWNLOAD] No custom template or version lock for ${template.name}, using current version`);
+          }
+
           // Get template file from storage using the new storage service
+          // Note: Custom templates are always stored as non-public (project-specific)
           const { data: templateFile, error: templateError } = await storageService.downloadFile(
             {
               companyId: template.company_id,
-              isPublic: template.is_public
+              isPublic: isCustomTemplate ? false : template.is_public
             },
-            template.file_name
+            templateFileName
           );
 
           if (templateError || !templateFile) {
@@ -228,21 +267,21 @@ downloadProjectHandler(
 
           // Get stored variables for this template (already contains resolved general/local values)
           const storedVariables = project.template_variables?.[template.category]?.[template.name]?.variables || {};
-          
+
           // Reduced logging for better performance
           console.log(`Template ${template.name} - Variables count: ${Object.keys(storedVariables).length}`);
 
           // Convert Blob to Buffer for processing
           const arrayBuffer = await templateFile.arrayBuffer();
           const templateBuffer = Buffer.from(arrayBuffer);
-          
+
           // Prepare variables for processing - normalize the keys and add common project variables
           const allVariables: { [key: string]: any } = {};
-          
+
           // Create a mapping from normalized names to original tag names for content controls
           const tagNameMapping: { [normalizedKey: string]: string } = {};
-          if (template.variables && Array.isArray(template.variables)) {
-            template.variables.forEach((templateVar: any) => {
+          if (templateVariables && Array.isArray(templateVariables)) {
+            templateVariables.forEach((templateVar: any) => {
               if (templateVar.originalTag && templateVar.name) {
                 const normalizedName = normalizeVariableName(templateVar.name);
                 tagNameMapping[normalizedName] = templateVar.originalTag;

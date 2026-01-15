@@ -440,6 +440,13 @@ export function useProjectActions(
       }
       });
 
+      // Lock template to current version
+      const currentVersion = template.current_version || 1;
+      const updatedVersionLocks = {
+        ...(project.template_version_locks || {}),
+        [template.name]: currentVersion,
+      };
+
       // Add template to project and initialize its variables with general values
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
@@ -452,6 +459,7 @@ export function useProjectActions(
           variable_propagation_settings: updatedPropagationSettings,
           global_variables: updatedGlobalVariables,
           category_variables: updatedCategoryVariables,
+          template_version_locks: updatedVersionLocks,
         }),
       });
 
@@ -468,6 +476,7 @@ export function useProjectActions(
         variable_propagation_settings: updatedPropagationSettings,
         global_variables: updatedGlobalVariables,
         category_variables: updatedCategoryVariables,
+        template_version_locks: updatedVersionLocks,
       };
       updateProjectState(prev => ({ ...prev, project: updatedProject as Project }));
 
@@ -518,6 +527,12 @@ export function useProjectActions(
         delete updatedTemplateVariables[category];
       }
 
+      // Remove version lock for this template
+      let updatedVersionLocks = { ...(project.template_version_locks || {}) };
+      if (updatedVersionLocks[template]) {
+        delete updatedVersionLocks[template];
+      }
+
       // Update project with updated templates list, cleared assignments, and cleared variables
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
@@ -527,7 +542,8 @@ export function useProjectActions(
         body: JSON.stringify({
           [categoryField]: updatedTemplates,
           document_assignments: updatedAssignments,
-          template_variables: updatedTemplateVariables
+          template_variables: updatedTemplateVariables,
+          template_version_locks: updatedVersionLocks,
         }),
       });
 
@@ -542,6 +558,7 @@ export function useProjectActions(
         [categoryField]: updatedTemplates,
         document_assignments: updatedAssignments,
         template_variables: updatedTemplateVariables,
+        template_version_locks: updatedVersionLocks,
       };
       updateProjectState(prev => ({ ...prev, project: updatedProject as Project }));
 
@@ -681,6 +698,56 @@ export function useProjectActions(
       updateProjectState(prev => ({ ...prev, project }));
     }
   }, [project, updateProjectState, onProjectUpdate, toast]);
+
+  // Handle upgrade template version
+  const handleUpgradeVersion = useCallback(async (templateName: string) => {
+    if (!project) return;
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/upgrade-template-version`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ templateName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upgrade template version');
+      }
+
+      const result = await response.json();
+
+      // Update local state with new version lock
+      const updatedVersionLocks = {
+        ...(project.template_version_locks || {}),
+        [templateName]: result.newVersion,
+      };
+
+      const updatedProject = {
+        ...project,
+        template_version_locks: updatedVersionLocks,
+      };
+
+      updateProjectState(prev => ({ ...prev, project: updatedProject }));
+
+      toast({
+        title: "Version Upgraded",
+        description: `${templateName} upgraded from v${result.previousVersion} to v${result.newVersion}`,
+      });
+
+      // Silent refresh to sync with server
+      await onProjectUpdate(true);
+    } catch (error) {
+      console.error('Error upgrading template version:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to upgrade template version",
+        variant: "destructive",
+      });
+    }
+  }, [project, toast, onProjectUpdate, updateProjectState]);
 
   // Handle archive project
   const handleArchiveProject = useCallback(async () => {
@@ -833,6 +900,7 @@ export function useProjectActions(
     handleTemplateRemove,
     handleSupervisorCheck,
     handleAssignmentUpdate,
+    handleUpgradeVersion,
     handleArchiveProject,
     handleProjectDeleted,
     handleBackToDashboard,

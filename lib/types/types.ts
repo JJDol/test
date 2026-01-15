@@ -198,6 +198,17 @@ export interface Project {
   created_at?: string;
   updated_at?: string;
   phase: ProjectPhase;
+  template_version_locks?: {
+    [templateName: string]: number;
+  };
+  custom_templates?: {
+    [templateName: string]: {
+      file_name: string;  // Path to project-specific template file in storage
+      variables: DocumentVariable[];  // Variables extracted from custom template
+      original_version: number;  // The global template version this was forked from
+      created_at: string;
+    };
+  };
   previous_phase_vars?: {
     [category in DocumentCategory]: {
       [templateName: string]: {
@@ -333,6 +344,7 @@ export interface ProjectActionsActions {
     supervisor_id?: string;
     supervisor_name?: string;
   }) => Promise<void>;
+  handleUpgradeVersion: (templateName: string) => Promise<void>;
   handleArchiveProject: () => Promise<void>;
   handleProjectDeleted: () => void;
   handleBackToDashboard: () => void;
