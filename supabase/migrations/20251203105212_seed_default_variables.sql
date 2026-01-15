@@ -79,28 +79,28 @@ VALUES
     '[
       {
         "id": "ark1-room-program",
-        "name": "Room Program"
+        "name": "Room Program",
         "type": "text",
         "description": "Summary of room program"
       },
       {
         "id": "ark1-area-schedule",
-        "name": "Area Schedule (m2)"
+        "name": "Area Schedule (m2)",
         "type": "number",
         "description": "Area Schedule"
       },
       {
         "id": "ark1-mep-requirements",
-        "name": "Mechanical, Electrical, and Plumbing (MEP) Requirements"
+        "name": "Mechanical, Electrical, and Plumbing (MEP) Requirements",
         "type": "text",
         "description": "Description of MEP requirements"
       },
       {
         "id": "ark1-exterior-materials",
-        "name": "Exterior Materials (facade)"
+        "name": "Exterior Materials (facade)",
         "type": "text",
         "description": "Description of the exterior materials of the facade"
-      },
+      }
     ]'::jsonb
   ),
   (
@@ -110,7 +110,7 @@ VALUES
     '[
       {
         "id": "f01-natioanl-fire-code",
-        "name": "Natioanl Fire Code"
+        "name": "Natioanl Fire Code",
         "type": "dropdown",
         "description": "Description of the exterior materials of the facade",
         "dropdownOptions": [
@@ -121,7 +121,7 @@ VALUES
       },
       {
         "id": "f01-occupancy-type",
-        "name": "Occupancy Type per Room/Zone"
+        "name": "Occupancy Type per Room/Zone",
         "type": "dropdown",
         "description": "",
         "dropdownOptions": [
@@ -132,13 +132,13 @@ VALUES
       },
       {
         "id": "f01-max-occupant-load",
-        "name": "Maximum Occupant Load (people per area)"
+        "name": "Maximum Occupant Load (people per area)",
         "type": "number",
         "description": ""
       },
       {
         "id": "f01-special-user-group",
-        "name": "Special User Group"
+        "name": "Special User Group",
         "type": "dropdown",
         "description": "",
         "dropdownOptions": [
@@ -156,13 +156,13 @@ VALUES
     '[
       {
         "id": "auth-permit-case-id",
-        "name": "Permit Case ID"
+        "name": "Permit Case ID",
         "type": "text",
         "description": ""
       },
       {
         "id": "auth-permit-application-date",
-        "name": "Application Date for Permit"
+        "name": "Application Date for Permit",
         "type": "date",
         "description": ""
       }
@@ -175,17 +175,17 @@ VALUES
     '[
       {
         "id": "e1-energy-demand",
-        "name": "Energy Demand"
+        "name": "Energy Demand",
         "type": "number",
         "description": ""
       },
       {
         "id": "e1-energy-reference-year",
-        "name": "Reference Year"
+        "name": "Reference Year",
         "type": "date",
         "description": ""
       }
-    ]'
+    ]'::jsonb
   ),
   (
     'CONSTRUCTION',

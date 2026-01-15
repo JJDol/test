@@ -123,11 +123,9 @@ export function DocumentTemplateCard({
             <Badge variant={template.is_public ? "default" : "secondary"}>
               {template.is_public ? "Public" : "Private"}
             </Badge>
-            {template.current_version && template.current_version > 1 && (
-              <Badge variant="outline" className="text-xs">
-                v{template.current_version}
-              </Badge>
-            )}
+            <Badge variant="outline" className="text-xs">
+              v{template.current_version || 1}
+            </Badge>
           </div>
           {template.description ? (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
