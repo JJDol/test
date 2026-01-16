@@ -36,6 +36,9 @@ async function generateDocumentHandler(
 
     const { templateName, variables, category } = await request.json();
 
+    console.log(`[GENERATE] Request body:`, { templateName, category });
+    console.log(`[GENERATE] Variables received:`, JSON.stringify(variables, null, 2));
+
     if (!templateName || !category) {
       return NextResponse.json({
         message: 'Template name and category are required'
@@ -126,13 +129,52 @@ async function generateDocumentHandler(
       template = projectTemplate;
     }
 
+    // Check for custom template, version lock, and get the appropriate file
+    // Priority: 1. Custom template, 2. Version lock, 3. Current version
+    let templateFileName = template.file_name;
+    let templateVariables = template.variables;
+    let isCustomTemplate = false;
+
+    // First, check if project has a custom template for this template name
+    if (project.custom_templates && project.custom_templates[templateName]) {
+      const customTemplate = project.custom_templates[templateName];
+      console.log(`[GENERATE] Using custom project template for ${templateName}`);
+      templateFileName = customTemplate.file_name;
+      templateVariables = customTemplate.variables;
+      isCustomTemplate = true;
+    }
+    // If no custom template, check for version lock
+    else if (project.template_version_locks && project.template_version_locks[templateName]) {
+      const lockedVersion = project.template_version_locks[templateName];
+      console.log(`[GENERATE] Using locked version ${lockedVersion} for template ${templateName}`);
+
+      // Fetch version-specific file from template_versions table
+      const { data: versionData, error: versionError } = await supabase
+        .from('template_versions')
+        .select('file_name, variables')
+        .eq('template_name', templateName)
+        .eq('version', lockedVersion)
+        .single();
+
+      if (!versionError && versionData) {
+        templateFileName = versionData.file_name;
+        templateVariables = versionData.variables;
+        console.log(`[GENERATE] Found version ${lockedVersion} file: ${templateFileName}`);
+      } else {
+        console.warn(`[GENERATE] Locked version ${lockedVersion} not found for ${templateName}, using current version`);
+      }
+    } else {
+      console.log(`[GENERATE] No custom template or version lock for ${templateName}, using current version`);
+    }
+
     // Download template file
+    // Note: Custom templates are always stored as non-public (project-specific)
     const { data: templateFile, error: templateDownloadError } = await storageService.downloadFile(
       {
         companyId: template.company_id,
-        isPublic: template.is_public
+        isPublic: isCustomTemplate ? false : template.is_public
       },
-      template.file_name
+      templateFileName
     );
 
     if (templateDownloadError || !templateFile) {
@@ -149,8 +191,8 @@ async function generateDocumentHandler(
 
     // Create a mapping from normalized names to original tag names for content controls
     const tagNameMapping: { [normalizedKey: string]: string } = {};
-    if (template.variables && Array.isArray(template.variables)) {
-      template.variables.forEach((templateVar: any) => {
+    if (templateVariables && Array.isArray(templateVariables)) {
+      templateVariables.forEach((templateVar: any) => {
         if (templateVar.originalTag && templateVar.name) {
           const normalizedName = normalizeVariableName(templateVar.name);
           tagNameMapping[normalizedName] = templateVar.originalTag;

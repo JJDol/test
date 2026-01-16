@@ -85,8 +85,49 @@ export interface DocumentTemplate {
   original_file_name: string | null;
   is_public: boolean;
   user_id?: string | null; // TODO: consider this to be mandatory
+  current_version?: number;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface TemplateUsageInfo {
+  projectCount: number;
+  projects: {
+    id: string;
+    name: string;
+    category: string;
+  }[];
+}
+
+// Template versioning types
+export interface TemplateVersion {
+  id: string;
+  template_name: string;
+  version: number;
+  file_name: string;
+  original_file_name: string | null;
+  variables: DocumentVariable[];
+  changes_summary: VersionChangesSummary | null;
+  created_at: string;
+  created_by: string | null;
+  company_id: string;
+}
+
+export interface VersionChangesSummary {
+  added: VariableChange[];
+  removed: VariableChange[];
+  modified: VariableChange[];
+}
+
+export interface VariableChange {
+  name: string;
+  type?: string;
+  oldType?: string;
+  newType?: string;
+  mappedTo?: string; // For renamed variables
 }
 
 export interface ProjectTemplate {
@@ -157,6 +198,17 @@ export interface Project {
   created_at?: string;
   updated_at?: string;
   phase: ProjectPhase;
+  template_version_locks?: {
+    [templateName: string]: number;
+  };
+  custom_templates?: {
+    [templateName: string]: {
+      file_name: string;  // Path to project-specific template file in storage
+      variables: DocumentVariable[];  // Variables extracted from custom template
+      original_version: number;  // The global template version this was forked from
+      created_at: string;
+    };
+  };
   previous_phase_vars?: {
     [category in DocumentCategory]: {
       [templateName: string]: {
@@ -292,6 +344,7 @@ export interface ProjectActionsActions {
     supervisor_id?: string;
     supervisor_name?: string;
   }) => Promise<void>;
+  handleUpgradeVersion: (templateName: string) => Promise<void>;
   handleArchiveProject: () => Promise<void>;
   handleProjectDeleted: () => void;
   handleBackToDashboard: () => void;

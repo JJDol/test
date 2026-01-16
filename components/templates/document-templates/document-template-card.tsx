@@ -10,10 +10,11 @@
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentTemplate } from "@/lib/types/types";
-import { ChevronDown, DownloadIcon, Pencil, Trash2, UploadCloud } from "lucide-react";
+import { ChevronDown, DownloadIcon, Loader2, Pencil, Trash2, UploadCloud } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { getVariableTypeStyle } from "@/utils/variable-type-styles";
 
@@ -23,6 +24,7 @@ interface DocumentTemplateCardProps {
   onToggleExpanded: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onReupload: () => void;
 }
 
 export function DocumentTemplateCard({
@@ -31,11 +33,13 @@ export function DocumentTemplateCard({
   onToggleExpanded,
   onEdit,
   onDelete,
+  onReupload,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
-
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
+    setIsDownloading(true);
     try {
       console.log('Starting template download for:', template.name);
 
@@ -93,6 +97,8 @@ export function DocumentTemplateCard({
         description: error instanceof Error ? error.message : "Failed to download template",
         variant: "destructive",
       });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -117,6 +123,9 @@ export function DocumentTemplateCard({
             <Badge variant={template.is_public ? "default" : "secondary"}>
               {template.is_public ? "Public" : "Private"}
             </Badge>
+            <Badge variant="outline" className="text-xs">
+              v{template.current_version || 1}
+            </Badge>
           </div>
           {template.description ? (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
@@ -133,17 +142,22 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-9 w-9 text-foreground/70 hover:text-foreground"
-              title="Download"
+              title={isDownloading ? "Downloading..." : "Download"}
               onClick={handleDownload}
+              disabled={isDownloading}
             >
-              <DownloadIcon className="h-5 w-5" />
+              {isDownloading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <DownloadIcon className="h-5 w-5" />
+              )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-foreground/50 hover:text-foreground"
-              title="Reupload (coming soon)"
-              disabled
+              className="h-9 w-9 text-foreground/70 hover:text-foreground"
+              title="Upload New Version"
+              onClick={onReupload}
             >
               <UploadCloud className="h-5 w-5" />
             </Button>

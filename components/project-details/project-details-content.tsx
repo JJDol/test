@@ -98,6 +98,7 @@ interface ProjectDetailsContentProps {
       supervisor_id?: string;
       supervisor_name?: string;
     }) => Promise<void>;
+    handleUpgradeVersion?: (templateName: string) => Promise<void>;
     handleArchiveProject: () => Promise<void>;
     handleProjectDeleted: () => void;
     handleBackToDashboard: () => void;
@@ -190,6 +191,7 @@ export function ProjectDetailsContent({
           onSupervisorCheck={actions.handleSupervisorCheck}
           onGenerateDocument={actions.handleGenerateDocument}
           onAssignmentUpdate={actions.handleAssignmentUpdate}
+          onUpgradeVersion={actions.handleUpgradeVersion}
           onToggleTemplateCollapse={actions.toggleTemplateCollapse}
           onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
           onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}

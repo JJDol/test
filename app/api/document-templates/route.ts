@@ -101,12 +101,13 @@ async function getTemplatesHandler(request: AuthenticatedRequest) {
   const category = searchParams.get('category');
   const isPublic = searchParams.get('isPublic');
   const isPrivate = searchParams.get('isPrivate');
+  const includeArchived = searchParams.get('includeArchived') === 'true';
 
   // TODO: add category validation and length check/limit
-  
+
   try {
     const supabase = await createClient();
-    
+
     // Get current user profile (auth middleware already verified user exists)
     const { data: currentUserProfile, error: currentUserError } = await supabase
       .from('users')
@@ -125,6 +126,11 @@ async function getTemplatesHandler(request: AuthenticatedRequest) {
       .from('document_templates')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Filter out archived templates by default
+    if (!includeArchived) {
+      query = query.or('is_archived.is.null,is_archived.eq.false');
+    }
 
     // Apply view mode filtering
     // TODO: 3 levels of access, public, private, and company-wide

@@ -15,6 +15,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +24,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
 import { DocumentAssignDialog } from "@/components/ui/document-assign-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ProjectTemplateReuploadDialog } from "./project-template-reupload-dialog";
+import { ChevronDown, ChevronUp, MoreHorizontal, ArrowUpCircle, Upload, RotateCcw } from "lucide-react";
 import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
 import { DocumentTemplate, Project, User } from "@/lib/types/types";
 import { DocumentVariable } from "@/lib/types/variable-types";
+import { useToast } from "@/components/ui/toast";
 
 interface DocumentTemplateCardProps {
   template: DocumentTemplate;
@@ -54,6 +58,8 @@ interface DocumentTemplateCardProps {
     supervisor_id?: string;
     supervisor_name?: string;
   }) => Promise<void>;
+  onUpgradeVersion?: (templateName: string) => Promise<void>;
+  onRefresh?: () => void | Promise<void>;
   canAssignDocuments: boolean;
   canManageProject: boolean;
 }
@@ -78,20 +84,99 @@ export function DocumentTemplateCard({
   onGenerateDocument,
   onTemplateRemove,
   onAssignmentUpdate,
+  onUpgradeVersion,
+  onRefresh,
   canAssignDocuments,
   canManageProject,
 }: DocumentTemplateCardProps) {
+  const { toast } = useToast();
+
+  // State for dialogs
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReuploadDialog, setShowReuploadDialog] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Get current assignments for this template
   const currentAssignments = project.document_assignments?.[template.name];
+
+  // Version info
+  const lockedVersion = project.template_version_locks?.[template.name] || 1;
+  const latestVersion = template.current_version || 1;
+  const hasNewerVersion = latestVersion > lockedVersion;
+
+  // Check if project has a custom template
+  const hasCustomTemplate = !!(project.custom_templates?.[template.name]);
+
+  // Handle reset to original
+  const handleResetToOriginal = async () => {
+    setIsResetting(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}/reset-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateName: template.name }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reset template');
+      }
+
+      toast({
+        title: "Success",
+        description: "Template reset to original",
+      });
+
+      setShowResetConfirm(false);
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error) {
+      console.error('Error resetting template:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to reset template',
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <Card className="p-6">
       {/* Template Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">{template.name}</h3>
-          <p className="text-sm text-gray-500">{template.description}</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">{template.name}</h3>
+            <p className="text-sm text-gray-500">{template.description}</p>
+          </div>
+          {/* Version Badge */}
+          <Badge
+            variant={hasNewerVersion ? "outline" : "secondary"}
+            className={`text-xs ${hasNewerVersion ? "border-amber-500 text-amber-600" : ""}`}
+            title={hasNewerVersion
+              ? `Using version ${lockedVersion}. Version ${latestVersion} available.`
+              : `Using latest version (v${lockedVersion})`
+            }
+          >
+            v{lockedVersion}
+            {hasNewerVersion && (
+              <ArrowUpCircle className="ml-1 h-3 w-3" />
+            )}
+          </Badge>
+          {/* Custom Template Badge */}
+          {hasCustomTemplate && (
+            <Badge
+              variant="outline"
+              className="text-xs border-blue-500 text-blue-600"
+              title="This project uses a customized version of the template"
+            >
+              Customized
+            </Badge>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
@@ -108,6 +193,34 @@ export function DocumentTemplateCard({
                   Generate document
                 </DropdownMenuItem>
               )}
+              {!project.is_archived && hasNewerVersion && onUpgradeVersion && (
+                <DropdownMenuItem
+                  onClick={() => onUpgradeVersion(template.name)}
+                  className="text-amber-600"
+                >
+                  <ArrowUpCircle className="mr-2 h-4 w-4" />
+                  Upgrade to v{latestVersion}
+                </DropdownMenuItem>
+              )}
+              {!project.is_archived && canManageProject && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Reupload Document
+                  </DropdownMenuItem>
+                  {hasCustomTemplate && (
+                    <DropdownMenuItem
+                      onClick={() => setShowResetConfirm(true)}
+                      className="text-blue-600"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reset to Original
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                </>
+              )}
               {canAssignDocuments && (
                 <DocumentAssignDialog
                   projectId={Number(project.id)}
@@ -118,11 +231,11 @@ export function DocumentTemplateCard({
                 />
               )}
               {canManageProject && (
-                <DropdownMenuItem 
-                  onClick={() => onTemplateRemove(template.name, template.category)} 
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteConfirm(true)}
                   className="text-red-600"
                 >
-                  Delete selected document
+                  Remove from project
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -247,6 +360,66 @@ export function DocumentTemplateCard({
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove template from project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove <strong>{template.name}</strong> from this project.
+              The template itself will not be deleted and can be added back later.
+              Any filled variables for this template will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onTemplateRemove(template.name, template.category)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset to Original Confirmation Dialog */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset to original template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the customized version of <strong>{template.name}</strong> and
+              revert to the original global template.
+              Your variable values will be preserved, but the template structure will change
+              back to the original.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetToOriginal}
+              disabled={isResetting}
+            >
+              {isResetting ? "Resetting..." : "Reset to Original"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Project Template Reupload Dialog */}
+      <ProjectTemplateReuploadDialog
+        open={showReuploadDialog}
+        onOpenChange={setShowReuploadDialog}
+        template={template}
+        projectId={project.id}
+        onReuploadComplete={async () => {
+          if (onRefresh) {
+            await onRefresh();
+          }
+        }}
+      />
     </Card>
   );
 }

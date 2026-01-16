@@ -81,6 +81,7 @@ interface ProjectDocumentsSectionProps {
     supervisor_id?: string;
     supervisor_name?: string;
   }) => Promise<void>;
+  onUpgradeVersion?: (templateName: string) => Promise<void>;
   onToggleTemplateCollapse: (templateName: string) => void;
   onToggleGlobalSectionCollapse: () => void;
   onToggleCategorySectionCollapse: (category: DocumentCategory) => void;
@@ -112,6 +113,7 @@ export function ProjectDocumentsSection({
   onSupervisorCheck,
   onGenerateDocument,
   onAssignmentUpdate,
+  onUpgradeVersion,
   onToggleTemplateCollapse,
   onToggleGlobalSectionCollapse,
   onToggleCategorySectionCollapse,
@@ -270,9 +272,11 @@ export function ProjectDocumentsSection({
                           onGenerateDocument={onGenerateDocument}
                           onTemplateRemove={onTemplateRemove}
                           onAssignmentUpdate={onAssignmentUpdate}
-                          canAssignDocuments={currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id || 
+                          onUpgradeVersion={onUpgradeVersion}
+                          onRefresh={onRefresh}
+                          canAssignDocuments={currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id ||
                             currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id}
-                          canManageProject={currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id}
+                          canManageProject={currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id}
                         />
                       </ErrorBoundary>
                         ))}
