@@ -90,6 +90,7 @@ interface ProjectDetailsContentProps {
     handleDownloadProject: () => Promise<void>;
     handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
     handleTemplateSelected: (template: DocumentTemplate) => void;
+    handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
     handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
     handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
     handleAssignmentUpdate: (templateName: string, assignments: {
@@ -185,6 +186,7 @@ export function ProjectDetailsContent({
           onTabChange={actions.setActiveCategory}
           onRefresh={actions.refreshProject}
           onTemplateSelected={actions.handleTemplateSelected}
+          onProjectTemplateSelected={actions.handleProjectTemplateSelected}
           onTemplateRemove={actions.handleTemplateRemove}
           onVariableChange={actions.handleVariableChange}
           onPropagationChange={actions.handlePropagationChange}

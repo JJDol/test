@@ -70,6 +70,7 @@ interface ProjectDocumentsSectionProps {
   onTabChange: (category: DocumentCategory) => void;
   onRefresh: () => void;
   onTemplateSelected: (template: DocumentTemplate) => void;
+  onProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
   onTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
   onVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
   onPropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
@@ -107,6 +108,7 @@ export function ProjectDocumentsSection({
   onTabChange,
   onRefresh,
   onTemplateSelected,
+  onProjectTemplateSelected,
   onTemplateRemove,
   onVariableChange,
   onPropagationChange,
@@ -180,6 +182,7 @@ export function ProjectDocumentsSection({
               <TemplateSelectorDialog
                 category={activeCategory}
                 onTemplateSelected={onTemplateSelected}
+                onProjectTemplateSelected={onProjectTemplateSelected}
                 existingTemplates={project?.[`${activeCategory.toLowerCase()}_templates` as keyof Project] as string[] || []}
                 trigger={
                   <Button variant="outline" className="w-full">

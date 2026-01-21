@@ -336,6 +336,7 @@ export interface ProjectActionsActions {
   handleDownloadProject: () => Promise<void>;
   handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
   handleTemplateSelected: (template: DocumentTemplate) => Promise<void>;
+  handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => Promise<void>;
   handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
   handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
   handleAssignmentUpdate: (templateName: string, assignments: {
@@ -442,8 +443,9 @@ export interface UseProjectDetailsReturn {
     // Action handlers
     handleDownloadProject: () => Promise<void>;
     handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
-    handleTemplateSelected: (template: DocumentTemplate) => void;
-    handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
+  handleTemplateSelected: (template: DocumentTemplate) => void;
+  handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
+  handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
     handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
     handleAssignmentUpdate: (templateName: string, assignments: {
       assignee_id?: string;
