@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DocumentTemplate, DocumentCategory, ProjectTemplate } from "@/lib/types/types"
 import { Card } from "./card"
 import { Input } from "./input"
-import { Search, Package, FileText } from "lucide-react"
+import { Search, Package, FileText, Plus } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs"
 
 interface TemplateSelectorDialogProps {
@@ -114,9 +114,12 @@ export function TemplateSelectorDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" className="w-full">
-            Add {category} Document
-          </Button>
+          <div className="flex justify-end w-full">
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add {category} Document
+            </Button>
+          </div>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] max-h-[80vh] flex flex-col">

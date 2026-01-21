@@ -20,7 +20,7 @@
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus } from "lucide-react";
 import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } from "@/lib/types/types";
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
@@ -28,6 +28,7 @@ import { DocumentTemplateCard } from './document-template-card';
 import { Project, DocumentTemplate, User } from "@/lib/types/types";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DocumentVariable } from "@/lib/types/variable-types";
+import { Badge } from "@/components/ui/badge";
 
 interface ProjectDocumentsSectionProps {
   // Data
@@ -164,28 +165,44 @@ export function ProjectDocumentsSection({
         
         {/* Category Tabs */}
         <Tabs defaultValue={activeCategory} className="w-full">
-          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-8 w-full">
-            {Object.values(DocumentCategory).map((category) => (
-              <TabsTrigger
-                key={category}
-                value={category}
-                onClick={() => onTabChange(category)}
-                className="px-4 py-2"
-              >
-                {getCategoryDisplayName(category)}
-              </TabsTrigger>
-            ))}
+          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-8 w-full h-auto">
+            {Object.values(DocumentCategory).map((category) => {
+              const templateNames = project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || [];
+              const count = templateNames.length;
+              
+              return (
+                <TabsTrigger
+                  key={category}
+                  value={category}
+                  onClick={() => onTabChange(category)}
+                  className="px-4 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    {getCategoryDisplayName(category)}
+                    {count > 0 && (
+                      <Badge 
+                        variant="default" 
+                        className="px-1.5 py-0.5 min-w-[1.25rem] h-5 justify-center bg-black text-white hover:bg-black/90"
+                      >
+                        {count}
+                      </Badge>
+                    )}
+                  </div>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           {/* Add Document Button */}
           {!project.is_archived && (
-            <div className="w-full">
+            <div className="flex justify-end mb-6">
               <TemplateSelectorDialog
                 category={activeCategory}
                 onTemplateSelected={onTemplateSelected}
                 onProjectTemplateSelected={onProjectTemplateSelected}
                 existingTemplates={project?.[`${activeCategory.toLowerCase()}_templates` as keyof Project] as string[] || []}
                 trigger={
-                  <Button variant="outline" className="w-full">
+                  <Button size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
                     Add {getCategoryDisplayName(activeCategory)} Document
                   </Button>
                 }
