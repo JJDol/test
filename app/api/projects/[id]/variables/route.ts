@@ -63,90 +63,60 @@ async function getVariablesHandler(
       request.user.id
     );
     
-    // Flatten general variables from category structure to flat structure for UI
-    // TODO: Investigate if this logic is correct
+    // Flatten global and category variables for UI
     const flattenedGeneralValues: { [variableName: string]: { value: any; type: string } } = {};
     
-    if (project.general_variables) {
-      Object.values(project.general_variables).forEach((categoryVars: any) => {
-        if (Array.isArray(categoryVars)) {
-          categoryVars.forEach((variable: any) => {
-            if (variable.name) {
-              // Find the general value by looking for templates that use general mode for this variable
-              let variableValue = null;
-              let sourceTemplate = null;
-              
-              // Check each template that contains this variable
-              for (const templateName of variable.documents || []) {
-                const propagationSetting = project.variable_propagation_settings?.[templateName]?.[variable.name];
-                const useGeneral = propagationSetting !== 'local'; // Default to general unless explicitly set to local
-                
-                if (useGeneral) {
-                  const templateValue = project.template_variables?.[templateName]?.[variable.name];
-                  if (templateValue !== null && templateValue !== undefined) {
-                    // Check if the value is actually filled
-                    const isFilled = typeof templateValue === 'string' 
-                      ? templateValue.trim() !== ''
-                      : templateValue && typeof templateValue === 'object' && 'value' in templateValue 
-                        ? templateValue.value !== null && templateValue.value !== undefined
-                        : false;
-                    
-                    if (isFilled) {
-                      variableValue = templateValue;
-                      sourceTemplate = templateName;
-                      break; // Use the first filled value we find
-                    }
+    // Process global variables
+    if (project.global_variables?.variables) {
+      project.global_variables.variables.forEach((variable: any) => {
+        if (variable.name) {
+          // Find the value from template_variables (all templates with this global var should have the same value)
+          let variableValue = '';
+          const categories = Object.keys(project.template_variables || {});
+          
+          for (const cat of categories) {
+            const templates = Object.keys(project.template_variables[cat] || {});
+            for (const tName of templates) {
+              const vars = project.template_variables[cat][tName]?.variables || [];
+              const v = vars.find((varObj: any) => varName(varObj) === variable.name);
+              if (v && v.value) {
+                variableValue = v.value;
+                break;
+              }
+            }
+            if (variableValue) break;
+          }
+
+          flattenedGeneralValues[variable.name] = {
+            value: variableValue,
+            type: variable.type || 'text'
+          };
+        }
+      });
+    }
+
+    // Process category variables
+    if (project.category_variables) {
+      Object.values(project.category_variables).forEach((catObj: any) => {
+        if (catObj.variables) {
+          catObj.variables.forEach((variable: any) => {
+            if (variable.name && !flattenedGeneralValues[variable.name]) {
+              // Find the value from template_variables
+              let variableValue = '';
+              const categories = Object.keys(project.template_variables || {});
+              for (const cat of categories) {
+                const templates = Object.keys(project.template_variables[cat] || {});
+                for (const tName of templates) {
+                  const vars = project.template_variables[cat][tName]?.variables || [];
+                  const v = vars.find((varObj: any) => varName(varObj) === variable.name);
+                  if (v && v.value) {
+                    variableValue = v.value;
+                    break;
                   }
                 }
+                if (variableValue) break;
               }
-              
-              // If we found a value, propagate it to all templates that use this general variable
-              if (variableValue && sourceTemplate) {
-                const updatedTemplateVariables = { ...project.template_variables };
-                let hasUpdates = false;
-                
-                variable.documents.forEach((templateName: string) => {
-                  if (templateName !== sourceTemplate) {
-                    const propagationSetting = project.variable_propagation_settings?.[templateName]?.[variable.name];
-                    const useGeneral = propagationSetting !== 'local';
-                    
-                    if (useGeneral) {
-                      const currentValue = project.template_variables?.[templateName]?.[variable.name];
-                      const isCurrentValueEmpty = !currentValue || 
-                        (typeof currentValue === 'string' && currentValue.trim() === '') ||
-                        (currentValue && typeof currentValue === 'object' && 'value' in currentValue && !currentValue.value);
-                      
-                      if (isCurrentValueEmpty) {
-                        if (!updatedTemplateVariables[templateName]) {
-                          updatedTemplateVariables[templateName] = {};
-                        }
-                        updatedTemplateVariables[templateName][variable.name] = variableValue;
-                        hasUpdates = true;
-                      }
-                    }
-                  }
-                });
-                
-                // Update the database if we have changes
-                if (hasUpdates) {
-                  supabase
-                    .from('projects')
-                    .update({ 
-                      template_variables: updatedTemplateVariables,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', project.id)
-                    .eq('company_id', userProfile.company_id)
-                    .then(({ error }) => {
-                      if (error) {
-                        console.error('Error propagating general variable values:', error);
-                      } else {
-                        console.log(`Propagated general variable ${variable.name} from ${sourceTemplate} to other templates`);
-                      }
-                    });
-                }
-              }
-              
+
               flattenedGeneralValues[variable.name] = {
                 value: variableValue,
                 type: variable.type || 'text'
@@ -155,6 +125,11 @@ async function getVariablesHandler(
           });
         }
       });
+    }
+
+    // Helper to get variable name regardless of object structure
+    function varName(v: any) {
+      return typeof v === 'string' ? v : v.name;
     }
 
     return NextResponse.json({
@@ -236,32 +211,49 @@ async function updateVariablesHandler(
     
     console.log('User permissions:', permission);
     
-    // Update general variables (only if user has permission)
-    // TODO: Investigate if this logic is correct
+    // Update global/category variables (only if user has permission)
     if (generalVariables && permission) {
-      // The generalVariables come in flattened format: {variableName: {value, type}}
-      // But we need to store them back in the existing category structure
-      // For now, we'll update the template_variables with these values since that's where they're actually stored
-      // This is a temporary solution until we restructure the data storage
-      
       const updatedTemplateVariables = { ...project.template_variables };
       
       // Update all templates that use each general variable
       Object.entries(generalVariables).forEach(([variableName, variableData]: [string, any]) => {
         const value = variableData.value;
         
-        // Find all templates that use this general variable
-        Object.values(project.general_variables || {}).forEach((categoryVars: any) => {
-          if (Array.isArray(categoryVars)) {
-            categoryVars.forEach((generalVar: any) => {
-              if (generalVar.name === variableName && generalVar.documents) {
-                // Update this variable in all templates that use it
-                generalVar.documents.forEach((templateName: string) => {
-                  if (!updatedTemplateVariables[templateName]) {
-                    updatedTemplateVariables[templateName] = {};
-                  }
-                  updatedTemplateVariables[templateName][variableName] = value;
-                });
+        // Update in global variables
+        const isGlobal = project.global_variables?.variables?.some((v: any) => v.name === variableName);
+        
+        if (isGlobal) {
+          // Find all templates that have this variable and are in GLOBAL scope
+          Object.keys(project.template_variables || {}).forEach(cat => {
+            Object.keys(project.template_variables[cat] || {}).forEach(tName => {
+              const scope = project.variable_propagation_settings?.[cat]?.[tName]?.[variableName]?.currentScope;
+              if (scope === 'GLOBAL') {
+                if (!updatedTemplateVariables[cat][tName]) {
+                  updatedTemplateVariables[cat][tName] = { variables: [] };
+                }
+                const vIndex = updatedTemplateVariables[cat][tName].variables.findIndex((v: any) => v.name === variableName);
+                if (vIndex >= 0) {
+                  updatedTemplateVariables[cat][tName].variables[vIndex].value = value;
+                }
+              }
+            });
+          });
+        }
+
+        // Update in category variables
+        Object.keys(project.category_variables || {}).forEach(cat => {
+          const isCategoryVar = project.category_variables[cat]?.variables?.some((v: any) => v.name === variableName);
+          if (isCategoryVar) {
+            Object.keys(project.template_variables[cat] || {}).forEach(tName => {
+              const scope = project.variable_propagation_settings?.[cat]?.[tName]?.[variableName]?.currentScope;
+              if (scope === 'CATEGORY') {
+                if (!updatedTemplateVariables[cat][tName]) {
+                  updatedTemplateVariables[cat][tName] = { variables: [] };
+                }
+                const vIndex = updatedTemplateVariables[cat][tName].variables.findIndex((v: any) => v.name === variableName);
+                if (vIndex >= 0) {
+                  updatedTemplateVariables[cat][tName].variables[vIndex].value = value;
+                }
               }
             });
           }
@@ -269,12 +261,6 @@ async function updateVariablesHandler(
       });
       
       updateData.template_variables = updatedTemplateVariables;
-      console.log('Adding template_variables update for general variables:', updatedTemplateVariables);
-    } else {
-      console.log('Skipping general_variables update:', { 
-        hasGeneralVariables: !!generalVariables, 
-        canEditGeneral: permission 
-      });
     }
     
     // Update template variables (if provided)

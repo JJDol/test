@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { DocumentCategory } from '@/lib/types/types';
 import { withAuthDynamic, AuthenticatedRequest, RouteContext } from '@/lib/auth/auth-middleware';
 
+import { VariableProcessor } from '@/lib/services/processors/project-variable-processor';
+
 /**
  * Individual Project Operations API Routes
  * 
@@ -423,6 +425,22 @@ async function updateProjectHandler(
 
     if (error) throw error;
     if (!project) return NextResponse.json({ message: 'Project not found' }, { status: 404 });
+
+    // Trigger recalculation of general variables if any template arrays were changed
+    const templateArraysChanged = templateFields.some(field => field in updates);
+    if (templateArraysChanged) {
+      try {
+        const variableProcessor = new VariableProcessor();
+        await variableProcessor.updateProjectGeneralVariables(
+          id,
+          currentUserProfile.company_id,
+          request.user.id
+        );
+        console.log('General variables recalculated after project update');
+      } catch (recalcError) {
+        console.error('Failed to recalculate general variables after project update:', recalcError);
+      }
+    }
 
     // Transform the response to match frontend expectations
     const transformedProject = {
