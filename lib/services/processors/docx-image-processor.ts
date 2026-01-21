@@ -230,9 +230,13 @@ async function processVariablesForDocxTemplates(
         // Calculate image dimensions and convert to appropriate size for document
         const dimensions = calculateImageDimensions(imageBufferForSize);
         
-        // For docx-templates, we need to pass the buffer directly
-        // The library will handle the image insertion automatically
-        processed[key] = imageBufferForSize;
+        // For docx-templates, we pass an object with dimensions to preserve aspect ratio
+        processed[key] = {
+          width: dimensions.width,
+          height: dimensions.height,
+          data: imageBufferForSize,
+          extension: extension
+        };
         
         console.log(`Created image object for ${key}: ${extension}, ${imageBuffer.byteLength} bytes, ${dimensions.width}x${dimensions.height}cm`);
         
@@ -253,8 +257,13 @@ async function processVariablesForDocxTemplates(
             // Calculate dimensions for base64 images too
             const dimensions = calculateImageDimensions(imageBuffer);
             
-            // For docx-templates, we need to pass the buffer directly
-            processed[key] = imageBuffer;
+            // For docx-templates, we pass an object with dimensions to preserve aspect ratio
+            processed[key] = {
+              width: dimensions.width,
+              height: dimensions.height,
+              data: imageBuffer,
+              extension: extension
+            };
             
             console.log(`Created base64 image object for ${key}: ${dimensions.width}x${dimensions.height}cm`);
         } else {
@@ -311,26 +320,22 @@ function calculateImageDimensions(imageBuffer: Buffer): { width: number; height:
     // Calculate aspect ratio
     const aspectRatio = dimensions.width / dimensions.height;
     
-    // Set maximum dimensions in cm (reasonable for document)
-    const maxWidthCm = 12;  // Max width: 12cm
-    const maxHeightCm = 8;  // Max height: 8cm
+    // Set target dimensions in cm
+    // We want a consistent height while preserving aspect ratio
+    const targetHeightCm = 3; // Consistent height for all images (was 4)
+    const maxWidthCm = 16;   // Max width to prevent page overflow
+    const minSize = 1;       // Minimum size
     
-    let widthCm: number;
-    let heightCm: number;
+    let heightCm = targetHeightCm;
+    let widthCm = heightCm * aspectRatio;
     
-    // Scale based on aspect ratio while respecting maximums
-    if (aspectRatio > maxWidthCm / maxHeightCm) {
-      // Image is wider - limit by width
-      widthCm = Math.min(maxWidthCm, dimensions.width * 0.02646); // Convert px to cm (96 DPI)
+    // If image is extremely wide, limit by max width
+    if (widthCm > maxWidthCm) {
+      widthCm = maxWidthCm;
       heightCm = widthCm / aspectRatio;
-    } else {
-      // Image is taller - limit by height
-      heightCm = Math.min(maxHeightCm, dimensions.height * 0.02646);
-      widthCm = heightCm * aspectRatio;
     }
     
     // Ensure minimum size
-    const minSize = 2; // cm
     if (widthCm < minSize) {
       widthCm = minSize;
       heightCm = widthCm / aspectRatio;
