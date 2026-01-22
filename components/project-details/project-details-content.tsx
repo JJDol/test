@@ -19,7 +19,7 @@ import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { ProjectOverview } from "./project-overview";
 import { ProjectDocumentsSection } from "./project-documents-section";
 import { DocumentCategory } from "@/lib/types/types";
-import { User, Project, DocumentTemplate } from "@/lib/types/types";
+import { User, Project, DocumentTemplate, ProjectTemplate } from "@/lib/types/types";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 
 interface ProjectDetailsContentProps {

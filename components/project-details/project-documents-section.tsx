@@ -25,7 +25,7 @@ import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } fr
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
 import { DocumentTemplateCard } from './document-template-card';
-import { Project, DocumentTemplate, User } from "@/lib/types/types";
+import { Project, DocumentTemplate, User, ProjectTemplate } from "@/lib/types/types";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DocumentVariable } from "@/lib/types/variable-types";
 import { Badge } from "@/components/ui/badge";

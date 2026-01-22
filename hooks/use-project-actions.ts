@@ -23,6 +23,7 @@ import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
 import { 
   Project, 
   DocumentTemplate,
+  ProjectTemplate,
   ProjectActionsState, 
   ProjectActionsActions, 
   UseProjectActionsReturn,

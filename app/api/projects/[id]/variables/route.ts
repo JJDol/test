@@ -63,6 +63,9 @@ async function getVariablesHandler(
       request.user.id
     );
     
+    // Helper to get variable name regardless of object structure
+    const varName = (v: any) => typeof v === 'string' ? v : v.name;
+
     // Flatten global and category variables for UI
     const flattenedGeneralValues: { [variableName: string]: { value: any; type: string } } = {};
     
@@ -125,11 +128,6 @@ async function getVariablesHandler(
           });
         }
       });
-    }
-
-    // Helper to get variable name regardless of object structure
-    function varName(v: any) {
-      return typeof v === 'string' ? v : v.name;
     }
 
     return NextResponse.json({
