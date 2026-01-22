@@ -21,16 +21,46 @@ import { useProjectActions } from "./use-project-actions";
 import { useProjectPermissions } from "./use-project-permissions";
 import { getStatusColor } from "@/utils/project-utils";
 import { UseProjectDetailsReturn } from "@/lib/types/types";
+import { useMemo } from "react";
 
 export function useProjectDetails(projectId: string): UseProjectDetailsReturn {
   // Use the data hook
   const projectData = useProjectData(projectId);
   
+  // Merge customizations into templates so the UI reflects project-specific changes
+  const customizedAllTemplates = useMemo(() => {
+    if (!projectData.project?.custom_templates) return projectData.allTemplates;
+    return projectData.allTemplates.map(template => {
+      const customization = projectData.project?.custom_templates?.[template.name];
+      if (customization) {
+        return {
+          ...template,
+          variables: customization.variables
+        };
+      }
+      return template;
+    });
+  }, [projectData.allTemplates, projectData.project?.custom_templates]);
+
+  const customizedTemplates = useMemo(() => {
+    if (!projectData.project?.custom_templates) return projectData.templates;
+    return projectData.templates.map(template => {
+      const customization = projectData.project?.custom_templates?.[template.name];
+      if (customization) {
+        return {
+          ...template,
+          variables: customization.variables
+        };
+      }
+      return template;
+    });
+  }, [projectData.templates, projectData.project?.custom_templates]);
+
   // Use the variables hook
   // TODO: Maybe also pass category templates here
   const projectVariables = useProjectVariables(
     projectData.project,
-    projectData.allTemplates,
+    customizedAllTemplates,
     projectData.actions.refreshProject,
     projectData.actions.updateProjectState
   );
@@ -38,7 +68,7 @@ export function useProjectDetails(projectId: string): UseProjectDetailsReturn {
   // Use the actions hook
   const projectActions = useProjectActions(
     projectData.project,
-    projectData.allTemplates,
+    customizedAllTemplates,
     projectData.actions.refreshProject,
     projectData.actions.updateProjectState
   );
@@ -55,8 +85,8 @@ export function useProjectDetails(projectId: string): UseProjectDetailsReturn {
     currentUser: projectData.currentUser,
     workers: projectData.workers,
     activeCategory: projectData.activeCategory,
-    templates: projectData.templates,
-    allTemplates: projectData.allTemplates,
+    templates: customizedTemplates,
+    allTemplates: customizedAllTemplates,
     
     // State from variables hook
     templateVariables: projectVariables.templateVariables,

@@ -33,7 +33,20 @@ type VariableDefinition = {
   name: string;
   type: BaseVariable["type"];
   dropdownOptions?: { displayText: string; value: string }[];
+  isDefault?: boolean; // Marks variable as non-editable/non-deletable
 };
+
+// Default variables that are automatically added to every new document type
+// These cannot be edited or deleted by users
+const DEFAULT_DOCUMENT_TYPE_VARIABLES: VariableDefinition[] = [
+  { id: "default-document-id", name: "Document ID", type: "text", isDefault: true },
+  { id: "default-document-title", name: "Document Title", type: "text", isDefault: true },
+  { id: "default-document-type", name: "Document Type", type: "text", isDefault: true },
+  { id: "default-revision-id", name: "Revision ID", type: "text", isDefault: true },
+  { id: "default-revision-date", name: "Revision Date", type: "date", isDefault: true },
+  { id: "default-emne-subject", name: "Emne (Subject)", type: "text", isDefault: true },
+  { id: "default-published-date", name: "Published Date", type: "date", isDefault: true },
+];
 
 type GlobalVariableDefinition = {
   id: string;
@@ -572,7 +585,9 @@ export function VariablesContent() {
       description: formValues.description.trim(),
       lastUpdated: "just now",
       variables:
-        dialogState.mode === "edit" ? dialogState.documentType.variables : [],
+        dialogState.mode === "edit" 
+          ? dialogState.documentType.variables 
+          : [...DEFAULT_DOCUMENT_TYPE_VARIABLES], // Pre-populate with default variables
     };
 
     setDocumentTypes(prev => {
@@ -755,6 +770,17 @@ export function VariablesContent() {
     const trimmedName = editingVariable.name.trim();
     if (!trimmedName) return;
 
+    // Safety check: prevent editing default variables
+    if (editingVariable.category && editingVariable.typeId) {
+      const docType = documentTypes[editingVariable.category]?.find(type => type.id === editingVariable.typeId);
+      const variable = docType?.variables.find(v => v.id === editingVariable.id);
+      if (variable?.isDefault) {
+        console.warn("Cannot edit default variables");
+        setEditingVariable(null);
+        return;
+      }
+    }
+
     if (editingVariable.isGlobal) {
       const updatedVariables = globalVariables.map(v =>
         v.id === editingVariable.id
@@ -803,6 +829,17 @@ export function VariablesContent() {
 
   const handleConfirmDeleteVariable = async () => {
     if (!deletingVariable) return;
+
+    // Safety check: prevent deletion of default variables
+    if (deletingVariable.category && deletingVariable.typeId) {
+      const docType = documentTypes[deletingVariable.category]?.find(type => type.id === deletingVariable.typeId);
+      const variable = docType?.variables.find(v => v.id === deletingVariable.id);
+      if (variable?.isDefault) {
+        console.warn("Cannot delete default variables");
+        setDeletingVariable(null);
+        return;
+      }
+    }
 
     if (deletingVariable.isGlobal) {
       const updatedVariables = globalVariables.filter(v => v.id !== deletingVariable.id);
@@ -910,12 +947,17 @@ export function VariablesContent() {
                 {type.variables.map(variable => (
                   <li
                     key={variable.id}
-                    className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                    className={`flex items-center justify-between rounded border px-3 py-2 text-sm ${variable.isDefault ? "bg-muted/30" : ""}`}
                   >
                     <div className="space-y-1">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className="font-medium">{variable.name}</span>
-                        <span className="text-muted-foreground"> • {variable.type}</span>
+                        <span className="text-muted-foreground">• {variable.type}</span>
+                        {variable.isDefault && (
+                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
+                            Default
+                          </span>
+                        )}
                       </div>
                       {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
                         <p className="text-xs text-muted-foreground">
@@ -924,38 +966,40 @@ export function VariablesContent() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingVariable({
-                          id: variable.id,
-                          name: variable.name,
-                          type: variable.type,
-                          dropdownOptions: variable.dropdownOptions || [],
-                          category,
-                          typeId: type.id,
-                          isGlobal: false
-                        })}
-                        aria-label={`Edit variable ${variable.name}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeletingVariable({
-                          id: variable.id,
-                          name: variable.name,
-                          isGlobal: false,
-                          category,
-                          typeId: type.id
-                        })}
-                        aria-label={`Delete variable ${variable.name}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+                    {!variable.isDefault && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingVariable({
+                            id: variable.id,
+                            name: variable.name,
+                            type: variable.type,
+                            dropdownOptions: variable.dropdownOptions || [],
+                            category,
+                            typeId: type.id,
+                            isGlobal: false
+                          })}
+                          aria-label={`Edit variable ${variable.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingVariable({
+                            id: variable.id,
+                            name: variable.name,
+                            isGlobal: false,
+                            category,
+                            typeId: type.id
+                          })}
+                          aria-label={`Delete variable ${variable.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

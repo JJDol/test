@@ -219,7 +219,7 @@ export function ProjectDocumentsSection({
               
               // Check if any template in this category has this variable set to category
               return Object.values(categorySettings).some((templateSettings: any) => 
-                templateSettings[variable.name].currentScope === VariablePropagationScope.CATEGORY
+                templateSettings?.[variable.name]?.currentScope === VariablePropagationScope.CATEGORY
               );
             }) || [];
 
