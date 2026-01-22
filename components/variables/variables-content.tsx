@@ -44,7 +44,7 @@ const DEFAULT_DOCUMENT_TYPE_VARIABLES: VariableDefinition[] = [
   { id: "default-document-type", name: "Document Type", type: "text", isDefault: true },
   { id: "default-revision-id", name: "Revision ID", type: "text", isDefault: true },
   { id: "default-revision-date", name: "Revision Date", type: "date", isDefault: true },
-  { id: "default-emne-subject", name: "Emne (Subject)", type: "text", isDefault: true },
+  { id: "default-emne-subject", name: "Subject", type: "text", isDefault: true },
   { id: "default-published-date", name: "Published Date", type: "date", isDefault: true },
 ];
 
