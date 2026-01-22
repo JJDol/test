@@ -33,7 +33,20 @@ type VariableDefinition = {
   name: string;
   type: BaseVariable["type"];
   dropdownOptions?: { displayText: string; value: string }[];
+  isDefault?: boolean; // Marks variable as non-editable/non-deletable
 };
+
+// Default variables that are automatically added to every new document type
+// These cannot be edited or deleted by users
+const DEFAULT_DOCUMENT_TYPE_VARIABLES: VariableDefinition[] = [
+  { id: "default-document-id", name: "Document ID", type: "text", isDefault: true },
+  { id: "default-document-title", name: "Document Title", type: "text", isDefault: true },
+  { id: "default-document-type", name: "Document Type", type: "text", isDefault: true },
+  { id: "default-revision-id", name: "Revision ID", type: "text", isDefault: true },
+  { id: "default-revision-date", name: "Revision Date", type: "date", isDefault: true },
+  { id: "default-emne-subject", name: "Emne (Subject)", type: "text", isDefault: true },
+  { id: "default-published-date", name: "Published Date", type: "date", isDefault: true },
+];
 
 type GlobalVariableDefinition = {
   id: string;
@@ -88,6 +101,23 @@ export function VariablesContent() {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [dropdownOptionInputs, setDropdownOptionInputs] = useState<Record<string, string>>({});
   const [globalDropdownOptionInput, setGlobalDropdownOptionInput] = useState("");
+  const [editingVariable, setEditingVariable] = useState<{
+    id: string;
+    name: string;
+    type: BaseVariable["type"];
+    dropdownOptions: { displayText: string; value: string }[];
+    category?: DocumentCategory;
+    typeId?: string;
+    isGlobal: boolean;
+  } | null>(null);
+  const [editDropdownOptionInput, setEditDropdownOptionInput] = useState("");
+  const [deletingVariable, setDeletingVariable] = useState<{
+    id: string;
+    name: string;
+    isGlobal: boolean;
+    category?: DocumentCategory;
+    typeId?: string;
+  } | null>(null);
 
   const templateCount = useMemo(() => templates.length, [templates]);
   const totalDocumentTypes = useMemo(
@@ -555,7 +585,9 @@ export function VariablesContent() {
       description: formValues.description.trim(),
       lastUpdated: "just now",
       variables:
-        dialogState.mode === "edit" ? dialogState.documentType.variables : [],
+        dialogState.mode === "edit" 
+          ? dialogState.documentType.variables 
+          : [...DEFAULT_DOCUMENT_TYPE_VARIABLES], // Pre-populate with default variables
     };
 
     setDocumentTypes(prev => {
@@ -622,14 +654,6 @@ export function VariablesContent() {
     await saveGlobalVariablesToDb(updatedVariables);
   };
 
-  const handleDeleteGlobalVariable = async (id: string) => {
-    const updatedVariables = globalVariables.filter(variable => variable.id !== id);
-    setGlobalVariables(updatedVariables);
-
-    // Save to database
-    await saveGlobalVariablesToDb(updatedVariables);
-  };
-
   const handleGlobalDropdownOptionAdd = (option: { displayText: string; value: string }) => {
     setGlobalDraft(prev => ({
       ...prev,
@@ -650,6 +674,7 @@ export function VariablesContent() {
     "date",
     "number",
     "dropdown",
+    "checkbox",
   ];
 
   const getDraftKey = (category: DocumentCategory, typeId: string) =>
@@ -739,30 +764,107 @@ export function VariablesContent() {
     await saveDocumentTypeToDb(category, updatedDocType);
   };
 
-  const handleDeleteVariable = async (
-    category: DocumentCategory,
-    typeId: string,
-    variableId: string
-  ) => {
-    // Find the document type and update it
-    const docType = documentTypes[category]?.find(type => type.id === typeId);
-    if (!docType) return;
+  const handleUpdateVariable = async () => {
+    if (!editingVariable) return;
 
-    const updatedDocType: DocumentTypeDefinition = {
-      ...docType,
-      variables: docType.variables.filter(variable => variable.id !== variableId),
-    };
+    const trimmedName = editingVariable.name.trim();
+    if (!trimmedName) return;
 
-    setDocumentTypes(prev => {
-      const next = { ...prev };
-      next[category] = next[category].map(type =>
-        type.id === typeId ? updatedDocType : type
+    // Safety check: prevent editing default variables
+    if (editingVariable.category && editingVariable.typeId) {
+      const docType = documentTypes[editingVariable.category]?.find(type => type.id === editingVariable.typeId);
+      const variable = docType?.variables.find(v => v.id === editingVariable.id);
+      if (variable?.isDefault) {
+        console.warn("Cannot edit default variables");
+        setEditingVariable(null);
+        return;
+      }
+    }
+
+    if (editingVariable.isGlobal) {
+      const updatedVariables = globalVariables.map(v =>
+        v.id === editingVariable.id
+          ? {
+              ...v,
+              name: trimmedName,
+              type: editingVariable.type,
+              dropdownOptions: editingVariable.type === "dropdown" ? editingVariable.dropdownOptions : undefined,
+              lastUpdated: "just now",
+            }
+          : v
       );
-      return next;
-    });
+      setGlobalVariables(updatedVariables);
+      await saveGlobalVariablesToDb(updatedVariables);
+    } else if (editingVariable.category && editingVariable.typeId) {
+      const docType = documentTypes[editingVariable.category]?.find(type => type.id === editingVariable.typeId);
+      if (!docType) return;
 
-    // Save to database
-    await saveDocumentTypeToDb(category, updatedDocType);
+      const updatedDocType: DocumentTypeDefinition = {
+        ...docType,
+        variables: docType.variables.map(v =>
+          v.id === editingVariable.id
+            ? {
+                ...v,
+                name: trimmedName,
+                type: editingVariable.type,
+                dropdownOptions: editingVariable.type === "dropdown" ? editingVariable.dropdownOptions : undefined,
+              }
+            : v
+        ),
+      };
+
+      setDocumentTypes(prev => {
+        const next = { ...prev };
+        next[editingVariable.category!] = next[editingVariable.category!].map(type =>
+          type.id === editingVariable.typeId ? updatedDocType : type
+        );
+        return next;
+      });
+      await saveDocumentTypeToDb(editingVariable.category, updatedDocType);
+    }
+
+    setEditingVariable(null);
+    setEditDropdownOptionInput("");
+  };
+
+  const handleConfirmDeleteVariable = async () => {
+    if (!deletingVariable) return;
+
+    // Safety check: prevent deletion of default variables
+    if (deletingVariable.category && deletingVariable.typeId) {
+      const docType = documentTypes[deletingVariable.category]?.find(type => type.id === deletingVariable.typeId);
+      const variable = docType?.variables.find(v => v.id === deletingVariable.id);
+      if (variable?.isDefault) {
+        console.warn("Cannot delete default variables");
+        setDeletingVariable(null);
+        return;
+      }
+    }
+
+    if (deletingVariable.isGlobal) {
+      const updatedVariables = globalVariables.filter(v => v.id !== deletingVariable.id);
+      setGlobalVariables(updatedVariables);
+      await saveGlobalVariablesToDb(updatedVariables);
+    } else if (deletingVariable.category && deletingVariable.typeId) {
+      const docType = documentTypes[deletingVariable.category]?.find(type => type.id === deletingVariable.typeId);
+      if (!docType) return;
+
+      const updatedDocType: DocumentTypeDefinition = {
+        ...docType,
+        variables: docType.variables.filter(v => v.id !== deletingVariable.id),
+      };
+
+      setDocumentTypes(prev => {
+        const next = { ...prev };
+        next[deletingVariable.category!] = next[deletingVariable.category!].map(type =>
+          type.id === deletingVariable.typeId ? updatedDocType : type
+        );
+        return next;
+      });
+      await saveDocumentTypeToDb(deletingVariable.category, updatedDocType);
+    }
+
+    setDeletingVariable(null);
   };
 
   const getDefaultCollapsed = (sectionId: string) =>
@@ -845,12 +947,17 @@ export function VariablesContent() {
                 {type.variables.map(variable => (
                   <li
                     key={variable.id}
-                    className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                    className={`flex items-center justify-between rounded border px-3 py-2 text-sm ${variable.isDefault ? "bg-muted/30" : ""}`}
                   >
                     <div className="space-y-1">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className="font-medium">{variable.name}</span>
-                        <span className="text-muted-foreground"> • {variable.type}</span>
+                        <span className="text-muted-foreground">• {variable.type}</span>
+                        {variable.isDefault && (
+                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
+                            Default
+                          </span>
+                        )}
                       </div>
                       {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
                         <p className="text-xs text-muted-foreground">
@@ -859,14 +966,40 @@ export function VariablesContent() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteVariable(category, type.id, variable.id)}
-                      aria-label={`Delete variable ${variable.name}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    {!variable.isDefault && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingVariable({
+                            id: variable.id,
+                            name: variable.name,
+                            type: variable.type,
+                            dropdownOptions: variable.dropdownOptions || [],
+                            category,
+                            typeId: type.id,
+                            isGlobal: false
+                          })}
+                          aria-label={`Edit variable ${variable.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingVariable({
+                            id: variable.id,
+                            name: variable.name,
+                            isGlobal: false,
+                            category,
+                            typeId: type.id
+                          })}
+                          aria-label={`Delete variable ${variable.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1038,14 +1171,34 @@ export function VariablesContent() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteGlobalVariable(variable.id)}
-                      aria-label={`Delete ${variable.name}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingVariable({
+                          id: variable.id,
+                          name: variable.name,
+                          type: variable.type,
+                          dropdownOptions: variable.dropdownOptions || [],
+                          isGlobal: true
+                        })}
+                        aria-label={`Edit ${variable.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingVariable({
+                          id: variable.id,
+                          name: variable.name,
+                          isGlobal: true
+                        })}
+                        aria-label={`Delete ${variable.name}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1306,6 +1459,158 @@ export function VariablesContent() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingVariable)} onOpenChange={open => !open && setEditingVariable(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Variable</DialogTitle>
+            <DialogDescription>
+              Update the variable name, type, and options.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            className="space-y-4"
+            onSubmit={event => {
+              event.preventDefault();
+              handleUpdateVariable();
+            }}
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="edit-variable-name">
+                Name
+              </label>
+              <Input
+                id="edit-variable-name"
+                placeholder="Variable name"
+                value={editingVariable?.name ?? ""}
+                onChange={event => setEditingVariable(prev => prev ? { ...prev, name: event.target.value } : null)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="edit-variable-type">
+                Type
+              </label>
+              <Select
+                value={editingVariable?.type ?? "text"}
+                onValueChange={value =>
+                  setEditingVariable(prev => prev ? {
+                    ...prev,
+                    type: value as BaseVariable["type"],
+                    dropdownOptions: value !== "dropdown" ? [] : prev.dropdownOptions
+                  } : null)
+                }
+              >
+                <SelectTrigger id="edit-variable-type">
+                  <SelectValue placeholder="Variable type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {variableTypeOptions.map(option => (
+                    <SelectItem key={option} value={option}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editingVariable?.type === "dropdown" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Dropdown Options</label>
+                <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {editingVariable.dropdownOptions.map((opt, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                      >
+                        {opt.displayText}
+                        <button
+                          type="button"
+                          onClick={() => setEditingVariable(prev => prev ? {
+                            ...prev,
+                            dropdownOptions: prev.dropdownOptions.filter((_, i) => i !== idx)
+                          } : null)}
+                          className="hover:text-red-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add option..."
+                      value={editDropdownOptionInput}
+                      onChange={event => setEditDropdownOptionInput(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          const value = editDropdownOptionInput.trim();
+                          if (value) {
+                            setEditingVariable(prev => prev ? {
+                              ...prev,
+                              dropdownOptions: [...prev.dropdownOptions, { displayText: value, value }]
+                            } : null);
+                            setEditDropdownOptionInput("");
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const value = editDropdownOptionInput.trim();
+                        if (value) {
+                          setEditingVariable(prev => prev ? {
+                            ...prev,
+                            dropdownOptions: [...prev.dropdownOptions, { displayText: value, value }]
+                          } : null);
+                          setEditDropdownOptionInput("");
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingVariable(null)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deletingVariable)} onOpenChange={open => !open && setDeletingVariable(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the variable "{deletingVariable?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingVariable(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteVariable}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

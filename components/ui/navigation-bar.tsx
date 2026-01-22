@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Crown, FolderKanban, FileText, MessageSquare, HelpCircle } from "lucide-react";
-import CompanyHeader from "@/components/ui/company-header";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -94,10 +93,6 @@ export default function NavigationBar() {
   return (
     <nav className={`${navWidth} bg-background h-full overflow-y-auto transition-all duration-300`}>
       <div className="flex flex-col h-full">
-        {/* Company branding section */}
-        <div className="p-3 border-b border-foreground/10">
-          <CompanyHeader className="flex-col items-center text-center" />
-        </div>
         
         {/* Navigation links */}
         <div className="p-2 flex-1">

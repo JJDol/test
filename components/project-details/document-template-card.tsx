@@ -27,7 +27,7 @@ import { DocumentAssignDialog } from "@/components/ui/document-assign-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ProjectTemplateReuploadDialog } from "./project-template-reupload-dialog";
-import { ChevronDown, ChevronUp, MoreHorizontal, ArrowUpCircle, Upload, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, ArrowUpCircle, Upload, RotateCcw, FileText, Trash2 } from "lucide-react";
 import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
 import { DocumentTemplate, Project, User } from "@/lib/types/types";
 import { DocumentVariable } from "@/lib/types/variable-types";
@@ -190,6 +190,7 @@ export function DocumentTemplateCard({
             <DropdownMenuContent align="end">
               {!project.is_archived && (
                 <DropdownMenuItem onClick={() => onGenerateDocument(template.name, template.category)}>
+                  <FileText className="mr-2 h-4 w-4" />
                   Generate document
                 </DropdownMenuItem>
               )}
@@ -235,6 +236,7 @@ export function DocumentTemplateCard({
                   onClick={() => setShowDeleteConfirm(true)}
                   className="text-red-600"
                 >
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Remove from project
                 </DropdownMenuItem>
               )}

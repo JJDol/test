@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Company {
@@ -110,7 +109,6 @@ export default function CompanyHeader({ className = "" }: CompanyHeaderProps) {
     return (
       <div className={`flex gap-2 ${className}`}>
         <div className="flex items-center gap-2 justify-center">
-          <Building2 className="w-4 h-4 text-muted-foreground" />
           <span className="font-medium text-foreground text-sm leading-tight">
             {company.name}
           </span>
@@ -126,7 +124,6 @@ export default function CompanyHeader({ className = "" }: CompanyHeaderProps) {
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Building2 className="w-5 h-5 text-muted-foreground" />
       <span className="font-medium text-foreground">
         {company.name}
       </span>

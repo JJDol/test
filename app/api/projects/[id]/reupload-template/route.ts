@@ -19,6 +19,8 @@ import { Buffer } from 'buffer';
 import { DocumentVariable } from '@/lib/types/variable-types';
 import { VersionChangesSummary, VariableChange } from '@/lib/types/types';
 
+import { VariableProcessor } from '@/lib/services/processors/project-variable-processor';
+
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
@@ -258,6 +260,20 @@ async function reuploadProjectTemplateHandler(
         projectFileName
       );
       throw updateError;
+    }
+
+    // Trigger recalculation of general variables as variables might have changed
+    try {
+      const variableProcessor = new VariableProcessor();
+      await variableProcessor.updateProjectGeneralVariables(
+        projectId,
+        currentUserProfile.company_id,
+        request.user.id
+      );
+      console.log('General variables recalculated after template reupload');
+    } catch (recalcError) {
+      console.error('Failed to recalculate general variables after reupload:', recalcError);
+      // We don't fail the whole request because the primary task (uploading) succeeded
     }
 
     // Clean up blob if used
