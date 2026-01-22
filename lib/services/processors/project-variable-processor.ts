@@ -8,12 +8,13 @@ import { DocumentCategory, DocumentTemplate } from '@/lib/types/types';
 export interface ProjectVariables {
   globalVariables: DocumentVariable[];
   documentSpecificVariables: DocumentVariable[];
-  categoryVariables: { [category: string]: DocumentVariable[] }
-  variableRegistry:Map<DocumentVariable, {
+  categoryVariables: { [category: string]: { variables: DocumentVariable[] } }
+  variableRegistry: Map<string, {
     documents: string[];
     category: Set<DocumentCategory>;
     isCategoryVariable: boolean;
     isGlobalVariable: boolean;
+    type: string;
   }>
   propagationSettings: {
     variable: DocumentVariable;
@@ -268,7 +269,7 @@ export class VariableProcessor {
       let hasPropagationChanges = false;
 
       // Prepare update data
-      const updatedPropagationSettings = { ...project.variable_propagation_settings } || {};
+      const updatedPropagationSettings = { ...(project.variable_propagation_settings || {}) };
 
       // Process each variable for value propagation and scope changes (hierarchical order: global → category → local)
       Array.from(variableRegistry.entries()).forEach(([variableName, data]) => {
