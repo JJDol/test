@@ -188,8 +188,11 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     if (!role || !company_id) {
       console.warn(`User ${user.id} missing metadata in JWT, fetching from database...`);
       
-      // Fallback: fetch from database and update JWT (one-time fix)
-      const { data: userData, error: dbError } = await supabase
+      // Use service role client to bypass RLS for user data fetch
+      const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
+      const serviceClient = createServiceRoleClient();
+      
+      const { data: userData, error: dbError } = await serviceClient
         .from('users')
         .select('role, company_id')
         .eq('id', user.id)
@@ -208,8 +211,12 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
         };
       }
 
-      // Update JWT metadata for future requests
-      await updateCurrentUserMetadata(userData.role, userData.company_id);
+      // Update JWT metadata for future requests (only works for cookie-based auth)
+      try {
+        await updateCurrentUserMetadata(userData.role, userData.company_id);
+      } catch (e) {
+        console.warn('Could not update JWT metadata (expected for Bearer token auth)');
+      }
 
       return {
         user: {
