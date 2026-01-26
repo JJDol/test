@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 export interface AuthenticatedUser {
@@ -133,9 +134,38 @@ export const jwtUtils = {
 async function authenticateRequest(request: NextRequest): Promise<{ user: AuthenticatedUser } | { error: NextResponse }> {
   try {
     console.log('[AUTH] Starting authentication for:', request.nextUrl.pathname);
-    const supabase = await createClient();
-    console.log('[AUTH] Supabase client created, getting user...');
-    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    // Check for Bearer token in Authorization header (for Word add-in and external clients)
+    const authHeader = request.headers.get('authorization');
+    let user = null;
+    let error = null;
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      console.log('[AUTH] Bearer token found, authenticating via token...');
+      
+      // Create a Supabase client and set the session from the token
+      const supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        }
+      );
+      
+      const result = await supabase.auth.getUser(token);
+      user = result.data.user;
+      error = result.error;
+    } else {
+      // Fall back to cookie-based authentication
+      console.log('[AUTH] No Bearer token, using cookie-based auth...');
+      const supabase = await createClient();
+      const result = await supabase.auth.getUser();
+      user = result.data.user;
+      error = result.error;
+    }
 
     if (error || !user) {
       console.error('[AUTH] Authentication failed:', { error: error?.message, hasUser: !!user });

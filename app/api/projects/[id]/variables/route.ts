@@ -314,5 +314,18 @@ async function updateVariablesHandler(
   }
 }
 
+// Handle CORS preflight for Word add-in
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'https://aticon-autodoc-new.vercel.app',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  });
+}
+
 export const GET = withAuthDynamic(getVariablesHandler);
 export const POST = withAuthDynamic(updateVariablesHandler); 
