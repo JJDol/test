@@ -21,35 +21,19 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
     const { searchParams } = new URL(request.url);
     const companyFilter = searchParams.get('company_id');
 
-    // Use user data from auth middleware (already authenticated)
-    // For Bearer token auth, we need to fetch additional data like assigned_projects
-    let userProfile: { role: string; company_id: string | null; assigned_projects: string[] | null };
+    // Always fetch fresh user data from database to avoid stale JWT issues
+    const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
+    const serviceClient = createServiceRoleClient();
     
-    if (request.user.role && request.user.company_id) {
-      // Get assigned_projects from database using service role (bypasses RLS for Bearer token auth)
-      const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
-      const serviceClient = createServiceRoleClient();
-      const { data: userData, error: userError } = await serviceClient
-        .from('users')
-        .select('assigned_projects')
-        .eq('id', request.user.id)
-        .single();
-      
-      userProfile = {
-        role: request.user.role,
-        company_id: request.user.company_id,
-        assigned_projects: userData?.assigned_projects || null
-      };
-    } else {
-      // Fallback: fetch from database (for cookie-based auth)
-      const { data: dbProfile, error: profileError } = await supabase
-        .from('users')
-        .select('role, assigned_projects, company_id')
-        .eq('id', request.user.id)
-        .single();
-      
-      if (profileError) throw profileError;
-      userProfile = dbProfile;
+    const { data: userProfile, error: profileError } = await serviceClient
+      .from('users')
+      .select('role, assigned_projects, company_id')
+      .eq('id', request.user.id)
+      .single();
+    
+    if (profileError || !userProfile) {
+      console.error('Failed to fetch user profile:', profileError);
+      return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
     }
 
     // Ensure user has a company_id (multi-tenancy requirement) unless they're ADMIN
@@ -57,11 +41,8 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
       return NextResponse.json({ error: "User not assigned to a company" }, { status: 403 });
     }
 
-    // Use service role client if Bearer token auth (RLS doesn't work with Bearer tokens)
-    const authHeader = request.headers.get('authorization');
-    const queryClient = authHeader?.startsWith('Bearer ') 
-      ? (await import('@/lib/supabase/service-role')).createServiceRoleClient()
-      : supabase;
+    // Use service role client for queries (already imported above)
+    const queryClient = serviceClient;
 
     // Build query with explicit company filtering
     let query = queryClient
