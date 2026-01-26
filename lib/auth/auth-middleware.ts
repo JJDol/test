@@ -199,7 +199,10 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
         console.error('Failed to fetch user data:', dbError);
         return {
           error: NextResponse.json(
-            { error: 'User data not found' },
+            { 
+              error: 'User profile not found. Please log in to the main Aticon app first to complete your account setup.',
+              code: 'USER_PROFILE_NOT_FOUND'
+            },
             { status: 403 }
           )
         };
