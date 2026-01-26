@@ -139,13 +139,14 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     const authHeader = request.headers.get('authorization');
     let user = null;
     let error = null;
+    let supabase: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createSupabaseClient>;
     
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       console.log('[AUTH] Bearer token found, authenticating via token...');
       
       // Create a Supabase client and set the session from the token
-      const supabase = createSupabaseClient(
+      supabase = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -161,7 +162,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     } else {
       // Fall back to cookie-based authentication
       console.log('[AUTH] No Bearer token, using cookie-based auth...');
-      const supabase = await createClient();
+      supabase = await createClient();
       const result = await supabase.auth.getUser();
       user = result.data.user;
       error = result.error;
