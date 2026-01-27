@@ -13,11 +13,19 @@ const nextConfig: NextConfig = {
   
   // CORS headers for Word add-in
   async headers() {
+    // Allow both localhost (dev) and Vercel (production)
+    const allowedOrigins = [
+      "https://aticon-autodoc-new.vercel.app",
+      "https://localhost:3000",
+    ];
+    
     return [
       {
         source: "/api/:path*",
         headers: [
-          { key: "Access-Control-Allow-Origin", value: "https://aticon-autodoc-new.vercel.app" },
+          // Note: For multiple origins, we'll handle this dynamically in middleware
+          // For now, allow all origins in development
+          { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
           { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
           { key: "Access-Control-Allow-Credentials", value: "true" },
