@@ -150,11 +150,13 @@ async function getTemplatesHandler(request: AuthenticatedRequest) {
 
     if (error) throw error;
     return NextResponse.json(templates);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching templates:', error);
+    // Handle both Error instances and Supabase PostgrestError
+    const errorMessage = error?.message || error?.details || error?.hint || JSON.stringify(error) || 'Unknown error';
     return NextResponse.json({ 
       message: 'Failed to fetch templates',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorMessage
     }, { status: 500 });
   }
 }
