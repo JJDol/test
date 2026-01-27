@@ -106,25 +106,22 @@ async function getTemplatesHandler(request: AuthenticatedRequest) {
   // TODO: add category validation and length check/limit
 
   try {
-    const supabase = await createClient();
+    // Use service role client to bypass RLS issues with Bearer token auth
+    const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
+    const supabase = createServiceRoleClient();
 
-    // Get current user profile (auth middleware already verified user exists)
-    const { data: currentUserProfile, error: currentUserError } = await supabase
-      .from('users')
-      .select('company_id, role')
-      .eq('id', request.user.id)
-      .single();
-
-    if (currentUserError) throw currentUserError;
+    // Use user data from auth middleware (already verified)
+    const company_id = request.user.company_id;
 
     // Ensure user has a company_id (multi-tenancy requirement)
-    if (!currentUserProfile.company_id) {
+    if (!company_id) {
       return NextResponse.json({ error: "User not assigned to a company" }, { status: 403 });
     }
 
     let query = supabase
       .from('document_templates')
       .select('*')
+      .eq('company_id', company_id) // Filter by user's company (multi-tenancy)
       .order('created_at', { ascending: false });
 
     // Filter out archived templates by default
@@ -139,8 +136,7 @@ async function getTemplatesHandler(request: AuthenticatedRequest) {
     } else if (isPrivate === 'true') {
       query = query.eq('is_public', false).eq('user_id', request.user.id);
     }
-    // For 'all' view mode, rely on RLS to return all visible (company public + user's private)
-    // TODO: We should not rely only on RLS
+    // For 'all' view mode, show company public + user's private templates
 
     if (category) {
       query = query.eq('category', category);
