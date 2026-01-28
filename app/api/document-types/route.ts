@@ -21,14 +21,16 @@ const categoryDbNameMap: Record<string, string> = {
 async function getDocumentTypesHandler(request: AuthenticatedRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
+  const includeGlobal = searchParams.get('includeGlobal') === 'true';
 
   try {
     const supabase = createServiceRoleClient();
 
+    // Fetch document types for the category
     let query = supabase
       .from('document_default_variables')
       .select('id, category, document_type, description, variables')
-      .neq('category', 'GLOBAL'); // Exclude global variables
+      .neq('category', 'GLOBAL'); // Exclude global variables from main list
 
     if (category) {
       // Map API category name to database category name
@@ -49,7 +51,25 @@ async function getDocumentTypesHandler(request: AuthenticatedRequest) {
       variables: item.variables || []
     }));
 
-    return NextResponse.json(documentTypes);
+    // If includeGlobal, also fetch global variables
+    let globalVariables: any[] = [];
+    if (includeGlobal) {
+      const { data: globalData, error: globalError } = await supabase
+        .from('document_default_variables')
+        .select('variables')
+        .eq('category', 'GLOBAL')
+        .eq('document_type', 'GLOBAL')
+        .maybeSingle();
+
+      if (!globalError && globalData?.variables) {
+        globalVariables = globalData.variables;
+      }
+    }
+
+    return NextResponse.json({
+      documentTypes,
+      globalVariables
+    });
   } catch (error: any) {
     console.error('Error fetching document types:', error);
     const errorMessage = error?.message || error?.details || JSON.stringify(error) || 'Unknown error';
