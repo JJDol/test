@@ -947,6 +947,63 @@ export function useProjectActions(
     }
   }, [project, toast]);
 
+  // Handle ready for control check
+  const handleReadyForControl = useCallback(async (templateName: string, checked: boolean) => {
+    if (!project) return;
+
+    // Optimistic update - update local state immediately for responsive UI
+    const previousAssignments = project.document_assignments?.[templateName];
+    const updatedAssignments = {
+      ...previousAssignments,
+      ready_for_control: checked
+    };
+
+    // Update local project state immediately
+    const updatedProject = {
+      ...project,
+      document_assignments: {
+        ...project.document_assignments,
+        [templateName]: updatedAssignments
+      }
+    };
+
+    // Apply optimistic update to parent state
+    updateProjectState(prev => ({ ...prev, project: updatedProject }));
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/assignments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_name: templateName,
+          assignments: updatedAssignments
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update ready for control');
+      }
+
+      toast({
+        title: checked ? "Ready for Control" : "Control Status Removed",
+        description: `${templateName} has been ${checked ? 'marked as ready for control' : 'unmarked'}.`,
+      });
+    } catch (error) {
+      console.error('Error updating ready for control:', error);
+      
+      // Revert optimistic update on error
+      updateProjectState(prev => ({ ...prev, project }));
+      
+      toast({
+        title: "Error",
+        description: "Failed to update ready for control status",
+        variant: "destructive",
+      });
+    }
+  }, [project, toast]);
+
   // Handle assignment update
   const handleAssignmentUpdate = useCallback(async (templateName: string, assignments: {
     assignee_id?: string;
@@ -1211,6 +1268,7 @@ export function useProjectActions(
     handleProjectTemplateSelected,
     handleTemplateRemove,
     handleSupervisorCheck,
+    handleReadyForControl,
     handleAssignmentUpdate,
     handleUpgradeVersion,
     handleArchiveProject,

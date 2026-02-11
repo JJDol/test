@@ -19,7 +19,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { CircularProgress } from "@/components/ui/circular-progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
@@ -50,6 +50,7 @@ interface DocumentTemplateCardProps {
   onVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
   onPropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
   onSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
+  onReadyForControl: (templateName: string, checked: boolean) => Promise<void>;
   onGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
   onTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
   onAssignmentUpdate: (templateName: string, assignments: {
@@ -81,6 +82,7 @@ export function DocumentTemplateCard({
   onVariableChange,
   onPropagationChange,
   onSupervisorCheck,
+  onReadyForControl,
   onGenerateDocument,
   onTemplateRemove,
   onAssignmentUpdate,
@@ -144,16 +146,89 @@ export function DocumentTemplateCard({
     }
   };
 
+  const progressValue = calculateProgress(template.name, template);
+
   return (
-    <Card className="p-6">
-      {/* Template Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h3 className="text-lg font-semibold">{template.name}</h3>
-            <p className="text-sm text-gray-500">{template.description}</p>
-          </div>
-          {/* Version Badge */}
+    <Card className="p-4 flex flex-col h-full">
+      {/* Card Header - Collapse toggle and menu */}
+      <div className="flex items-center justify-between mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={onToggleCollapse}
+        >
+          {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </Button>
+        
+        {/* Actions Dropdown */}
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!project.is_archived && (
+              <DropdownMenuItem onClick={() => onGenerateDocument(template.name, template.category)}>
+                <FileText className="mr-2 h-4 w-4" />
+                Generate document
+              </DropdownMenuItem>
+            )}
+            {!project.is_archived && hasNewerVersion && onUpgradeVersion && (
+              <DropdownMenuItem
+                onClick={() => onUpgradeVersion(template.name)}
+                className="text-amber-600"
+              >
+                <ArrowUpCircle className="mr-2 h-4 w-4" />
+                Upgrade to v{latestVersion}
+              </DropdownMenuItem>
+            )}
+            {!project.is_archived && canManageProject && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Reupload Document
+                </DropdownMenuItem>
+                {hasCustomTemplate && (
+                  <DropdownMenuItem
+                    onClick={() => setShowResetConfirm(true)}
+                    className="text-blue-600"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset to Original
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {canAssignDocuments && (
+              <DocumentAssignDialog
+                projectId={Number(project.id)}
+                templateName={template.name}
+                category={template.category}
+                onAssignmentUpdate={onAssignmentUpdate}
+                currentAssignments={currentAssignments}
+              />
+            )}
+            {canManageProject && (
+              <DropdownMenuItem
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Remove from project
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Template Title and Version - fixed height for consistency */}
+      <div className="mb-4 min-h-[3.5rem]">
+        <h3 className="text-sm font-semibold line-clamp-1 mb-1">{template.name}</h3>
+        <div className="flex items-center gap-1 flex-wrap">
           <Badge
             variant={hasNewerVersion ? "outline" : "secondary"}
             className={`text-xs ${hasNewerVersion ? "border-amber-500 text-amber-600" : ""}`}
@@ -167,7 +242,6 @@ export function DocumentTemplateCard({
               <ArrowUpCircle className="ml-1 h-3 w-3" />
             )}
           </Badge>
-          {/* Custom Template Badge */}
           {hasCustomTemplate && (
             <Badge
               variant="outline"
@@ -178,114 +252,51 @@ export function DocumentTemplateCard({
             </Badge>
           )}
         </div>
-        
-        <div className="flex items-center gap-2">
-          {/* Actions Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!project.is_archived && (
-                <DropdownMenuItem onClick={() => onGenerateDocument(template.name, template.category)}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Generate document
-                </DropdownMenuItem>
-              )}
-              {!project.is_archived && hasNewerVersion && onUpgradeVersion && (
-                <DropdownMenuItem
-                  onClick={() => onUpgradeVersion(template.name)}
-                  className="text-amber-600"
-                >
-                  <ArrowUpCircle className="mr-2 h-4 w-4" />
-                  Upgrade to v{latestVersion}
-                </DropdownMenuItem>
-              )}
-              {!project.is_archived && canManageProject && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Reupload Document
-                  </DropdownMenuItem>
-                  {hasCustomTemplate && (
-                    <DropdownMenuItem
-                      onClick={() => setShowResetConfirm(true)}
-                      className="text-blue-600"
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Reset to Original
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {canAssignDocuments && (
-                <DocumentAssignDialog
-                  projectId={Number(project.id)}
-                  templateName={template.name}
-                  category={template.category}
-                  onAssignmentUpdate={onAssignmentUpdate}
-                  currentAssignments={currentAssignments}
-                />
-              )}
-              {canManageProject && (
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remove from project
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          {/* Collapse Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleCollapse}
-          >
-            {collapsed ? <ChevronDown /> : <ChevronUp />}
-          </Button>
-        </div>
       </div>
 
-      {/* Progress and Assignment Summary */}
-      <div className="flex items-center gap-4 mt-2">
-        <Progress value={calculateProgress(template.name, template)} className="flex-1" />
-        <span className="text-sm text-gray-500">
-          {calculateProgress(template.name, template)}% Complete
-        </span>
+      {/* Circular Progress */}
+      <div className="flex justify-center py-3">
+        <CircularProgress value={progressValue} size={80} strokeWidth={6} />
       </div>
 
-      {/* Assignment Information */}
-      {project.document_assignments?.[template.name] && (
-        <div className="mt-3 space-y-1 text-sm text-gray-600">
-          <p>Assigned to: {project.document_assignments[template.name].assignee_name || 'Not assigned'}</p>
-          <p>Supervisor: {project.document_assignments[template.name].supervisor_name || 'Not assigned'}</p>
-          {project.document_assignments[template.name].supervisor_checked && (
-            <Badge variant="outline">Checked by supervisor</Badge>
+      {/* Assignment Information - fixed height for consistency */}
+      <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem]">
+        <p className="truncate">Assigned to: {project.document_assignments?.[template.name]?.assignee_name || 'Not assigned'}</p>
+        <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || 'Not assigned'}</p>
+        <div className="h-6 flex items-center">
+          {project.document_assignments?.[template.name]?.supervisor_checked && (
+            <Badge variant="outline" className="text-xs">Checked by supervisor</Badge>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Supervisor Check */}
-      {!project.is_archived && canCheckVariables && (
-        <div className="flex items-center gap-2 mt-3">
+      {/* Checkboxes Section - fixed height for consistency */}
+      <div className="mt-auto pt-3 space-y-2 min-h-[3.5rem]">
+        {!project.is_archived && canCheckVariables && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`check-${template.name}`}
+              checked={project.document_assignments?.[template.name]?.supervisor_checked || false}
+              onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
+            />
+            <Label htmlFor={`check-${template.name}`} className="text-xs text-muted-foreground">
+              Check by supervisor
+            </Label>
+          </div>
+        )}
+        {/* Ready for control checkbox */}
+        <div className="flex items-center gap-2">
           <Checkbox
-            id={`check-${template.name}`}
-            checked={project.document_assignments?.[template.name]?.supervisor_checked || false}
-            onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
+            id={`ready-${template.name}`}
+            checked={project.document_assignments?.[template.name]?.ready_for_control || false}
+            disabled={project.is_archived || !project.document_assignments?.[template.name]?.supervisor_checked}
+            onCheckedChange={(checked) => onReadyForControl(template.name, checked as boolean)}
           />
-          <Label htmlFor={`check-${template.name}`} className="text-sm text-gray-600">
-            Check by supervisor
+          <Label htmlFor={`ready-${template.name}`} className="text-xs text-muted-foreground">
+            Ready for control
           </Label>
         </div>
-      )}
+      </div>
 
       {/* Collapsible Variables Section */}
       {!collapsed && (

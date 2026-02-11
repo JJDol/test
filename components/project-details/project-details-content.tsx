@@ -191,10 +191,12 @@ export function ProjectDetailsContent({
           onVariableChange={actions.handleVariableChange}
           onPropagationChange={actions.handlePropagationChange}
           onSupervisorCheck={actions.handleSupervisorCheck}
+          onReadyForControl={actions.handleReadyForControl}
           onGenerateDocument={actions.handleGenerateDocument}
           onAssignmentUpdate={actions.handleAssignmentUpdate}
           onUpgradeVersion={actions.handleUpgradeVersion}
           onToggleTemplateCollapse={actions.toggleTemplateCollapse}
+          onCollapseAllTemplates={actions.collapseAllTemplates}
           onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
           onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}
         />
