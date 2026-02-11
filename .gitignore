@@ -47,3 +47,5 @@ next-env.d.ts
 /backend/uploads/*
 
 general_prompt.md
+
+/.cursor
