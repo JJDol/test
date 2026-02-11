@@ -812,19 +812,34 @@ export function useProjectActions(
         delete updatedAssignments[template];
       }
 
-      // Create a copy of template_variables without the entry for this template (if it exists)
+      // Create a copy of template_variables - remove template from ALL categories (fixes duplicate bug)
       let updatedTemplateVariables = { ...project.template_variables };
-      if (updatedTemplateVariables && updatedTemplateVariables[category] && updatedTemplateVariables[category][template]) {
-        delete updatedTemplateVariables[category][template];
-      }
-      if (updatedTemplateVariables[category] && Object.keys(updatedTemplateVariables[category]).length === 0) {
-        delete updatedTemplateVariables[category];
+      for (const cat of Object.values(DocumentCategory)) {
+        if (updatedTemplateVariables && updatedTemplateVariables[cat] && updatedTemplateVariables[cat][template]) {
+          delete updatedTemplateVariables[cat][template];
+        }
+        // Remove empty categories
+        if (updatedTemplateVariables[cat] && Object.keys(updatedTemplateVariables[cat]).length === 0) {
+          delete updatedTemplateVariables[cat];
+        }
       }
 
       // Remove version lock for this template
       let updatedVersionLocks = { ...(project.template_version_locks || {}) };
       if (updatedVersionLocks[template]) {
         delete updatedVersionLocks[template];
+      }
+
+      // Clean up variable_propagation_settings - remove template from ALL categories
+      let updatedPropSettings = { ...(project.variable_propagation_settings || {}) };
+      for (const cat of Object.values(DocumentCategory)) {
+        if (updatedPropSettings && updatedPropSettings[cat] && updatedPropSettings[cat][template]) {
+          delete updatedPropSettings[cat][template];
+        }
+        // Remove empty categories
+        if (updatedPropSettings[cat] && Object.keys(updatedPropSettings[cat]).length === 0) {
+          delete updatedPropSettings[cat];
+        }
       }
 
       // Update project with updated templates list, cleared assignments, and cleared variables
@@ -838,6 +853,7 @@ export function useProjectActions(
           document_assignments: updatedAssignments,
           template_variables: updatedTemplateVariables,
           template_version_locks: updatedVersionLocks,
+          variable_propagation_settings: updatedPropSettings,
         }),
       });
 
@@ -853,6 +869,7 @@ export function useProjectActions(
         document_assignments: updatedAssignments,
         template_variables: updatedTemplateVariables,
         template_version_locks: updatedVersionLocks,
+        variable_propagation_settings: updatedPropSettings,
       };
       updateProjectState(prev => ({ ...prev, project: updatedProject as Project }));
 
