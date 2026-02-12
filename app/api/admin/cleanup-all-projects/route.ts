@@ -136,11 +136,11 @@ function cleanupProject(project: any): {
   }
 
   // Report duplicates across categories
-  for (const [template, categories] of templateSeenInCategories) {
+  Array.from(templateSeenInCategories.entries()).forEach(([template, categories]) => {
     if (categories.length > 1) {
       report.duplicateAcrossCategories.push({ template, categories });
     }
-  }
+  });
 
   // Clean template_version_locks
   const currentVersionLocks = project.template_version_locks || {};
