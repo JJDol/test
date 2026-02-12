@@ -134,6 +134,7 @@ export function ProjectDocumentsSection({
       <div className="w-full p-6">
         {/* General Variables Section - Global across all categories */}
         {project?.global_variables?.variables && project.global_variables.variables.length > 0 && (
+          <div className="mb-4">
             <GeneralVariablesSection
               allTemplates={allTemplates}          
               globalVariables={project.global_variables.variables}
@@ -145,10 +146,11 @@ export function ProjectDocumentsSection({
               onToggleCollapse={() => onToggleGlobalSectionCollapse()}
               onVariableChange={onVariableChange}
             />
+          </div>
         )}
 
         {/* Header Section */}
-        <div className="mb-6 pb-4 border-b flex flex-col">
+        <div className="mb-6 flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold tracking-tight">
               {getCategoryDisplayName(activeCategory)} Documents

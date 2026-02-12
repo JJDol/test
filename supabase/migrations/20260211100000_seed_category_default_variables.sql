@@ -433,8 +433,8 @@ VALUES
       {
         "id": "exec-third-party-inspector",
         "name": "Third-Party Inspector",
-        "type": "checkbox",
-        "description": "Whether third-party inspector is required",
+        "type": "text",
+        "description": "Third-party inspector information",
         "isDefault": true
       },
       {
