@@ -26,11 +26,12 @@ async function getDocumentTypesHandler(request: AuthenticatedRequest) {
   try {
     const supabase = createServiceRoleClient();
 
-    // Fetch document types for the category
+    // Fetch document types for the category (exclude GLOBAL and CATEGORY_DEFAULTS entries)
     let query = supabase
       .from('document_default_variables')
       .select('id, category, document_type, description, variables')
-      .neq('category', 'GLOBAL'); // Exclude global variables from main list
+      .neq('category', 'GLOBAL')
+      .neq('document_type', 'CATEGORY_DEFAULTS'); // Exclude category defaults from document types list
 
     if (category) {
       // Map API category name to database category name
@@ -66,9 +67,26 @@ async function getDocumentTypesHandler(request: AuthenticatedRequest) {
       }
     }
 
+    // Fetch category default variables if a category is specified
+    let categoryVariables: any[] = [];
+    if (category) {
+      const dbCategoryName = categoryDbNameMap[category] || category;
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('document_default_variables')
+        .select('variables')
+        .eq('category', dbCategoryName)
+        .eq('document_type', 'CATEGORY_DEFAULTS')
+        .maybeSingle();
+
+      if (!categoryError && categoryData?.variables) {
+        categoryVariables = categoryData.variables;
+      }
+    }
+
     return NextResponse.json({
       documentTypes,
-      globalVariables
+      globalVariables,
+      categoryVariables
     });
   } catch (error: any) {
     console.error('Error fetching document types:', error);
