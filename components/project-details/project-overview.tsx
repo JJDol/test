@@ -205,12 +205,6 @@ export function ProjectOverview({
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Location Card */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Location</h2>
-          <p className="text-lg text-gray-700">{project.location}</p>
-        </Card>
-
         {/* Variables Progress Card */}
         <Card className="p-4">
           <h2 className="text-lg font-semibold mb-2">Variables Progress</h2>
@@ -223,6 +217,13 @@ export function ProjectOverview({
           <h2 className="text-lg font-semibold mb-2">Supervisor Checks</h2>
           <Progress value={checkedProgress} className="mb-2" />
           <p className="text-gray-600">{checkedProgress}% Checked</p>
+        </Card>
+
+        {/* Control Progress Card */}
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-2">Control Progress</h2>
+          <Progress value={0} className="mb-2" />
+          <p className="text-gray-600">0% Complete</p>
         </Card>
 
         {/* Deadline Card */}

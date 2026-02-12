@@ -101,15 +101,49 @@ export function useProjectVariables(
     }
   }, [project?.template_variables]);
 
-  // Toggle template collapse
+  // Toggle template collapse - only one card open at a time
   const toggleTemplateCollapse = useCallback((templateName: string) => {
-    setState(prev => ({
-      ...prev,
-      collapsedTemplates: {
-        ...prev.collapsedTemplates,
-        [templateName as DocumentCategory]: !((prev.collapsedTemplates as { [key in DocumentCategory]: boolean })[templateName as DocumentCategory] ?? false)
+    setState(prev => {
+      const currentlyCollapsed = (prev.collapsedTemplates as { [key: string]: boolean })[templateName] ?? true;
+      const isOpening = currentlyCollapsed; // If currently collapsed, we're opening it
+      
+      if (isOpening) {
+        // Close all templates and open only the clicked one
+        const newCollapsedTemplates: { [key: string]: boolean } = {};
+        Object.keys(prev.collapsedTemplates).forEach(key => {
+          newCollapsedTemplates[key] = true; // Collapse all
+        });
+        newCollapsedTemplates[templateName] = false; // Open clicked one
+        
+        return {
+          ...prev,
+          collapsedTemplates: newCollapsedTemplates as any
+        };
+      } else {
+        // Just close the clicked template
+        return {
+          ...prev,
+          collapsedTemplates: {
+            ...prev.collapsedTemplates,
+            [templateName]: true
+          } as any
+        };
       }
-    }));
+    });
+  }, []);
+
+  // Collapse all templates - used when switching tabs
+  const collapseAllTemplates = useCallback(() => {
+    setState(prev => {
+      const newCollapsedTemplates: { [key: string]: boolean } = {};
+      Object.keys(prev.collapsedTemplates).forEach(key => {
+        newCollapsedTemplates[key] = true; // Collapse all
+      });
+      return {
+        ...prev,
+        collapsedTemplates: newCollapsedTemplates as any
+      };
+    });
   }, []);
 
   // Toggle global section collapse
@@ -760,6 +794,7 @@ export function useProjectVariables(
     updateGeneralVariables,
     cleanupCrossCategoryVariables,
     toggleTemplateCollapse,
+    collapseAllTemplates,
     toggleGlobalSectionCollapse: toggleGlobalSectionCollapse,
     toggleCategorySectionCollapse,
     setTemplateVariables,

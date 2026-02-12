@@ -80,11 +80,32 @@ const DEFAULT_DOCUMENT_TYPES: Record<DocumentCategory, DocumentTypeDefinition[]>
   [DocumentCategory.EXECUTION_CONTROL]: []
 };
 
+// Type for category default variables
+type CategoryDefaultVariable = {
+  id: string;
+  name: string;
+  type: BaseVariable["type"];
+  description?: string;
+  dropdownOptions?: { displayText: string; value: string }[];
+  isDefault: boolean;
+};
+
+type CategoryDefaults = Record<DocumentCategory, CategoryDefaultVariable[]>;
+
 export function VariablesContent() {
   const { templates, loading, error } = useTemplates();
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | "GLOBAL">("GLOBAL");
   const [documentTypes, setDocumentTypes] = useState(DEFAULT_DOCUMENT_TYPES);
   const [globalVariables, setGlobalVariables] = useState<GlobalVariableDefinition[]>([]);
+  const [categoryDefaults, setCategoryDefaults] = useState<CategoryDefaults>({
+    [DocumentCategory.ARCHITECTURE]: [],
+    [DocumentCategory.CONSTRUCTIONS]: [],
+    [DocumentCategory.FIRE]: [],
+    [DocumentCategory.AUTHORITY_PROCESSING]: [],
+    [DocumentCategory.ENERGY]: [],
+    [DocumentCategory.HVAC]: [],
+    [DocumentCategory.EXECUTION_CONTROL]: [],
+  });
   const [dialogState, setDialogState] = useState<DocumentTypeDialogState>(null);
   const [formValues, setFormValues] = useState({
     name: "",
@@ -185,6 +206,69 @@ export function VariablesContent() {
     };
 
     loadGlobalDefaults();
+  }, []);
+
+  // Load category defaults for all categories
+  useEffect(() => {
+    const loadCategoryDefaults = async () => {
+      try {
+        const supabase = createClient();
+        
+        // Fetch all category defaults (where document_type = 'CATEGORY_DEFAULTS')
+        const { data, error } = await supabase
+          .from("document_default_variables")
+          .select("category, variables")
+          .eq("document_type", "CATEGORY_DEFAULTS");
+
+        if (error) {
+          console.error("Failed to load category defaults:", error);
+          return;
+        }
+
+        if (!data || data.length === 0) return;
+
+        // Map database category names to DocumentCategory enum
+        const categoryMapping: Record<string, DocumentCategory> = {
+          "ARCHITECTURE": DocumentCategory.ARCHITECTURE,
+          "CONSTRUCTION": DocumentCategory.CONSTRUCTIONS,
+          "FIRE": DocumentCategory.FIRE,
+          "AUTHORITY PROCESSING": DocumentCategory.AUTHORITY_PROCESSING,
+          "ENERGY": DocumentCategory.ENERGY,
+          "HVAC": DocumentCategory.HVAC,
+          "EXECUTION CONTROL": DocumentCategory.EXECUTION_CONTROL,
+        };
+
+        const newDefaults: CategoryDefaults = {
+          [DocumentCategory.ARCHITECTURE]: [],
+          [DocumentCategory.CONSTRUCTIONS]: [],
+          [DocumentCategory.FIRE]: [],
+          [DocumentCategory.AUTHORITY_PROCESSING]: [],
+          [DocumentCategory.ENERGY]: [],
+          [DocumentCategory.HVAC]: [],
+          [DocumentCategory.EXECUTION_CONTROL]: [],
+        };
+
+        data.forEach(row => {
+          const category = categoryMapping[row.category];
+          if (category && row.variables) {
+            newDefaults[category] = (row.variables as any[]).map(v => ({
+              id: v.id,
+              name: v.name,
+              type: v.type,
+              description: v.description,
+              dropdownOptions: v.dropdownOptions,
+              isDefault: true,
+            }));
+          }
+        });
+
+        setCategoryDefaults(newDefaults);
+      } catch (e) {
+        console.error("Unexpected error loading category defaults:", e);
+      }
+    };
+
+    loadCategoryDefaults();
   }, []);
 
   useEffect(() => {
@@ -1312,9 +1396,76 @@ export function VariablesContent() {
     );
   };
 
+  const renderCategoryDefaultsSection = (category: DocumentCategory) => {
+    const defaults = categoryDefaults[category] ?? [];
+    const sectionId = `category-defaults-${category}`;
+    const isCollapsed = collapsedSections[sectionId] ?? false;
+
+    if (defaults.length === 0) return null;
+
+    return (
+      <div className="rounded-md border bg-muted/20 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground h-6 w-6"
+            onClick={() => toggleSection(sectionId)}
+            aria-label={isCollapsed ? "Expand category defaults" : "Collapse category defaults"}
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+            />
+          </Button>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-muted-foreground">Category Default Variables</p>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border">
+              {defaults.length} variable{defaults.length === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+        
+        {!isCollapsed && (
+          <>
+            <p className="text-xs text-muted-foreground">
+              These default variables are shared across all document types in this category and cannot be edited.
+            </p>
+            <ul className="space-y-2">
+              {defaults.map(variable => (
+                <li
+                  key={variable.id}
+                  className="flex items-center justify-between rounded border bg-background px-3 py-2 text-sm"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{variable.name}</span>
+                      <span className="text-muted-foreground">• {variable.type}</span>
+                      <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
+                        Default
+                      </span>
+                    </div>
+                    {variable.description && (
+                      <p className="text-xs text-muted-foreground">{variable.description}</p>
+                    )}
+                    {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Options: {variable.dropdownOptions.map(option => option.displayText).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const renderCategoryPanel = (category: DocumentCategory) => {
     const categoryTypes = documentTypes[category] ?? [];
     const displayName = getCategoryDisplayName(category);
+    const defaults = categoryDefaults[category] ?? [];
 
     return (
       <section className="rounded-lg border p-4 space-y-4">
@@ -1322,7 +1473,7 @@ export function VariablesContent() {
           <div>
             <p className="text-sm font-semibold text-muted-foreground">{displayName}</p>
             <p className="text-xs text-muted-foreground/80">
-              {categoryTypes.length} document type{categoryTypes.length === 1 ? "" : "s"} maintained in this category.
+              {defaults.length} category default{defaults.length === 1 ? "" : "s"} • {categoryTypes.length} document type{categoryTypes.length === 1 ? "" : "s"}
             </p>
           </div>
           <Button size="sm" onClick={() => setDialogState({ mode: "create", category })}>
@@ -1331,6 +1482,10 @@ export function VariablesContent() {
           </Button>
         </div>
 
+        {/* Category Defaults Section */}
+        {renderCategoryDefaultsSection(category)}
+
+        {/* Document Types Section */}
         {categoryTypes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No document types defined yet. Add the first definition to start tracking variables.

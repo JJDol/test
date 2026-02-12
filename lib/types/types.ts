@@ -178,6 +178,7 @@ export interface Project {
       supervisor_id?: string;
       supervisor_name?: string;
       supervisor_checked?: boolean;
+      ready_for_control?: boolean;
     };
   };
   global_variables?: {
@@ -292,6 +293,7 @@ export interface ProjectVariablesActions {
   updateGeneralVariables: () => Promise<void>;
   cleanupCrossCategoryVariables: () => Promise<void>;
   toggleTemplateCollapse: (templateName: string) => void;
+  collapseAllTemplates: () => void;
   toggleGlobalSectionCollapse: () => void;
   toggleCategorySectionCollapse: (category: DocumentCategory) => void;
   setTemplateVariables: (variables: {
@@ -339,6 +341,7 @@ export interface ProjectActionsActions {
   handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => Promise<void>;
   handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
   handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
+  handleReadyForControl: (templateName: string, checked: boolean) => Promise<void>;
   handleAssignmentUpdate: (templateName: string, assignments: {
     assignee_id?: string;
     assignee_name?: string;
@@ -429,6 +432,7 @@ export interface UseProjectDetailsReturn {
     updateGeneralVariables: () => Promise<void>;
     cleanupCrossCategoryVariables: () => Promise<void>;
     toggleTemplateCollapse: (templateName: string) => void;
+    collapseAllTemplates: () => void;
     toggleGlobalSectionCollapse: () => void;
     toggleCategorySectionCollapse: (category: DocumentCategory) => void;
     setTemplateVariables: (variables: {
@@ -447,6 +451,7 @@ export interface UseProjectDetailsReturn {
   handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
   handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
     handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
+    handleReadyForControl: (templateName: string, checked: boolean) => Promise<void>;
     handleAssignmentUpdate: (templateName: string, assignments: {
       assignee_id?: string;
       assignee_name?: string;

@@ -82,6 +82,7 @@ interface ProjectDetailsContentProps {
     updateGeneralVariables: () => Promise<void>;
     cleanupCrossCategoryVariables: () => Promise<void>;
     toggleTemplateCollapse: (templateName: string) => void;
+    collapseAllTemplates: () => void;
     toggleGlobalSectionCollapse: () => void;
     toggleCategorySectionCollapse: (category: DocumentCategory) => void;
     setTemplateVariables: (variables: any) => void;
@@ -93,6 +94,7 @@ interface ProjectDetailsContentProps {
     handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
     handleTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
     handleSupervisorCheck: (templateName: string, checked: boolean) => Promise<void>;
+    handleReadyForControl: (templateName: string, checked: boolean) => Promise<void>;
     handleAssignmentUpdate: (templateName: string, assignments: {
       assignee_id?: string;
       assignee_name?: string;
@@ -191,10 +193,12 @@ export function ProjectDetailsContent({
           onVariableChange={actions.handleVariableChange}
           onPropagationChange={actions.handlePropagationChange}
           onSupervisorCheck={actions.handleSupervisorCheck}
+          onReadyForControl={actions.handleReadyForControl}
           onGenerateDocument={actions.handleGenerateDocument}
           onAssignmentUpdate={actions.handleAssignmentUpdate}
           onUpgradeVersion={actions.handleUpgradeVersion}
           onToggleTemplateCollapse={actions.toggleTemplateCollapse}
+          onCollapseAllTemplates={actions.collapseAllTemplates}
           onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
           onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}
         />
