@@ -182,11 +182,11 @@ async function cleanupOrphanedDataHandler(
     }
 
     // Report duplicates across categories
-    for (const [template, categories] of templateSeenInCategories) {
+    Array.from(templateSeenInCategories.entries()).forEach(([template, categories]) => {
       if (categories.length > 1) {
         cleanupReport.duplicateAcrossCategories.push({ template, categories });
       }
-    }
+    });
 
     // Clean template_version_locks
     const currentVersionLocks = project.template_version_locks || {};
