@@ -127,6 +127,8 @@ export interface VariableChange {
   type?: string;
   oldType?: string;
   newType?: string;
+  oldScope?: string; // For scope changes (global, category, local)
+  newScope?: string; // For scope changes (global, category, local)
   mappedTo?: string; // For renamed variables
 }
 

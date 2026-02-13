@@ -380,6 +380,62 @@ export function EnhancedVariableInput({
       );
     }
 
+    // Handle date type with calendar picker
+    if (variable.type === 'date') {
+      // Parse the current date value
+      let currentDate: Date | undefined;
+      if (variable.value) {
+        if (typeof variable.value === 'string') {
+          // Try to parse ISO string or common date formats
+          const parsed = new Date(variable.value);
+          if (!isNaN(parsed.getTime())) {
+            currentDate = parsed;
+          }
+        } else if (typeof variable.value === 'object' && 'value' in (variable.value as any)) {
+          const parsed = new Date((variable.value as any).value);
+          if (!isNaN(parsed.getTime())) {
+            currentDate = parsed;
+          }
+        }
+      }
+
+      // Get the date format from the variable if available
+      const dateFormat = 'dateFormat' in variable && variable.dateFormat 
+        ? variable.dateFormat 
+        : 'dd/MM/yyyy';
+
+      return (
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !currentDate && "text-muted-foreground"
+              )}
+              disabled={disabled}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {currentDate ? format(currentDate, dateFormat) : `Select date...`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={currentDate}
+              onSelect={(date) => {
+                if (date) {
+                  onChange(date.toISOString());
+                }
+                setIsCalendarOpen(false);
+              }}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      );
+    }
+
     // Default: text input for other types
     return (
       <Input

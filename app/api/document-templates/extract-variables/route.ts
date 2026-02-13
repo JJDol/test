@@ -68,6 +68,7 @@ async function extractVariablesHandler(request: AuthenticatedRequest) {
     const variablesWithTypes = enhancedVariables.map((variable: DocumentVariable) => ({
       name: variable.name,
       type: variable.type,
+      scope: 'scope' in variable ? variable.scope : 'local', // Include scope (defaults to 'local')
       originalTag: 'originalTag' in variable ? variable.originalTag : undefined,
       id: 'id' in variable ? variable.id : undefined,
       title: 'title' in variable ? variable.title : undefined,

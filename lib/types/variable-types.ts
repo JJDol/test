@@ -18,12 +18,21 @@
 // ============================================================================
 
 /**
+ * Variable scope type - defines how the variable propagates across documents
+ * - GLOBAL: Variable value propagates to all templates across all categories
+ * - CATEGORY: Variable value propagates to all templates within the same category
+ * - LOCAL: Variable value is specific to each template (no propagation)
+ */
+export type VariableScope = 'global' | 'category' | 'local';
+
+/**
  * Base variable type - minimal interface that all variables share
  * Contains only the essential fields needed by all variable types
  */
 export interface BaseVariable {
   name: string;
   type: 'text' | 'image' | 'date' | 'number' | 'dropdown' | 'checkbox';
+  scope?: VariableScope; // Scope is defined in template via Content Control tag property
 }
 
 // ============================================================================

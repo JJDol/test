@@ -7,6 +7,8 @@
  * - Type-safe styling system
  */
 
+import { VariableScope } from '@/lib/types/variable-types';
+
 export type VariableType = 'text' | 'image' | 'date' | 'number' | 'dropdown' | 'checkbox';
 
 export interface VariableTypeStyle {
@@ -37,4 +39,27 @@ export const getVariableTypeDisplayName = (type: string): string => {
     checkbox: 'Checkbox',
   };
   return displayNames[type as VariableType] || 'Text';
+};
+
+// ============================================================================
+// VARIABLE SCOPE STYLES
+// ============================================================================
+
+export const VARIABLE_SCOPE_STYLES: Record<VariableScope, VariableTypeStyle> = {
+  global: { backgroundColor: '#8b5cf6', color: 'white' },    // Purple - applies everywhere
+  category: { backgroundColor: '#f97316', color: 'white' },  // Orange - applies within category
+  local: { backgroundColor: '#6b7280', color: 'white' },     // Gray - applies only to this template
+};
+
+export const getVariableScopeStyle = (scope: string): VariableTypeStyle => {
+  return VARIABLE_SCOPE_STYLES[scope as VariableScope] || VARIABLE_SCOPE_STYLES.local;
+};
+
+export const getVariableScopeDisplayName = (scope: string): string => {
+  const displayNames: Record<VariableScope, string> = {
+    global: 'Global',
+    category: 'Category',
+    local: 'Local',
+  };
+  return displayNames[scope as VariableScope] || 'Local';
 };

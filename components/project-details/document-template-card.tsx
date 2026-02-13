@@ -303,31 +303,32 @@ export function DocumentTemplateCard({
         <div className="grid gap-6 mt-4">
           {template.variables.map((variable: DocumentVariable) => {
             const variableName = variable.name;
-            const isGeneral = globalVariableNames?.includes(variableName) || false;
-            const isCategoryVariable = categoryVariableNames?.includes(variableName) || false;
+            // Use the declared scope from the variable directly (set in template via Content Control tag)
+            const declaredScope = (variable as any).scope || 'local';
+            const isGlobal = declaredScope === 'global' || globalVariableNames?.includes(variableName);
+            const isCategory = declaredScope === 'category' || categoryVariableNames?.includes(variableName);
             const scopeOfVariable = project.variable_propagation_settings?.[template.category]?.[template.name]?.[variableName]?.currentScope;
-            // console.log('Debug - scopeOfVariable:', scopeOfVariable, 'for variable:', variableName, 'template:', template.name);
             const variableType = getVariableType(template.name, variableName);
 
             return (
               <div key={variableName} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {isGeneral && (
+                    {isGlobal && (
                       <Badge variant="outline" className="text-xs">Global</Badge>
                     )}
-                    {isCategoryVariable && (
+                    {isCategory && !isGlobal && (
                       <Badge variant="outline" className="text-xs">Category</Badge>
                     )}
                   </div>
-                  {(isGeneral || isCategoryVariable) && (
+                  {(isGlobal || isCategory) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id={`local-${template.name}-${variableName}`}
                         checked={scopeOfVariable === VariablePropagationScope.LOCAL}
                         onCheckedChange={(checked) => {
-                          // Determine what scope to revert to based on variable type
-                          const shouldRevertToCategory = isCategoryVariable;
+                          // Determine what scope to revert to based on declared scope
+                          const shouldRevertToCategory = isCategory && !isGlobal;
                           onPropagationChange(template.category, template.name, variableName, shouldRevertToCategory, checked as boolean);
                         }}
                       />
@@ -350,12 +351,12 @@ export function DocumentTemplateCard({
                     const isCurrentlyCategory = scopeOfVariable === VariablePropagationScope.CATEGORY;
                     
                     onVariableChange(template.name, variableName, value, template.category, 
-                      isGeneral && !isCurrentlyLocal && !isCurrentlyCategory, // isGlobal: only if it's global AND not local/category
-                      isCategoryVariable && !isCurrentlyLocal // isCategory: only if it's category AND not local
+                      isGlobal && !isCurrentlyLocal && !isCurrentlyCategory, // isGlobal: only if declared global AND not local/category
+                      isCategory && !isGlobal && !isCurrentlyLocal // isCategory: only if declared category AND not local
                     );
                   }}
                   disabled={
-                    (isGeneral || isCategoryVariable)
+                    (isGlobal || isCategory)
                       ? (!canEditGeneralVariables || scopeOfVariable !== VariablePropagationScope.LOCAL)
                       : !canEditVariables
                   }
@@ -363,9 +364,14 @@ export function DocumentTemplateCard({
                   templateName={template.name}
                 />
                 
-                {isGeneral && scopeOfVariable !== VariablePropagationScope.LOCAL && (
+                {isGlobal && scopeOfVariable !== VariablePropagationScope.LOCAL && (
                   <p className="text-xs text-blue-600">
-                    This variable uses the general value. Check "Use local value" to override.
+                    This variable uses the global value. Check "Use local value" to override.
+                  </p>
+                )}
+                {isCategory && !isGlobal && scopeOfVariable !== VariablePropagationScope.LOCAL && (
+                  <p className="text-xs text-blue-600">
+                    This variable uses the category value. Check "Use local value" to override.
                   </p>
                 )}
               </div>

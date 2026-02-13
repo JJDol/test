@@ -97,8 +97,10 @@ export function CategoryVariablesSection({
       {!collapsed && (
         <div className="grid gap-4">
           {categoryVariables.map((variable) => {
-            // Check if this variable also exists in global variables
-            const isGlobalVariable = globalVariables.some(gv => gv.name === variable.name);
+            // Use declared scope from the variable directly
+            const declaredScope = (variable as any).scope || 'category';
+            // Check if this variable is also declared as global
+            const isGlobalVariable = declaredScope === 'global' || globalVariables.some(gv => gv.name === variable.name);
             
             // Find the first template that has this variable to use as reference
             const firstTemplate = categoryTemplates.find(template => 

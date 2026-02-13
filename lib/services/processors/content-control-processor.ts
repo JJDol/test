@@ -695,29 +695,41 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
 
       const sdtPrContent = sdtPrMatch[1];
 
-      // Try multiple patterns for tag extraction
-      // Pattern 1: <w:tag w:val="..."/>
-      // Pattern 2: <w:tag val="..."/> (without namespace)
-      // Pattern 3: Use <w:alias> as fallback
-      let tagMatch = sdtPrContent.match(/<w:tag\s+w:val="([^"]*)"/);
-      if (!tagMatch) {
-        tagMatch = sdtPrContent.match(/<w:tag\s+val="([^"]*)"/);
+      // Extract variable name from Content Control properties
+      // NEW BEHAVIOR: Title/Alias (w:alias) contains the variable name, Tag (w:tag) contains scope
+      // Look for w:alias FIRST (variable name), then fall back to w:tag for backward compatibility
+      // Pattern 1: <w:alias w:val="..."/> (preferred - contains variable name)
+      // Pattern 2: <w:alias val="..."/> (without namespace)
+      // Pattern 3: <w:tag w:val="..."/> (fallback for old templates)
+      // Pattern 4: <w:tag val="..."/> (without namespace)
+      let nameMatch = sdtPrContent.match(/<w:alias\s+w:val="([^"]*)"/);
+      if (!nameMatch) {
+        nameMatch = sdtPrContent.match(/<w:alias\s+val="([^"]*)"/);
       }
-      if (!tagMatch) {
-        // Try alias as fallback
-        tagMatch = sdtPrContent.match(/<w:alias\s+w:val="([^"]*)"/);
+      if (!nameMatch) {
+        // Fallback to w:tag for backward compatibility with old templates
+        // Note: In new templates, w:tag contains scope (global/category/local), not the variable name
+        nameMatch = sdtPrContent.match(/<w:tag\s+w:val="([^"]*)"/);
       }
-      if (!tagMatch) {
-        tagMatch = sdtPrContent.match(/<w:alias\s+val="([^"]*)"/);
+      if (!nameMatch) {
+        nameMatch = sdtPrContent.match(/<w:tag\s+val="([^"]*)"/);
       }
 
-      if (!tagMatch) {
+      if (!nameMatch) {
         // Log first 200 chars of sdtPr for debugging
-        console.log(`[DOCX] Skipping control - no tag/alias found. sdtPr preview: ${sdtPrContent.substring(0, 200)}`);
+        console.log(`[DOCX] Skipping control - no alias/tag found. sdtPr preview: ${sdtPrContent.substring(0, 200)}`);
         continue;
       }
 
-      const tagValue = tagMatch[1];
+      const tagValue = nameMatch[1];
+      
+      // Check if this is a scope value (from new templates) - skip if it's just a scope
+      const scopeValues = ['global', 'category', 'local'];
+      if (scopeValues.includes(tagValue.toLowerCase().trim())) {
+        console.log(`[DOCX] Skipping control - tag contains scope "${tagValue}", but no alias with variable name found`);
+        continue;
+      }
+      
       const [rawName] = tagValue.split('|');
       const variableName = normalizeVariableName(rawName?.trim() || '');
 
