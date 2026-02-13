@@ -1006,6 +1006,10 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
                            newSdtContent + 
                            updatedMatch.substring(sdtContentEnd);
 
+              // Remove placeholder gray color styling (808080)
+              updatedMatch = updatedMatch.replace(/<w:color\s+w:val="808080"\s*\/>/g, '');
+              updatedMatch = updatedMatch.replace(/<w:color\s+w:val="808080"><\/w:color>/g, '');
+
               if (updatedMatch !== fullMatch) {
                 replacements.push({
                   start: control.start,
@@ -1103,7 +1107,17 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
       }
 
       if (newSdtContent !== sdtContentFull) {
-        const newFullMatch = fullMatch.replace(sdtContentFull, newSdtContent);
+        let newFullMatch = fullMatch.replace(sdtContentFull, newSdtContent);
+        
+        // Remove placeholder gray color styling (808080 is the common gray placeholder color)
+        // This ensures the filled-in text appears in normal color, not gray
+        newFullMatch = newFullMatch.replace(/<w:color\s+w:val="808080"\s*\/>/g, '');
+        newFullMatch = newFullMatch.replace(/<w:color\s+w:val="808080"><\/w:color>/g, '');
+        
+        // Also remove w:showingPlcHdr element which indicates placeholder text is being shown
+        newFullMatch = newFullMatch.replace(/<w:showingPlcHdr\s*\/>/g, '');
+        newFullMatch = newFullMatch.replace(/<w:showingPlcHdr><\/w:showingPlcHdr>/g, '');
+        
         replacements.push({
           start: control.start,
           end: control.end,
