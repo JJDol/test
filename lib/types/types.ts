@@ -292,6 +292,7 @@ export interface ProjectVariablesState {
 export interface ProjectVariablesActions {
   handleVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
   handlePropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
+  handleDropdownOptionsChange: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
   updateGeneralVariables: () => Promise<void>;
   cleanupCrossCategoryVariables: () => Promise<void>;
   toggleTemplateCollapse: (templateName: string) => void;

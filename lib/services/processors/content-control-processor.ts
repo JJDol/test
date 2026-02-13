@@ -835,6 +835,192 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
         continue;
       }
 
+      // Handle checkbox content controls
+      if (isCheckboxControl) {
+        // Determine the checked state from the variable value
+        let isChecked = false;
+        if (typeof variableValue === 'boolean') {
+          isChecked = variableValue;
+        } else if (typeof variableValue === 'string') {
+          isChecked = variableValue === 'true' || variableValue === '1';
+        } else if (variableValue && typeof variableValue === 'object') {
+          const objValue = variableValue as any;
+          if (objValue.value !== undefined) {
+            isChecked = objValue.value === true || objValue.value === 'true' || objValue.value === '1';
+          }
+        }
+
+        console.log(`[DOCX] Processing checkbox ${variableName}: ${isChecked}`);
+
+        // Update the w14:checked value in the checkbox control
+        let updatedMatch = fullMatch;
+        
+        // Update w14:checked w14:val attribute
+        updatedMatch = updatedMatch.replace(
+          /(<w14:checked\s+w14:val=")([^"]*)(")/g,
+          `$1${isChecked ? '1' : '0'}$3`
+        );
+        
+        // Also handle the case where it might be just val= without namespace
+        updatedMatch = updatedMatch.replace(
+          /(<w14:checked\s+val=")([^"]*)(")/g,
+          `$1${isChecked ? '1' : '0'}$3`
+        );
+
+        // Update the checkbox symbol in the content (☑ or ☐)
+        // The content usually contains either ☑ (U+2611) or ☐ (U+2610)
+        const checkMark = isChecked ? '☑' : '☐';
+        // Also handle MS Word's ballot characters: 
+        //  (U+F052 or similar) for checked,  (U+F06F or similar) for unchecked
+        updatedMatch = updatedMatch.replace(/(<w:t[^>]*>)([☐☑]|\uf052|\uf06f|\uf0a3|\uf0a4)(<\/w:t>)/gi, 
+          `$1${checkMark}$3`
+        );
+
+        if (updatedMatch !== fullMatch) {
+          replacements.push({
+            start: control.start,
+            end: control.end,
+            originalContent: fullMatch,
+            newContent: updatedMatch,
+            variableName
+          });
+          console.log(`[DOCX] ✅ Updated checkbox for ${variableName} to ${isChecked}`);
+        }
+        continue;
+      }
+
+      // Handle dropdown content controls
+      if (isDropdownControl) {
+        // Get the selected value and custom dropdown options from the variable
+        let selectedValue = '';
+        let customDropdownOptions: { displayText: string; value: string }[] | undefined;
+        
+        if (typeof variableValue === 'string') {
+          selectedValue = variableValue;
+        } else if (variableValue && typeof variableValue === 'object') {
+          const objValue = variableValue as any;
+          if (objValue.value !== undefined) {
+            selectedValue = String(objValue.value);
+          }
+          // Get custom dropdown options if available
+          if (objValue.dropdownOptions && Array.isArray(objValue.dropdownOptions)) {
+            customDropdownOptions = objValue.dropdownOptions;
+          }
+        }
+
+        // Also check if custom options are stored in templateVariables
+        if (!customDropdownOptions && templateVariables) {
+          // Search through all categories and templates for custom dropdown options
+          for (const category of Object.keys(templateVariables)) {
+            const categoryTemplates = templateVariables[category as keyof typeof templateVariables];
+            if (categoryTemplates && typeof categoryTemplates === 'object') {
+              for (const templateName of Object.keys(categoryTemplates)) {
+                const templateData = (categoryTemplates as any)[templateName];
+                if (templateData?.variables) {
+                  const varWithOptions = templateData.variables.find((v: any) => 
+                    v.name === variableName && v.dropdownOptions
+                  );
+                  if (varWithOptions?.dropdownOptions) {
+                    customDropdownOptions = varWithOptions.dropdownOptions;
+                    break;
+                  }
+                }
+              }
+            }
+            if (customDropdownOptions) break;
+          }
+        }
+
+        if (selectedValue) {
+          let updatedMatch = fullMatch;
+          
+          // Escape the value for XML
+          const escapedValue = escapeXml(selectedValue);
+
+          // Update the dropdown options list if custom options exist
+          if (customDropdownOptions && customDropdownOptions.length > 0) {
+            // Build new listItem elements
+            const listItems = customDropdownOptions.map(opt => {
+              // Escape for XML attributes
+              const safeDisplay = escapeXml(opt.displayText || opt.value);
+              const safeValue = escapeXml(opt.value);
+              return `<w:listItem w:displayText="${safeDisplay}" w:value="${safeValue}"/>`;
+            }).join('');
+            
+            const newDropDownList = `<w:dropDownList>${listItems}</w:dropDownList>`;
+            
+            // Try to find and replace the dropDownList element
+            // Pattern 1: <w:dropDownList>..listItems..</w:dropDownList> (with content)
+            const dropDownListWithContentRegex = /<w:dropDownList(?:\s[^>]*)?>[\s\S]*?<\/w:dropDownList>/;
+            // Pattern 2: <w:dropDownList.../> (self-closing)
+            const dropDownListSelfClosingRegex = /<w:dropDownList[^>]*\/>/;
+            
+            if (dropDownListWithContentRegex.test(updatedMatch)) {
+              updatedMatch = updatedMatch.replace(dropDownListWithContentRegex, newDropDownList);
+            } else if (dropDownListSelfClosingRegex.test(updatedMatch)) {
+              updatedMatch = updatedMatch.replace(dropDownListSelfClosingRegex, newDropDownList);
+            }
+          }
+
+          // Find the sdtContent section and replace text
+          const sdtContentStart = updatedMatch.indexOf('<w:sdtContent');
+          if (sdtContentStart !== -1) {
+            // Find the matching </w:sdtContent>
+            let depth = 1;
+            let pos = updatedMatch.indexOf('>', sdtContentStart) + 1;
+            let sdtContentEnd = -1;
+
+            while (depth > 0 && pos < updatedMatch.length) {
+              const nextOpen = updatedMatch.indexOf('<w:sdtContent', pos);
+              const nextClose = updatedMatch.indexOf('</w:sdtContent>', pos);
+
+              if (nextClose === -1) break;
+
+              if (nextOpen !== -1 && nextOpen < nextClose) {
+                depth++;
+                pos = nextOpen + 13;
+              } else {
+                depth--;
+                if (depth === 0) {
+                  sdtContentEnd = nextClose + 15;
+                }
+                pos = nextClose + 15;
+              }
+            }
+
+            if (sdtContentEnd !== -1) {
+              const sdtContentFull = updatedMatch.substring(sdtContentStart, sdtContentEnd);
+              
+              // Replace text content in w:t elements
+              let newSdtContent = sdtContentFull.replace(
+                /(<w:t[^>]*>)[^<]*(<\/w:t>)/g,
+                `$1${escapedValue}$2`
+              );
+
+              // Remove w:showingPlcHdr if present (indicates placeholder text)
+              updatedMatch = updatedMatch.replace(/<w:showingPlcHdr\s*\/>/g, '');
+              updatedMatch = updatedMatch.replace(/<w:showingPlcHdr><\/w:showingPlcHdr>/g, '');
+
+              // Replace the sdtContent section
+              updatedMatch = updatedMatch.substring(0, sdtContentStart) + 
+                           newSdtContent + 
+                           updatedMatch.substring(sdtContentEnd);
+
+              if (updatedMatch !== fullMatch) {
+                replacements.push({
+                  start: control.start,
+                  end: control.end,
+                  originalContent: fullMatch,
+                  newContent: updatedMatch,
+                  variableName
+                });
+              }
+            }
+          }
+        }
+        continue;
+      }
+
       // Handle text content controls - extract text value
       let textValue = '';
       if (typeof variableValue === 'string') {

@@ -9,11 +9,17 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ImageIcon, CalendarIcon, ChevronDownIcon, CheckIcon, TypeIcon, FileTextIcon, Upload, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { ImageIcon, CalendarIcon, ChevronDownIcon, CheckIcon, TypeIcon, FileTextIcon, Upload, X, Plus, Trash2, Pencil } from 'lucide-react';
+import { format, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DocumentVariable } from '@/lib/types/variable-types';
-import { Select } from '@/components/ui/select';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 
 interface EnhancedVariableInputProps {
@@ -24,6 +30,8 @@ interface EnhancedVariableInputProps {
   // For image uploads
   projectId?: string;
   templateName?: string;
+  // For dropdown options editing
+  onDropdownOptionsChange?: (options: { displayText: string; value: string }[]) => void;
 }
 
 export function EnhancedVariableInput({
@@ -32,9 +40,13 @@ export function EnhancedVariableInput({
   disabled = false,
   className,
   projectId,
-  templateName
+  templateName,
+  onDropdownOptionsChange
 }: EnhancedVariableInputProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isEditingDropdownOptions, setIsEditingDropdownOptions] = useState(false);
+  const [editedOptions, setEditedOptions] = useState<{ displayText: string; value: string }[]>([]);
+  const [newOptionText, setNewOptionText] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [imageRemoving, setImageRemoving] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
@@ -385,16 +397,25 @@ export function EnhancedVariableInput({
       // Parse the current date value
       let currentDate: Date | undefined;
       if (variable.value) {
-        if (typeof variable.value === 'string') {
-          // Try to parse ISO string or common date formats
-          const parsed = new Date(variable.value);
-          if (!isNaN(parsed.getTime())) {
-            currentDate = parsed;
-          }
-        } else if (typeof variable.value === 'object' && 'value' in (variable.value as any)) {
-          const parsed = new Date((variable.value as any).value);
-          if (!isNaN(parsed.getTime())) {
-            currentDate = parsed;
+        const dateStr = typeof variable.value === 'string' 
+          ? variable.value 
+          : typeof variable.value === 'object' && 'value' in (variable.value as any)
+            ? (variable.value as any).value
+            : null;
+        
+        if (dateStr) {
+          // Try to parse dd/MM/yyyy format first (our stored format)
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+            const parsed = parse(dateStr, 'dd/MM/yyyy', new Date());
+            if (!isNaN(parsed.getTime())) {
+              currentDate = parsed;
+            }
+          } else {
+            // Fallback to standard Date parsing (ISO format, etc.)
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) {
+              currentDate = parsed;
+            }
           }
         }
       }
@@ -425,7 +446,9 @@ export function EnhancedVariableInput({
               selected={currentDate}
               onSelect={(date) => {
                 if (date) {
-                  onChange(date.toISOString());
+                  // Store date in dd/MM/yyyy format for document generation
+                  const formattedDate = format(date, 'dd/MM/yyyy');
+                  onChange(formattedDate);
                 }
                 setIsCalendarOpen(false);
               }}
@@ -433,6 +456,234 @@ export function EnhancedVariableInput({
             />
           </PopoverContent>
         </Popover>
+      );
+    }
+
+    // Handle checkbox type
+    if (variable.type === 'checkbox') {
+      // Parse the current checkbox value
+      let isChecked = false;
+      if (variable.value !== undefined && variable.value !== null) {
+        if (typeof variable.value === 'boolean') {
+          isChecked = variable.value;
+        } else if (typeof variable.value === 'string') {
+          isChecked = variable.value === 'true' || variable.value === '1';
+        } else if (typeof variable.value === 'object' && 'value' in (variable.value as any)) {
+          const val = (variable.value as any).value;
+          isChecked = val === true || val === 'true' || val === '1';
+        }
+      }
+
+      return (
+        <div className="flex items-center space-x-3">
+          <Checkbox
+            id={`checkbox-${variable.name}`}
+            checked={isChecked}
+            onCheckedChange={(checked) => {
+              onChange(checked === true);
+            }}
+            disabled={disabled}
+          />
+          <Label 
+            htmlFor={`checkbox-${variable.name}`}
+            className="text-sm font-normal cursor-pointer"
+          >
+            {isChecked ? 'Checked' : 'Unchecked'}
+          </Label>
+        </div>
+      );
+    }
+
+    // Handle dropdown type
+    if (variable.type === 'dropdown') {
+      // Get dropdown options from the variable
+      const dropdownOptions = 'dropdownOptions' in variable && Array.isArray(variable.dropdownOptions) 
+        ? variable.dropdownOptions 
+        : [];
+      
+      // Get current selected value
+      let currentValue = '';
+      if (typeof variable.value === 'string') {
+        currentValue = variable.value;
+      } else if (typeof variable.value === 'object' && variable.value && 'value' in (variable.value as any)) {
+        currentValue = String((variable.value as any).value);
+      }
+
+      // Find display text for current value
+      const selectedOption = dropdownOptions.find(opt => opt.value === currentValue);
+      
+      // Use edited options if editing, otherwise use original options
+      const displayOptions = isEditingDropdownOptions ? editedOptions : dropdownOptions;
+      
+      const startEditing = () => {
+        setEditedOptions([...dropdownOptions]);
+        setIsEditingDropdownOptions(true);
+        setNewOptionText('');
+      };
+      
+      const cancelEditing = () => {
+        setIsEditingDropdownOptions(false);
+        setEditedOptions([]);
+        setNewOptionText('');
+      };
+      
+      const saveOptions = () => {
+        if (onDropdownOptionsChange) {
+          // Filter out empty options
+          const validOptions = editedOptions.filter(opt => opt.value.trim() !== '');
+          onDropdownOptionsChange(validOptions);
+        }
+        setIsEditingDropdownOptions(false);
+        setNewOptionText('');
+      };
+      
+      const addOption = () => {
+        if (newOptionText.trim()) {
+          setEditedOptions([...editedOptions, { displayText: newOptionText.trim(), value: newOptionText.trim() }]);
+          setNewOptionText('');
+        }
+      };
+      
+      const removeOption = (index: number) => {
+        setEditedOptions(editedOptions.filter((_, i) => i !== index));
+      };
+      
+      const updateOption = (index: number, newValue: string) => {
+        const updated = [...editedOptions];
+        updated[index] = { displayText: newValue, value: newValue };
+        setEditedOptions(updated);
+      };
+      
+      return (
+        <div className="space-y-3">
+          {/* Dropdown select */}
+          {!isEditingDropdownOptions && (
+            <div className="flex items-center gap-2">
+              <Select
+                value={currentValue}
+                onValueChange={(value) => {
+                  onChange(value);
+                }}
+                disabled={disabled}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select an option...">
+                    {selectedOption?.displayText || currentValue || "Select an option..."}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {dropdownOptions.length > 0 ? (
+                    dropdownOptions.map((option, index) => (
+                      <SelectItem key={`${option.value}-${index}`} value={option.value}>
+                        {option.displayText || option.value}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No options available
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {/* Edit options button */}
+              {onDropdownOptionsChange && !disabled && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={startEditing}
+                  className="shrink-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Edit mode */}
+          {isEditingDropdownOptions && (
+            <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+              <div className="text-sm font-medium">Edit Options</div>
+              
+              {/* Existing options */}
+              <div className="space-y-2">
+                {editedOptions.map((option, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={option.displayText}
+                      onChange={(e) => updateOption(index, e.target.value)}
+                      placeholder="Option text..."
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeOption(index)}
+                      className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Add new option */}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newOptionText}
+                  onChange={(e) => setNewOptionText(e.target.value)}
+                  placeholder="Add new option..."
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addOption();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addOption}
+                  disabled={!newOptionText.trim()}
+                  className="shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Save/Cancel buttons */}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={saveOptions}
+                >
+                  Save Options
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelEditing}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* Show current options for reference (when not editing) */}
+          {!isEditingDropdownOptions && dropdownOptions.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Options: {dropdownOptions.map(o => o.displayText || o.value).join(', ')}
+            </div>
+          )}
+        </div>
       );
     }
 

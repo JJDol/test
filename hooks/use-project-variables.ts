@@ -473,39 +473,6 @@ export function useProjectVariables(
                     const categoryValue = project.template_variables?.[templateCategory]?.[otherCategoryTemplateName]?.variables?.find(v => v.name === variableName)?.value || 
                                         project.category_variables?.[templateCategory]?.variables?.find(v => v.name === variableName)?.value || '';
                     
-                    if (categoryValue !== '') {
-                      // Ensure template_variables structure exists
-                      if (!updatedTemplateVariables[templateCategory]) {
-                        updatedTemplateVariables[templateCategory] = {};
-                      }
-                      if (!updatedTemplateVariables[templateCategory][categoryTemplateName]) {
-                        updatedTemplateVariables[templateCategory][categoryTemplateName] = { variables: [] };
-                      }
-                      
-                      // Find existing variable or create new one
-                      const existingVarIndex = updatedTemplateVariables[templateCategory][categoryTemplateName].variables.findIndex((v: any) => v.name === variableName);
-                      if (existingVarIndex >= 0) {
-                        updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex].value = String(categoryValue);
-                      } else {
-                        // Create new variable entry
-                        const variableType = getVariableType(categoryTemplateName, variableName, allTemplates);
-                        updatedTemplateVariables[templateCategory][categoryTemplateName].variables.push({
-                          name: variableName,
-                          type: variableType as any,
-                          value: String(categoryValue)
-                        });
-                      }
-                    }
-                  }
-                } else {
-                  // No other templates use category scope - revert to global
-                  updatedPropagationSettings[templateCategory][categoryTemplateName][variableName].currentScope = VariablePropagationScope.GLOBAL;
-                  updatedPropagationSettings[templateCategory][categoryTemplateName][variableName].isOverridden = false;
-                  
-                  // Copy the global value to template_variables
-                  const globalValue = project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
-                  
-                  if (globalValue !== '') {
                     // Ensure template_variables structure exists
                     if (!updatedTemplateVariables[templateCategory]) {
                       updatedTemplateVariables[templateCategory] = {};
@@ -514,19 +481,60 @@ export function useProjectVariables(
                       updatedTemplateVariables[templateCategory][categoryTemplateName] = { variables: [] };
                     }
                     
-                    // Find existing variable or create new one
+                    // Find existing variable or create new one - clear custom dropdownOptions
                     const existingVarIndex = updatedTemplateVariables[templateCategory][categoryTemplateName].variables.findIndex((v: any) => v.name === variableName);
                     if (existingVarIndex >= 0) {
-                      updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex].value = String(globalValue);
-                    } else {
-                      // Create new variable entry
+                      const existingVar = updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex];
+                      // Update value and remove dropdownOptions to revert to template defaults
+                      updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex] = {
+                        name: existingVar.name,
+                        type: existingVar.type,
+                        value: categoryValue !== '' ? String(categoryValue) : existingVar.value
+                      };
+                    } else if (categoryValue !== '') {
+                      // Create new variable entry without custom dropdownOptions
                       const variableType = getVariableType(categoryTemplateName, variableName, allTemplates);
                       updatedTemplateVariables[templateCategory][categoryTemplateName].variables.push({
                         name: variableName,
                         type: variableType as any,
-                        value: String(globalValue)
+                        value: String(categoryValue)
                       });
                     }
+                  }
+                } else {
+                  // No other templates use category scope - revert to global
+                  updatedPropagationSettings[templateCategory][categoryTemplateName][variableName].currentScope = VariablePropagationScope.GLOBAL;
+                  updatedPropagationSettings[templateCategory][categoryTemplateName][variableName].isOverridden = false;
+                  
+                  // Copy the global value to template_variables and clear custom dropdownOptions
+                  const globalValue = project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
+                  
+                  // Ensure template_variables structure exists
+                  if (!updatedTemplateVariables[templateCategory]) {
+                    updatedTemplateVariables[templateCategory] = {};
+                  }
+                  if (!updatedTemplateVariables[templateCategory][categoryTemplateName]) {
+                    updatedTemplateVariables[templateCategory][categoryTemplateName] = { variables: [] };
+                  }
+                  
+                  // Find existing variable or create new one - clear custom dropdownOptions
+                  const existingVarIndex = updatedTemplateVariables[templateCategory][categoryTemplateName].variables.findIndex((v: any) => v.name === variableName);
+                  if (existingVarIndex >= 0) {
+                    const existingVar = updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex];
+                    // Update value and remove dropdownOptions to revert to template defaults
+                    updatedTemplateVariables[templateCategory][categoryTemplateName].variables[existingVarIndex] = {
+                      name: existingVar.name,
+                      type: existingVar.type,
+                      value: globalValue !== '' ? String(globalValue) : existingVar.value
+                    };
+                  } else if (globalValue !== '') {
+                    // Create new variable entry without custom dropdownOptions
+                    const variableType = getVariableType(categoryTemplateName, variableName, allTemplates);
+                    updatedTemplateVariables[templateCategory][categoryTemplateName].variables.push({
+                      name: variableName,
+                      type: variableType as any,
+                      value: String(globalValue)
+                    });
                   }
                 }
               } else if (!isOverridden) {
@@ -543,26 +551,67 @@ export function useProjectVariables(
         updatedProject.template_variables = updatedTemplateVariables as any;
       }
       else {
-        // This is global value - revert from category to global scope across all categories and templates
-        // Only revert templates that are using category scope, keep local overrides
+        // This is global value - revert from local/category to global scope
+        // Handle the specific template that triggered the change (for LOCAL -> GLOBAL)
+        if (updatedPropagationSettings[templateCategory]?.[templateName]?.[variableName]) {
+          const currentScope = updatedPropagationSettings[templateCategory][templateName][variableName].currentScope;
+          
+          // Revert from LOCAL to GLOBAL for this specific template
+          if (currentScope === VariablePropagationScope.LOCAL) {
+            updatedPropagationSettings[templateCategory][templateName][variableName].currentScope = VariablePropagationScope.GLOBAL;
+            updatedPropagationSettings[templateCategory][templateName][variableName].isOverridden = false;
+            
+            // Copy the global value to template_variables and clear custom dropdown options
+            const globalValue = project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
+            
+            // Ensure template_variables structure exists
+            if (!updatedTemplateVariables[templateCategory]) {
+              updatedTemplateVariables[templateCategory] = {};
+            }
+            if (!updatedTemplateVariables[templateCategory][templateName]) {
+              updatedTemplateVariables[templateCategory][templateName] = { variables: [] };
+            }
+            
+            // Find existing variable or create new one
+            const existingVarIndex = updatedTemplateVariables[templateCategory][templateName].variables.findIndex((v: any) => v.name === variableName);
+            if (existingVarIndex >= 0) {
+              // Update value and remove custom dropdownOptions to revert to template defaults
+              const existingVar = updatedTemplateVariables[templateCategory][templateName].variables[existingVarIndex];
+              updatedTemplateVariables[templateCategory][templateName].variables[existingVarIndex] = {
+                name: existingVar.name,
+                type: existingVar.type,
+                value: globalValue !== '' ? String(globalValue) : existingVar.value
+                // Note: dropdownOptions is intentionally NOT included - this reverts to template defaults
+              };
+            } else if (globalValue !== '') {
+              // Create new variable entry without custom dropdownOptions
+              const variableType = getVariableType(templateName, variableName, allTemplates);
+              updatedTemplateVariables[templateCategory][templateName].variables.push({
+                name: variableName,
+                type: variableType as any,
+                value: String(globalValue)
+              });
+            }
+          }
+        }
         
-        // Iterate through all categories
+        // Also handle reverting from CATEGORY to GLOBAL across all categories and templates
         Object.values(DocumentCategory).forEach(category => {
           // Get template names for this category from the project
           const categoryTemplateNames = project[`${category.toLowerCase()}_templates` as keyof Project] as string[] || [];
           
-          for (const templateName of categoryTemplateNames) {
+          for (const catTemplateName of categoryTemplateNames) {
             // Find the template definition
-            const template = allTemplates.find(t => t.name === templateName && t.category === category);
+            const template = allTemplates.find(t => t.name === catTemplateName && t.category === category);
             if (template) {
               const hasVariable = template.variables.some(v => v.name === variableName);
-              if (hasVariable && updatedPropagationSettings[category]?.[templateName]?.[variableName]) {
-                const currentScope = updatedPropagationSettings[category][templateName][variableName].currentScope;
+              if (hasVariable && updatedPropagationSettings[category]?.[catTemplateName]?.[variableName]) {
+                const currentScope = updatedPropagationSettings[category][catTemplateName][variableName].currentScope;
                 
-                // Only revert if currently using category scope (keep local overrides)
+                // Revert if currently using category scope
                 if (currentScope === VariablePropagationScope.CATEGORY) {
-                  updatedPropagationSettings[category][templateName][variableName].currentScope = VariablePropagationScope.GLOBAL;
-                  updatedPropagationSettings[category][templateName][variableName].isOverridden = false;
+                  updatedPropagationSettings[category][catTemplateName][variableName].currentScope = VariablePropagationScope.GLOBAL;
+                  updatedPropagationSettings[category][catTemplateName][variableName].isOverridden = false;
                 }
               }
             }
@@ -613,6 +662,89 @@ export function useProjectVariables(
       toast({
         title: "Error",
         description: "Failed to update variable propagation settings",
+        variant: "destructive",
+      });
+    }
+  }, [project, toast, allTemplates]);
+
+  // Handle dropdown options change
+  const handleDropdownOptionsChange = useCallback(async (
+    templateName: string, 
+    variableName: string, 
+    category: DocumentCategory, 
+    options: { displayText: string; value: string }[]
+  ) => {
+    if (!project) return;
+
+    try {
+      const updatedTemplateVariables = { ...project.template_variables };
+      
+      // Ensure the structure exists
+      if (!updatedTemplateVariables[category]) {
+        updatedTemplateVariables[category] = {};
+      }
+      if (!updatedTemplateVariables[category][templateName]) {
+        updatedTemplateVariables[category][templateName] = { variables: [] };
+      }
+      
+      // Find or create the variable entry
+      const variables = updatedTemplateVariables[category][templateName].variables || [];
+      const existingVarIndex = variables.findIndex((v: any) => v.name === variableName);
+      
+      if (existingVarIndex >= 0) {
+        // Update existing variable with new dropdown options
+        variables[existingVarIndex] = {
+          ...variables[existingVarIndex],
+          dropdownOptions: options
+        };
+      } else {
+        // Create new variable entry with dropdown options
+        const template = allTemplates.find(t => t.name === templateName);
+        const originalVar = template?.variables.find(v => v.name === variableName);
+        variables.push({
+          name: variableName,
+          type: originalVar?.type || 'dropdown',
+          value: '',
+          dropdownOptions: options
+        });
+      }
+      
+      updatedTemplateVariables[category][templateName].variables = variables;
+      
+      // Apply optimistic update
+      const updatedProject = { ...project };
+      updatedProject.template_variables = updatedTemplateVariables as any;
+      updateProjectState(prev => ({ ...prev, project: updatedProject }));
+      
+      // Save to database
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_variables: updatedTemplateVariables
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update dropdown options');
+      }
+
+      toast({
+        title: "Options Updated",
+        description: `Dropdown options for "${variableName}" have been saved.`,
+      });
+      
+    } catch (error) {
+      console.error('Error updating dropdown options:', error);
+      
+      // Revert optimistic updates on error
+      updateProjectState(prev => ({ ...prev, project }));
+      
+      toast({
+        title: "Error",
+        description: "Failed to update dropdown options",
         variant: "destructive",
       });
     }
@@ -791,6 +923,7 @@ export function useProjectVariables(
   const actions: ProjectVariablesActions = {
     handleVariableChange,
     handlePropagationChange,
+    handleDropdownOptionsChange,
     updateGeneralVariables,
     cleanupCrossCategoryVariables,
     toggleTemplateCollapse,

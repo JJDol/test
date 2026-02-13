@@ -107,6 +107,7 @@ interface ProjectDetailsContentProps {
     handleBackToDashboard: () => void;
     handleCleanupVariables: () => Promise<void>;
     handlePropagateGeneralValues: () => Promise<void>;
+    handleDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
   };
 }
 
@@ -201,6 +202,7 @@ export function ProjectDetailsContent({
           onCollapseAllTemplates={actions.collapseAllTemplates}
           onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
           onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}
+          onDropdownOptionsChange={actions.handleDropdownOptionsChange}
         />
       </div>
     </LoadingWrapper>

@@ -89,6 +89,7 @@ interface ProjectDocumentsSectionProps {
   onCollapseAllTemplates: () => void;
   onToggleGlobalSectionCollapse: () => void;
   onToggleCategorySectionCollapse: (category: DocumentCategory) => void;
+  onDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
 }
 
 export function ProjectDocumentsSection({
@@ -124,6 +125,7 @@ export function ProjectDocumentsSection({
   onCollapseAllTemplates,
   onToggleGlobalSectionCollapse,
   onToggleCategorySectionCollapse,
+  onDropdownOptionsChange,
 }: ProjectDocumentsSectionProps) {
   if (!project) {
     return null;
@@ -313,6 +315,7 @@ export function ProjectDocumentsSection({
                             canAssignDocuments={currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id ||
                               currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id}
                             canManageProject={currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id}
+                            onDropdownOptionsChange={onDropdownOptionsChange}
                           />
                           </ErrorBoundary>
                         </div>

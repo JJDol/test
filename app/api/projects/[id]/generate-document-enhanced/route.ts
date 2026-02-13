@@ -125,13 +125,23 @@ async function generateDocumentEnhancedHandler(
       if (!variableName) return; // Skip variables without names
       
       const normalizedKey = normalizeVariableName(variableName);
+      const dropdownOptions = (variable as any).dropdownOptions;
       
-      // Handle different variable value formats - only process text types
+      // Handle different variable value formats
       let processedValue: any;
       if (variable.type === 'text') {
         processedValue = variable.value || '';
+      } else if (variable.type === 'dropdown' && dropdownOptions) {
+        // Keep dropdown options for the content control processor
+        processedValue = {
+          type: 'dropdown',
+          value: variable.value || '',
+          dropdownOptions: dropdownOptions
+        };
+      } else if (variable.type === 'dropdown') {
+        processedValue = variable.value || '';
       } else {
-        // Use placeholder for non-text types
+        // Use placeholder for other non-text types
         processedValue = `***${variableName}***`;
       }
       

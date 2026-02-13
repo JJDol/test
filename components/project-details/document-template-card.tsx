@@ -63,6 +63,7 @@ interface DocumentTemplateCardProps {
   onRefresh?: () => void | Promise<void>;
   canAssignDocuments: boolean;
   canManageProject: boolean;
+  onDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
 }
 
 export function DocumentTemplateCard({
@@ -90,6 +91,7 @@ export function DocumentTemplateCard({
   onRefresh,
   canAssignDocuments,
   canManageProject,
+  onDropdownOptionsChange,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
 
@@ -343,8 +345,31 @@ export function DocumentTemplateCard({
                   variable={{
                     name: variableName,
                     type: variableType as any,
-                    value: project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || ''
-                  }}
+                    value: (() => {
+                      // Show value based on current scope
+                      if (scopeOfVariable === VariablePropagationScope.LOCAL) {
+                        return project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || '';
+                      } else if (scopeOfVariable === VariablePropagationScope.CATEGORY) {
+                        return project.category_variables?.[template.category]?.variables?.find(v => v.name === variableName)?.value || '';
+                      } else {
+                        // GLOBAL or undefined - show global value
+                        return project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
+                      }
+                    })(),
+                    // Include dropdownOptions - prioritize custom options from project, fall back to template
+                    ...((() => {
+                      // Check for custom options in project's template_variables first
+                      const customVar = project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName);
+                      if (customVar && 'dropdownOptions' in customVar && customVar.dropdownOptions) {
+                        return { dropdownOptions: customVar.dropdownOptions };
+                      }
+                      // Fall back to original template options
+                      if ('dropdownOptions' in variable && variable.dropdownOptions) {
+                        return { dropdownOptions: variable.dropdownOptions };
+                      }
+                      return {};
+                    })())
+                  } as any}
                   onChange={(value) => {
                     // Determine if this should be treated as local based on current scope
                     const isCurrentlyLocal = scopeOfVariable === VariablePropagationScope.LOCAL;
@@ -362,6 +387,9 @@ export function DocumentTemplateCard({
                   }
                   projectId={project.id}
                   templateName={template.name}
+                  onDropdownOptionsChange={onDropdownOptionsChange ? (options) => 
+                    onDropdownOptionsChange(template.name, variableName, template.category, options)
+                  : undefined}
                 />
                 
                 {isGlobal && scopeOfVariable !== VariablePropagationScope.LOCAL && (
