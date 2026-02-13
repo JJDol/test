@@ -9,7 +9,7 @@
 
 import PizZip from 'pizzip';
 import { DOMParser } from 'xmldom';
-import { DocumentVariables, DocumentVariable, TextVariable, ImageVariable, DateVariable, DropdownVariable, CheckboxVariable } from '@/lib/types/variable-types';
+import { DocumentVariables, DocumentVariable, TextVariable, ImageVariable, DateVariable, DropdownVariable, CheckboxVariable, VariableScope } from '@/lib/types/variable-types';
 import { DOCX_XML_FILES_TO_CHECK } from '@/lib/services/core/docx-config';
 import { normalizeVariableName } from '@/lib/utils/variable-utils';
 
@@ -34,8 +34,10 @@ function hasContentControls(buffer: Buffer): boolean {
 
 
 export interface ContentControlInfo {
-  tag: string;
-  alias: string;
+  tag: string; // Now used for scope (global, category, local)
+  alias: string; // Now used as the variable name/title
+  title: string; // The title property from Content Control (w:alias in XML)
+  scope: VariableScope; // Parsed scope from tag property
   type: 'text' | 'image' | 'date' | 'number' | 'dropdown' | 'checkbox';
   id: string;
   dateFormat?: string;
@@ -61,25 +63,31 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
   
   // Convert to DocumentVariable format based on type
   const documentVariables: DocumentVariables = [];
-  const processedTags = new Set<string>();
+  const processedNames = new Set<string>();
   
   enhancedVariables.forEach(variable => {
-    const normalizedName = normalizeVariableName(variable.tag);
+    // Use alias/title as the variable name (not tag anymore)
+    // Title/alias contains the variable name, tag contains the scope
+    const variableName = variable.alias || variable.title;
+    const normalizedName = normalizeVariableName(variableName);
 
     // Skip if the variable name is empty or only whitespace
     if (!normalizedName || normalizedName.trim() === '') {
-      console.warn('Skipping variable with empty name');
+      console.warn('Skipping variable with empty name (no title/alias set)');
       return;
     }
 
-    // Skip if we've already processed this tag
-    if (processedTags.has(normalizedName)) {
+    // Skip if we've already processed this variable name
+    if (processedNames.has(normalizedName)) {
       return;
     }
-    processedTags.add(normalizedName);
+    processedNames.add(normalizedName);
     
-    // Store original tag for mapping (important for document generation)
-    const originalTag = variable.tag;
+    // Store original title for mapping (important for document generation)
+    const originalTag = variable.alias || variable.title;
+    
+    // Get scope from tag property (defaults to 'local' if not specified or invalid)
+    const scope = variable.scope;
 
     switch (variable.type) {
       case 'text':
@@ -87,8 +95,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           name: normalizedName,
           type: 'text',
           value: variable.currentContent || '',
+          scope: scope,
           originalTag: originalTag
-        } as TextVariable & { originalTag: string });
+        } as TextVariable & { originalTag: string; scope: VariableScope });
         break;
 
       case 'image':
@@ -97,8 +106,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           type: 'image',
           value: variable.currentContent || '',
           filename: variable.currentContent,
+          scope: scope,
           originalTag: originalTag
-        } as ImageVariable & { originalTag: string });
+        } as ImageVariable & { originalTag: string; scope: VariableScope });
         break;
 
       case 'date':
@@ -107,8 +117,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           type: 'date',
           value: variable.currentContent || '',
           dateFormat: variable.dateFormat,
+          scope: scope,
           originalTag: originalTag
-        } as DateVariable & { originalTag: string });
+        } as DateVariable & { originalTag: string; scope: VariableScope });
         break;
       case 'dropdown':
         documentVariables.push({
@@ -117,8 +128,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           value: variable.currentContent || '',
           displayText: variable.currentContent,
           dropdownOptions: variable.dropdownOptions,
+          scope: scope,
           originalTag: originalTag
-        } as DropdownVariable & { originalTag: string });
+        } as DropdownVariable & { originalTag: string; scope: VariableScope });
         break;
 
       case 'checkbox':
@@ -127,8 +139,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           type: 'checkbox',
           checked: variable.currentContent === 'true' || variable.currentContent === '1',
           value: variable.currentContent === 'true' || variable.currentContent === '1',
+          scope: scope,
           originalTag: originalTag
-        } as CheckboxVariable & { originalTag: string });
+        } as CheckboxVariable & { originalTag: string; scope: VariableScope });
         break;
 
       default:
@@ -137,8 +150,9 @@ export function extractTemplateVariables(buffer: Buffer): DocumentVariables {
           name: normalizedName,
           type: 'text',
           value: variable.currentContent || '',
+          scope: scope,
           originalTag: originalTag
-        } as TextVariable & { originalTag: string });
+        } as TextVariable & { originalTag: string; scope: VariableScope });
     }
   });
   
@@ -195,8 +209,27 @@ function extractVariables(buffer: Buffer): ContentControlInfo[] {
 }
 
 /**
+ * Parse scope from tag value
+ * Valid values: 'global', 'category', 'local'
+ * Defaults to 'local' if not specified or invalid
+ */
+function parseScopeFromTag(tagValue: string): VariableScope {
+  const normalizedTag = tagValue.toLowerCase().trim();
+  if (normalizedTag === 'global' || normalizedTag === 'category' || normalizedTag === 'local') {
+    return normalizedTag as VariableScope;
+  }
+  // Default to 'local' if tag is not a valid scope
+  console.warn(`Invalid scope tag "${tagValue}", defaulting to "local"`);
+  return 'local';
+}
+
+/**
  * Extract detailed information from a Content Control
  * Adapted from docx-updater.ts extractContentControlInfo
+ * 
+ * NEW BEHAVIOR:
+ * - Title (w:alias) is used as the variable name
+ * - Tag (w:tag) is used as the scope (global, category, local)
  */
 function extractContentControlInfo(sdt: any): ContentControlInfo | null {
   const sdtPr = sdt.getElementsByTagName('w:sdtPr')[0];
@@ -205,6 +238,8 @@ function extractContentControlInfo(sdt: any): ContentControlInfo | null {
   const info: ContentControlInfo = {
     tag: '',
     alias: '',
+    title: '',
+    scope: 'local', // Default scope
     type: 'text',
     id: '',
     dropdownOptions: [],
@@ -212,14 +247,18 @@ function extractContentControlInfo(sdt: any): ContentControlInfo | null {
   };
 
   // Extract basic properties
+  // Tag now contains the scope (global, category, local)
   const tagElement = sdtPr.getElementsByTagName('w:tag')[0];
   if (tagElement && tagElement.getAttribute('w:val')) {
     info.tag = tagElement.getAttribute('w:val') || '';
+    info.scope = parseScopeFromTag(info.tag);
   }
   
+  // Alias/Title now contains the variable name
   const aliasElement = sdtPr.getElementsByTagName('w:alias')[0];
   if (aliasElement && aliasElement.getAttribute('w:val')) {
     info.alias = aliasElement.getAttribute('w:val') || '';
+    info.title = info.alias; // Title and alias are the same (w:alias is the "Title" in Word UI)
   }
   
   const idElement = sdtPr.getElementsByTagName('w:id')[0];

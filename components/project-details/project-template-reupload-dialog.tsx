@@ -442,21 +442,55 @@ export function ProjectTemplateReuploadDialog({
               <div className="space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-2 text-yellow-600">
                   <RefreshCw className="h-4 w-4" />
-                  Changed Variable Types ({changesSummary.modified.length})
+                  Modified Variables ({changesSummary.modified.length})
                 </h4>
                 <div className="border rounded-md p-3 bg-yellow-50 dark:bg-yellow-950/20">
                   <div className="space-y-2">
                     {changesSummary.modified.map((v, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <span className="font-mono">{v.name}</span>
-                        <span className="text-muted-foreground">:</span>
-                        <Badge variant="outline" className="bg-background">
-                          {v.oldType}
-                        </Badge>
-                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                        <Badge variant="outline" className="bg-background">
-                          {v.newType}
-                        </Badge>
+                      <div key={i} className="flex flex-col gap-1 text-sm">
+                        <span className="font-mono font-medium">{v.name}</span>
+                        <div className="flex flex-wrap items-center gap-2 ml-2">
+                          {/* Type change */}
+                          {v.oldType && v.newType && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">Type:</span>
+                              <Badge variant="outline" className="bg-background text-xs">
+                                {v.oldType}
+                              </Badge>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <Badge variant="outline" className="bg-background text-xs">
+                                {v.newType}
+                              </Badge>
+                            </div>
+                          )}
+                          {/* Scope change */}
+                          {v.oldScope && v.newScope && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">Scope:</span>
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs"
+                                style={{
+                                  backgroundColor: v.oldScope === 'global' ? '#8b5cf620' : v.oldScope === 'category' ? '#f9731620' : '#6b728020',
+                                  borderColor: v.oldScope === 'global' ? '#8b5cf6' : v.oldScope === 'category' ? '#f97316' : '#6b7280'
+                                }}
+                              >
+                                {v.oldScope}
+                              </Badge>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs"
+                                style={{
+                                  backgroundColor: v.newScope === 'global' ? '#8b5cf620' : v.newScope === 'category' ? '#f9731620' : '#6b728020',
+                                  borderColor: v.newScope === 'global' ? '#8b5cf6' : v.newScope === 'category' ? '#f97316' : '#6b7280'
+                                }}
+                              >
+                                {v.newScope}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

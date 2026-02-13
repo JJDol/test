@@ -695,29 +695,41 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
 
       const sdtPrContent = sdtPrMatch[1];
 
-      // Try multiple patterns for tag extraction
-      // Pattern 1: <w:tag w:val="..."/>
-      // Pattern 2: <w:tag val="..."/> (without namespace)
-      // Pattern 3: Use <w:alias> as fallback
-      let tagMatch = sdtPrContent.match(/<w:tag\s+w:val="([^"]*)"/);
-      if (!tagMatch) {
-        tagMatch = sdtPrContent.match(/<w:tag\s+val="([^"]*)"/);
+      // Extract variable name from Content Control properties
+      // NEW BEHAVIOR: Title/Alias (w:alias) contains the variable name, Tag (w:tag) contains scope
+      // Look for w:alias FIRST (variable name), then fall back to w:tag for backward compatibility
+      // Pattern 1: <w:alias w:val="..."/> (preferred - contains variable name)
+      // Pattern 2: <w:alias val="..."/> (without namespace)
+      // Pattern 3: <w:tag w:val="..."/> (fallback for old templates)
+      // Pattern 4: <w:tag val="..."/> (without namespace)
+      let nameMatch = sdtPrContent.match(/<w:alias\s+w:val="([^"]*)"/);
+      if (!nameMatch) {
+        nameMatch = sdtPrContent.match(/<w:alias\s+val="([^"]*)"/);
       }
-      if (!tagMatch) {
-        // Try alias as fallback
-        tagMatch = sdtPrContent.match(/<w:alias\s+w:val="([^"]*)"/);
+      if (!nameMatch) {
+        // Fallback to w:tag for backward compatibility with old templates
+        // Note: In new templates, w:tag contains scope (global/category/local), not the variable name
+        nameMatch = sdtPrContent.match(/<w:tag\s+w:val="([^"]*)"/);
       }
-      if (!tagMatch) {
-        tagMatch = sdtPrContent.match(/<w:alias\s+val="([^"]*)"/);
+      if (!nameMatch) {
+        nameMatch = sdtPrContent.match(/<w:tag\s+val="([^"]*)"/);
       }
 
-      if (!tagMatch) {
+      if (!nameMatch) {
         // Log first 200 chars of sdtPr for debugging
-        console.log(`[DOCX] Skipping control - no tag/alias found. sdtPr preview: ${sdtPrContent.substring(0, 200)}`);
+        console.log(`[DOCX] Skipping control - no alias/tag found. sdtPr preview: ${sdtPrContent.substring(0, 200)}`);
         continue;
       }
 
-      const tagValue = tagMatch[1];
+      const tagValue = nameMatch[1];
+      
+      // Check if this is a scope value (from new templates) - skip if it's just a scope
+      const scopeValues = ['global', 'category', 'local'];
+      if (scopeValues.includes(tagValue.toLowerCase().trim())) {
+        console.log(`[DOCX] Skipping control - tag contains scope "${tagValue}", but no alias with variable name found`);
+        continue;
+      }
+      
       const [rawName] = tagValue.split('|');
       const variableName = normalizeVariableName(rawName?.trim() || '');
 
@@ -823,6 +835,173 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
         continue;
       }
 
+      // Handle checkbox content controls
+      if (isCheckboxControl) {
+        // Determine the checked state from the variable value
+        let isChecked = false;
+        if (typeof variableValue === 'boolean') {
+          isChecked = variableValue;
+        } else if (typeof variableValue === 'string') {
+          isChecked = variableValue === 'true' || variableValue === '1';
+        } else if (variableValue && typeof variableValue === 'object') {
+          const objValue = variableValue as any;
+          if (objValue.value !== undefined) {
+            isChecked = objValue.value === true || objValue.value === 'true' || objValue.value === '1';
+          }
+        }
+
+        console.log(`[DOCX] Processing checkbox ${variableName}: ${isChecked}`);
+
+        // Update the w14:checked value in the checkbox control
+        let updatedMatch = fullMatch;
+        
+        // Update w14:checked w14:val attribute
+        updatedMatch = updatedMatch.replace(
+          /(<w14:checked\s+w14:val=")([^"]*)(")/g,
+          `$1${isChecked ? '1' : '0'}$3`
+        );
+        
+        // Also handle the case where it might be just val= without namespace
+        updatedMatch = updatedMatch.replace(
+          /(<w14:checked\s+val=")([^"]*)(")/g,
+          `$1${isChecked ? '1' : '0'}$3`
+        );
+
+        // Update the checkbox symbol in the content (☑ or ☐)
+        // The content usually contains either ☑ (U+2611) or ☐ (U+2610)
+        const checkMark = isChecked ? '☑' : '☐';
+        // Also handle MS Word's ballot characters: 
+        //  (U+F052 or similar) for checked,  (U+F06F or similar) for unchecked
+        updatedMatch = updatedMatch.replace(/(<w:t[^>]*>)([☐☑]|\uf052|\uf06f|\uf0a3|\uf0a4)(<\/w:t>)/gi, 
+          `$1${checkMark}$3`
+        );
+
+        if (updatedMatch !== fullMatch) {
+          replacements.push({
+            start: control.start,
+            end: control.end,
+            originalContent: fullMatch,
+            newContent: updatedMatch,
+            variableName
+          });
+          console.log(`[DOCX] ✅ Updated checkbox for ${variableName} to ${isChecked}`);
+        }
+        continue;
+      }
+
+      // Handle dropdown content controls
+      if (isDropdownControl) {
+        // Get the selected value and custom dropdown options from the variable
+        let selectedValue = '';
+        let customDropdownOptions: { displayText: string; value: string }[] | undefined;
+        
+        if (typeof variableValue === 'string') {
+          selectedValue = variableValue;
+        } else if (variableValue && typeof variableValue === 'object') {
+          const objValue = variableValue as any;
+          if (objValue.value !== undefined) {
+            selectedValue = String(objValue.value);
+          }
+          // Get custom dropdown options if available
+          if (objValue.dropdownOptions && Array.isArray(objValue.dropdownOptions)) {
+            customDropdownOptions = objValue.dropdownOptions;
+          }
+        }
+
+        if (selectedValue) {
+          let updatedMatch = fullMatch;
+          
+          // Escape the value for XML
+          const escapedValue = escapeXml(selectedValue);
+
+          // Update the dropdown options list if custom options exist
+          if (customDropdownOptions && customDropdownOptions.length > 0) {
+            // Build new listItem elements
+            const listItems = customDropdownOptions.map(opt => {
+              // Escape for XML attributes
+              const safeDisplay = escapeXml(opt.displayText || opt.value);
+              const safeValue = escapeXml(opt.value);
+              return `<w:listItem w:displayText="${safeDisplay}" w:value="${safeValue}"/>`;
+            }).join('');
+            
+            const newDropDownList = `<w:dropDownList>${listItems}</w:dropDownList>`;
+            
+            // Try to find and replace the dropDownList element
+            // Pattern 1: <w:dropDownList>..listItems..</w:dropDownList> (with content)
+            const dropDownListWithContentRegex = /<w:dropDownList(?:\s[^>]*)?>[\s\S]*?<\/w:dropDownList>/;
+            // Pattern 2: <w:dropDownList.../> (self-closing)
+            const dropDownListSelfClosingRegex = /<w:dropDownList[^>]*\/>/;
+            
+            if (dropDownListWithContentRegex.test(updatedMatch)) {
+              updatedMatch = updatedMatch.replace(dropDownListWithContentRegex, newDropDownList);
+            } else if (dropDownListSelfClosingRegex.test(updatedMatch)) {
+              updatedMatch = updatedMatch.replace(dropDownListSelfClosingRegex, newDropDownList);
+            }
+          }
+
+          // Find the sdtContent section and replace text
+          const sdtContentStart = updatedMatch.indexOf('<w:sdtContent');
+          if (sdtContentStart !== -1) {
+            // Find the matching </w:sdtContent>
+            let depth = 1;
+            let pos = updatedMatch.indexOf('>', sdtContentStart) + 1;
+            let sdtContentEnd = -1;
+
+            while (depth > 0 && pos < updatedMatch.length) {
+              const nextOpen = updatedMatch.indexOf('<w:sdtContent', pos);
+              const nextClose = updatedMatch.indexOf('</w:sdtContent>', pos);
+
+              if (nextClose === -1) break;
+
+              if (nextOpen !== -1 && nextOpen < nextClose) {
+                depth++;
+                pos = nextOpen + 13;
+              } else {
+                depth--;
+                if (depth === 0) {
+                  sdtContentEnd = nextClose + 15;
+                }
+                pos = nextClose + 15;
+              }
+            }
+
+            if (sdtContentEnd !== -1) {
+              const sdtContentFull = updatedMatch.substring(sdtContentStart, sdtContentEnd);
+              
+              // Replace text content in w:t elements
+              let newSdtContent = sdtContentFull.replace(
+                /(<w:t[^>]*>)[^<]*(<\/w:t>)/g,
+                `$1${escapedValue}$2`
+              );
+
+              // Remove w:showingPlcHdr if present (indicates placeholder text)
+              updatedMatch = updatedMatch.replace(/<w:showingPlcHdr\s*\/>/g, '');
+              updatedMatch = updatedMatch.replace(/<w:showingPlcHdr><\/w:showingPlcHdr>/g, '');
+
+              // Replace the sdtContent section
+              updatedMatch = updatedMatch.substring(0, sdtContentStart) + 
+                           newSdtContent + 
+                           updatedMatch.substring(sdtContentEnd);
+
+              // Remove placeholder gray color styling (808080)
+              updatedMatch = updatedMatch.replace(/<w:color\s+w:val="808080"\s*\/>/g, '');
+              updatedMatch = updatedMatch.replace(/<w:color\s+w:val="808080"><\/w:color>/g, '');
+
+              if (updatedMatch !== fullMatch) {
+                replacements.push({
+                  start: control.start,
+                  end: control.end,
+                  originalContent: fullMatch,
+                  newContent: updatedMatch,
+                  variableName
+                });
+              }
+            }
+          }
+        }
+        continue;
+      }
+
       // Handle text content controls - extract text value
       let textValue = '';
       if (typeof variableValue === 'string') {
@@ -905,7 +1084,17 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
       }
 
       if (newSdtContent !== sdtContentFull) {
-        const newFullMatch = fullMatch.replace(sdtContentFull, newSdtContent);
+        let newFullMatch = fullMatch.replace(sdtContentFull, newSdtContent);
+        
+        // Remove placeholder gray color styling (808080 is the common gray placeholder color)
+        // This ensures the filled-in text appears in normal color, not gray
+        newFullMatch = newFullMatch.replace(/<w:color\s+w:val="808080"\s*\/>/g, '');
+        newFullMatch = newFullMatch.replace(/<w:color\s+w:val="808080"><\/w:color>/g, '');
+        
+        // Also remove w:showingPlcHdr element which indicates placeholder text is being shown
+        newFullMatch = newFullMatch.replace(/<w:showingPlcHdr\s*\/>/g, '');
+        newFullMatch = newFullMatch.replace(/<w:showingPlcHdr><\/w:showingPlcHdr>/g, '');
+        
         replacements.push({
           start: control.start,
           end: control.end,

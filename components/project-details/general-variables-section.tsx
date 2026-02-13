@@ -107,14 +107,24 @@ export function GeneralVariablesSection({
               }
             }
             
+            // Find the original template variable to get dropdownOptions
+            const projectTemplateNames = getProjectTemplateNames();
+            const templateWithVariable = allTemplates.find(template =>
+              template.variables.some(v => v.name === variable.name) &&
+              projectTemplateNames.includes(template.name)
+            );
+            const originalVariable = templateWithVariable?.variables.find(v => v.name === variable.name);
+            
             return (
               <div key={variable.name} className="space-y-2">
                 <EnhancedVariableInput
                   variable={{
                     name: variable.name,
                     type: variable.type as any,
-                    value: generalValue
-                  }}
+                    value: generalValue,
+                    // Include dropdownOptions from the original template variable
+                    ...(originalVariable && 'dropdownOptions' in originalVariable && { dropdownOptions: originalVariable.dropdownOptions })
+                  } as any}
                   onChange={(value) => {
                       // For general variables, just call handleVariableChange with any template that contains this variable
                       // The function will handle the propagation logic

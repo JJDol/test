@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DocumentVariable } from "@/lib/types/variable-types";
-import { getVariableTypeStyle, getVariableTypeDisplayName } from "@/utils/variable-type-styles";
+import { getVariableTypeStyle, getVariableTypeDisplayName, getVariableScopeStyle, getVariableScopeDisplayName } from "@/utils/variable-type-styles";
 
 interface TemplateUploadFormProps {
   onUploadComplete: () => void;
@@ -596,29 +596,42 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
           <Label>Detected Variables ({variables.length})</Label>
           <div className="border rounded-md p-3 max-h-[200px] overflow-y-auto bg-muted/50 w-full">
             <div className="grid gap-2 min-w-0 w-full">
-              {variables.map((variable: DocumentVariable, index: number) => (
-                <div key={index} className="flex flex-col gap-2 p-2 bg-muted rounded-md sm:flex-row sm:items-center sm:justify-between min-w-0 w-full">
-                  <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                    <Badge variant="outline" className="font-mono text-xs bg-background text-foreground border-border shrink-0 max-w-[120px] truncate" title={variable.name}>
-                      {truncateText(variable.name, 15)}
-                    </Badge>
-                    <Badge 
-                      className="text-xs shrink-0 max-w-[80px] truncate" 
-                      style={{
-                        backgroundColor: getVariableTypeStyle(variable.type).backgroundColor,
-                        color: getVariableTypeStyle(variable.type).color,
-                        border: 'none'
-                      }}
-                      title={getVariableTypeDisplayName(variable.type)}
-                    >
-                      {truncateText(getVariableTypeDisplayName(variable.type), 10)}
-                    </Badge>
+              {variables.map((variable: DocumentVariable, index: number) => {
+                // Get scope from the variable (defaults to 'local' if not set)
+                const scope = (variable as any).scope || 'local';
+                
+                return (
+                  <div key={index} className="flex flex-col gap-2 p-2 bg-muted rounded-md sm:flex-row sm:items-center sm:justify-between min-w-0 w-full">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                      <Badge variant="outline" className="font-mono text-xs bg-background text-foreground border-border shrink-0 max-w-[120px] truncate" title={variable.name}>
+                        {truncateText(variable.name, 15)}
+                      </Badge>
+                      <Badge 
+                        className="text-xs shrink-0 max-w-[80px] truncate" 
+                        style={{
+                          backgroundColor: getVariableTypeStyle(variable.type).backgroundColor,
+                          color: getVariableTypeStyle(variable.type).color,
+                          border: 'none'
+                        }}
+                        title={getVariableTypeDisplayName(variable.type)}
+                      >
+                        {truncateText(getVariableTypeDisplayName(variable.type), 10)}
+                      </Badge>
+                      <Badge 
+                        className="text-xs shrink-0 max-w-[80px] truncate" 
+                        style={{
+                          backgroundColor: getVariableScopeStyle(scope).backgroundColor,
+                          color: getVariableScopeStyle(scope).color,
+                          border: 'none'
+                        }}
+                        title={`Scope: ${getVariableScopeDisplayName(scope)}`}
+                      >
+                        {getVariableScopeDisplayName(scope)}
+                      </Badge>
+                    </div>
                   </div>
-                  {/* <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px] sm:max-w-[150px]" title={variable.originalTag}>
-                    {truncateText(variable.originalTag, 25)}
-                  </span> */}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

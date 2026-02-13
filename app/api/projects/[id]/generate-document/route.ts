@@ -213,14 +213,23 @@ async function generateDocumentHandler(
         processedValue = value;
       } else if (value && typeof value === 'object' && 'type' in value) {
         // Handle typed variables (image, date, etc.)
-        const typedValue = value as { type: string; value: any };
+        const typedValue = value as { type: string; value: any; dropdownOptions?: { displayText: string; value: string }[] };
         if (typedValue.type === 'image' && typedValue.value) {
           // Keep the full image object for the image processor to detect
           processedValue = typedValue;
         } else if (typedValue.type === 'date' && typedValue.value) {
           processedValue = typedValue.value;
         } else if (typedValue.type === 'dropdown' || typedValue.type === 'combobox') {
-          processedValue = typedValue.value || '';
+          // Keep the full dropdown object to preserve dropdownOptions for document generation
+          if (typedValue.dropdownOptions && typedValue.dropdownOptions.length > 0) {
+            processedValue = {
+              type: typedValue.type,
+              value: typedValue.value || '',
+              dropdownOptions: typedValue.dropdownOptions
+            };
+          } else {
+            processedValue = typedValue.value || '';
+          }
         } else if (typedValue.type === 'checkbox') {
           processedValue = typedValue.value ? 'Yes' : 'No';
         } else {

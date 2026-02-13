@@ -127,6 +127,8 @@ export interface VariableChange {
   type?: string;
   oldType?: string;
   newType?: string;
+  oldScope?: string; // For scope changes (global, category, local)
+  newScope?: string; // For scope changes (global, category, local)
   mappedTo?: string; // For renamed variables
 }
 
@@ -290,6 +292,7 @@ export interface ProjectVariablesState {
 export interface ProjectVariablesActions {
   handleVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
   handlePropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
+  handleDropdownOptionsChange: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
   updateGeneralVariables: () => Promise<void>;
   cleanupCrossCategoryVariables: () => Promise<void>;
   toggleTemplateCollapse: (templateName: string) => void;

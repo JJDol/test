@@ -63,6 +63,7 @@ interface DocumentTemplateCardProps {
   onRefresh?: () => void | Promise<void>;
   canAssignDocuments: boolean;
   canManageProject: boolean;
+  onDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
 }
 
 export function DocumentTemplateCard({
@@ -90,6 +91,7 @@ export function DocumentTemplateCard({
   onRefresh,
   canAssignDocuments,
   canManageProject,
+  onDropdownOptionsChange,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
 
@@ -303,31 +305,32 @@ export function DocumentTemplateCard({
         <div className="grid gap-6 mt-4">
           {template.variables.map((variable: DocumentVariable) => {
             const variableName = variable.name;
-            const isGeneral = globalVariableNames?.includes(variableName) || false;
-            const isCategoryVariable = categoryVariableNames?.includes(variableName) || false;
+            // Use the declared scope from the variable directly (set in template via Content Control tag)
+            const declaredScope = (variable as any).scope || 'local';
+            const isGlobal = declaredScope === 'global' || globalVariableNames?.includes(variableName);
+            const isCategory = declaredScope === 'category' || categoryVariableNames?.includes(variableName);
             const scopeOfVariable = project.variable_propagation_settings?.[template.category]?.[template.name]?.[variableName]?.currentScope;
-            // console.log('Debug - scopeOfVariable:', scopeOfVariable, 'for variable:', variableName, 'template:', template.name);
             const variableType = getVariableType(template.name, variableName);
 
             return (
               <div key={variableName} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {isGeneral && (
+                    {isGlobal && (
                       <Badge variant="outline" className="text-xs">Global</Badge>
                     )}
-                    {isCategoryVariable && (
+                    {isCategory && !isGlobal && (
                       <Badge variant="outline" className="text-xs">Category</Badge>
                     )}
                   </div>
-                  {(isGeneral || isCategoryVariable) && (
+                  {(isGlobal || isCategory) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id={`local-${template.name}-${variableName}`}
                         checked={scopeOfVariable === VariablePropagationScope.LOCAL}
                         onCheckedChange={(checked) => {
-                          // Determine what scope to revert to based on variable type
-                          const shouldRevertToCategory = isCategoryVariable;
+                          // Determine what scope to revert to based on declared scope
+                          const shouldRevertToCategory = isCategory && !isGlobal;
                           onPropagationChange(template.category, template.name, variableName, shouldRevertToCategory, checked as boolean);
                         }}
                       />
@@ -342,30 +345,61 @@ export function DocumentTemplateCard({
                   variable={{
                     name: variableName,
                     type: variableType as any,
-                    value: project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || ''
-                  }}
+                    value: (() => {
+                      // Show value based on current scope
+                      if (scopeOfVariable === VariablePropagationScope.LOCAL) {
+                        return project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || '';
+                      } else if (scopeOfVariable === VariablePropagationScope.CATEGORY) {
+                        return project.category_variables?.[template.category]?.variables?.find(v => v.name === variableName)?.value || '';
+                      } else {
+                        // GLOBAL or undefined - show global value
+                        return project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
+                      }
+                    })(),
+                    // Include dropdownOptions - prioritize custom options from project, fall back to template
+                    ...((() => {
+                      // Check for custom options in project's template_variables first
+                      const customVar = project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName);
+                      if (customVar && 'dropdownOptions' in customVar && customVar.dropdownOptions) {
+                        return { dropdownOptions: customVar.dropdownOptions };
+                      }
+                      // Fall back to original template options
+                      if ('dropdownOptions' in variable && variable.dropdownOptions) {
+                        return { dropdownOptions: variable.dropdownOptions };
+                      }
+                      return {};
+                    })())
+                  } as any}
                   onChange={(value) => {
                     // Determine if this should be treated as local based on current scope
                     const isCurrentlyLocal = scopeOfVariable === VariablePropagationScope.LOCAL;
                     const isCurrentlyCategory = scopeOfVariable === VariablePropagationScope.CATEGORY;
                     
                     onVariableChange(template.name, variableName, value, template.category, 
-                      isGeneral && !isCurrentlyLocal && !isCurrentlyCategory, // isGlobal: only if it's global AND not local/category
-                      isCategoryVariable && !isCurrentlyLocal // isCategory: only if it's category AND not local
+                      isGlobal && !isCurrentlyLocal && !isCurrentlyCategory, // isGlobal: only if declared global AND not local/category
+                      isCategory && !isGlobal && !isCurrentlyLocal // isCategory: only if declared category AND not local
                     );
                   }}
                   disabled={
-                    (isGeneral || isCategoryVariable)
+                    (isGlobal || isCategory)
                       ? (!canEditGeneralVariables || scopeOfVariable !== VariablePropagationScope.LOCAL)
                       : !canEditVariables
                   }
                   projectId={project.id}
                   templateName={template.name}
+                  onDropdownOptionsChange={onDropdownOptionsChange ? (options) => 
+                    onDropdownOptionsChange(template.name, variableName, template.category, options)
+                  : undefined}
                 />
                 
-                {isGeneral && scopeOfVariable !== VariablePropagationScope.LOCAL && (
+                {isGlobal && scopeOfVariable !== VariablePropagationScope.LOCAL && (
                   <p className="text-xs text-blue-600">
-                    This variable uses the general value. Check "Use local value" to override.
+                    This variable uses the global value. Check "Use local value" to override.
+                  </p>
+                )}
+                {isCategory && !isGlobal && scopeOfVariable !== VariablePropagationScope.LOCAL && (
+                  <p className="text-xs text-blue-600">
+                    This variable uses the category value. Check "Use local value" to override.
                   </p>
                 )}
               </div>

@@ -298,12 +298,21 @@ downloadProjectHandler(
               if (variable && variable.name) {
                 const normalizedKey = normalizeVariableName(variable.name);
                 const val = variable.value as any;
+                const varType = (variable as any).type;
+                const dropdownOptions = (variable as any).dropdownOptions;
                 let processedValue: any;
 
                 // Check if it's an image object
                 if (typeof val === 'object' && val !== null && val.type === 'image') {
                   // Keep the full image object for the image processor
                   processedValue = val;
+                } else if (varType === 'dropdown' && dropdownOptions) {
+                  // Keep dropdown options for the content control processor
+                  processedValue = {
+                    type: 'dropdown',
+                    value: val || '',
+                    dropdownOptions: dropdownOptions
+                  };
                 } else {
                   processedValue = val;
                 }

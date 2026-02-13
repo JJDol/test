@@ -1,7 +1,10 @@
 // This is used for project variables
+// 
+// UPDATED: Now uses declared scope from template variables instead of auto-sorting
+// Variables have their scope (global, category, local) defined in the template via Content Control tag property
 
 import { createClient } from '@/lib/supabase/server';
-import { DocumentVariable} from '@/lib/types/variable-types';
+import { DocumentVariable, VariableScope } from '@/lib/types/variable-types';
 import { DocumentCategory, DocumentTemplate } from '@/lib/types/types';
 
 
@@ -12,8 +15,7 @@ export interface ProjectVariables {
   variableRegistry: Map<string, {
     documents: string[];
     category: Set<DocumentCategory>;
-    isCategoryVariable: boolean;
-    isGlobalVariable: boolean;
+    scope: VariableScope; // Now using declared scope instead of computed
     type: string;
   }>
   propagationSettings: {
@@ -24,7 +26,12 @@ export interface ProjectVariables {
 
 
 export class VariableProcessor {
-  // This is the main function that will be used to process the project variables
+  /**
+   * Main function to process project variables
+   * 
+   * UPDATED: Now uses declared scope from template variables instead of auto-sorting
+   * The scope (global, category, local) is defined in the template via Content Control tag property
+   */
   async processProjectVariables(
     projectId: string, 
     companyId: string, 
@@ -39,18 +46,12 @@ export class VariableProcessor {
     
     // Get templates with company_id filter for multi-tenancy (Project-Aware)
     const { templates, project } = await this.getProjectTemplates(projectId, companyId, userId);
-    
-    const categoryCounts = new Map<DocumentCategory, number>();
-    templates.forEach(t => {
-      categoryCounts.set(t.category, (categoryCounts.get(t.category) || 0) + 1);
-    });
-    const totalCategories = categoryCounts.size;
 
+    // Build variable registry - now using declared scope from variables
     const variableRegistry = new Map<string, {
       documents: string[];
       category: Set<DocumentCategory>;
-      isCategoryVariable: boolean;
-      isGlobalVariable: boolean;
+      scope: VariableScope;
       type: string;
     }>();
     
@@ -58,88 +59,65 @@ export class VariableProcessor {
       const templateVariables = template.variables;
       
       templateVariables.forEach((variable: DocumentVariable) => {
+        // Get the declared scope from the variable (defaults to 'local' if not set)
+        const declaredScope: VariableScope = (variable as any).scope || 'local';
+        
         if (variableRegistry.has(variable.name)) {
           const existing = variableRegistry.get(variable.name)!;
           existing.documents.push(template.name);
           existing.category.add(template.category);
+          // If same variable appears in multiple templates, use the highest scope declared
+          // (global > category > local) to ensure proper propagation
+          existing.scope = this.getHigherScope(existing.scope, declaredScope);
         } else {
           variableRegistry.set(variable.name, {
             documents: [template.name],
             category: new Set([template.category]),
-            isCategoryVariable: false,
-            isGlobalVariable: false,
+            scope: declaredScope,
             type: variable.type
           });
         }
       });
     });
 
-    // Second pass to determine strict commonality
-    variableRegistry.forEach((data, variableName) => {
-      // isGlobalVariable: true only if it appears in ALL categories (and categories > 1)
-      data.isGlobalVariable = totalCategories > 1 && data.category.size === totalCategories;
-
-      if (data.isGlobalVariable) {
-        data.isCategoryVariable = false;
-      } else {
-        // isCategoryVariable: true only if it appears in ALL documents of at least one category
-        // and that category has more than one document.
-        let isStrictCategory = false;
-        data.category.forEach(cat => {
-          const docsInThisCategory = data.documents.filter(docName => {
-            const t = templates.find(temp => temp.name === docName);
-            return t?.category === cat;
-          });
-          const totalDocsInCat = categoryCounts.get(cat) || 0;
-          if (totalDocsInCat > 1 && docsInThisCategory.length === totalDocsInCat) {
-            isStrictCategory = true;
-          }
-        });
-        data.isCategoryVariable = isStrictCategory;
-      }
-    });
-
+    // Build arrays based on declared scope (no auto-sorting needed)
     const globalVariables = Array.from(variableRegistry.entries())
-    .filter(([name, data]) => data.isGlobalVariable)
-    .map(([name, data]) => ({ name, type: data.type } as DocumentVariable));
+      .filter(([, data]) => data.scope === 'global')
+      .map(([name, data]) => ({ name, type: data.type, scope: 'global' } as DocumentVariable));
 
     const categoryVariables: { [category: string]: { variables: DocumentVariable[] } } = {};
     Array.from(variableRegistry.entries())
-      .filter(([name, data]) => data.isCategoryVariable)
+      .filter(([, data]) => data.scope === 'category')
       .forEach(([name, data]) => {
+        // Add to each category where this variable appears
         data.category.forEach(cat => {
-          const docsInThisCategory = data.documents.filter(docName => {
-            const t = templates.find(temp => temp.name === docName);
-            return t?.category === cat;
-          });
-          const totalDocsInCat = categoryCounts.get(cat) || 0;
-          
-          if (totalDocsInCat > 1 && docsInThisCategory.length === totalDocsInCat) {
-            if (!categoryVariables[cat]) {
-              categoryVariables[cat] = { variables: [] };
-            }
-            categoryVariables[cat].variables.push({ name, type: data.type } as DocumentVariable);
+          if (!categoryVariables[cat]) {
+            categoryVariables[cat] = { variables: [] };
           }
+          categoryVariables[cat].variables.push({ name, type: data.type, scope: 'category' } as DocumentVariable);
         });
       });
 
     const documentSpecificVariables = Array.from(variableRegistry.entries())
-    .filter(([name, data]) => !data.isGlobalVariable && !data.isCategoryVariable)
-    .map(([name, data]) => ({ name, type: data.type } as DocumentVariable));
+      .filter(([, data]) => data.scope === 'local')
+      .map(([name, data]) => ({ name, type: data.type, scope: 'local' } as DocumentVariable));
 
     const propagationSettings = Array.from(variableRegistry.entries())
-    .map(([name, data]) => ({
-      variable: { name, type: data.type } as DocumentVariable,
-      propagationScope: data.isGlobalVariable 
-        ? 'global' 
-        : data.isCategoryVariable 
-          ? 'category' 
-          : 'local'
-    }));
-
+      .map(([name, data]) => ({
+        variable: { name, type: data.type, scope: data.scope } as DocumentVariable,
+        propagationScope: data.scope
+      }));
 
     return { globalVariables, documentSpecificVariables, categoryVariables, variableRegistry: variableRegistry as any, propagationSettings, project, templates };
-    
+  }
+
+  /**
+   * Get the higher scope between two scopes
+   * Hierarchy: global > category > local
+   */
+  private getHigherScope(scope1: VariableScope, scope2: VariableScope): VariableScope {
+    const scopeLevels: Record<VariableScope, number> = { local: 1, category: 2, global: 3 };
+    return scopeLevels[scope1] >= scopeLevels[scope2] ? scope1 : scope2;
   }
   
   // TODO: refactor this to centralize RBAC checks
@@ -233,22 +211,22 @@ export class VariableProcessor {
   
 
   /**
-   * Detect and store general variables for a project when templates change
+   * Update general variables for a project when templates change
    * This should be called when templates are added/removed from a project
+   * 
+   * UPDATED: Now uses declared scope from template variables instead of auto-sorting
    */
-  // TODO: FIX THIS FUNCTION - it is not efficient because it is scanning all templates and variables for each update
   async updateProjectGeneralVariables(
     projectId: string,
     companyId: string,
     userId: string
   ): Promise<void> {
     try {
-      // Process variables with Project-Aware logic (Strict Commonality + Customizations)
+      // Process variables - now using declared scope from templates
       const {
         globalVariables, 
         categoryVariables, 
         variableRegistry, 
-        propagationSettings, 
         project, 
         templates 
       } = await this.processProjectVariables(projectId, companyId, userId);
@@ -257,24 +235,21 @@ export class VariableProcessor {
         throw new Error('Project not found');
       }
 
-      // Check if we have any general variables across all categories
+      // Check if we have any global variables
       const hasGlobalVariables = globalVariables.length > 0;
-      const categoryCounts = new Map<DocumentCategory, number>();
-      templates.forEach(t => {
-        categoryCounts.set(t.category, (categoryCounts.get(t.category) || 0) + 1);
-      });
 
-      // Handle value propagation and scope changes
+      // Handle value propagation based on declared scope
       let updatedTemplateVariables = { ...project.template_variables };
       let hasPropagationChanges = false;
 
-      // Prepare update data
+      // Prepare update data for propagation settings
       const updatedPropagationSettings = { ...(project.variable_propagation_settings || {}) };
 
-      // Process each variable for value propagation and scope changes (hierarchical order: global → category → local)
+      // Process each variable for value propagation using declared scope
       Array.from(variableRegistry.entries()).forEach(([variableName, data]) => {
-        const newScope = data.isGlobalVariable ? 'GLOBAL' : 
-                         data.isCategoryVariable ? 'CATEGORY' : 'LOCAL';
+        // Use the declared scope (already in lowercase: global, category, local)
+        const declaredScope = data.scope;
+        const newScope = declaredScope.toUpperCase(); // Convert to uppercase for DB storage consistency
         
         // Update propagation settings for each template that has this variable
         data.category.forEach(cat => {
@@ -290,45 +265,33 @@ export class VariableProcessor {
                 updatedPropagationSettings[cat][tName] = {};
               }
               
-              const currentSetting = updatedPropagationSettings[cat][tName][variableName];
-              
-              // Calculate possible scopes
-              const possibleScopes: string[] = ['LOCAL'];
-              // Check if it's strict category variable for this category
-              const totalDocsInCat = categoryCounts.get(cat) || 0;
-              const docsInThisCat = data.documents.filter(d => templates.find(t => t.name === d)?.category === cat);
-              if (totalDocsInCat > 1 && docsInThisCat.length === totalDocsInCat) {
-                possibleScopes.push('CATEGORY');
-              }
-              // Check if it's strict global
-              if (data.isGlobalVariable) {
-                possibleScopes.push('GLOBAL');
-              }
-
+              // With declared scope, the scope is fixed - no possibleScopes calculation needed
               updatedPropagationSettings[cat][tName][variableName] = {
-                possibleScopes: possibleScopes,
+                declaredScope: declaredScope, // Store the original declared scope
                 currentScope: newScope,
-                isOverridden: currentSetting?.isOverridden || false
+                isOverridden: false // Declared scope cannot be overridden
               };
             }
           });
         });
 
-        // Get current scope for propagation logic (using first template as reference)
+        // Get previous scope for comparison (if any)
         const firstTemplate = data.documents[0];
         const firstCat = templates.find(t => t.name === firstTemplate)?.category;
-        const currentScope = firstCat ? (project.variable_propagation_settings?.[firstCat]?.[firstTemplate]?.[variableName]?.currentScope || 'LOCAL') : 'LOCAL';
+        const previousScope = firstCat 
+          ? (project.variable_propagation_settings?.[firstCat]?.[firstTemplate]?.[variableName]?.currentScope || 'LOCAL') 
+          : 'LOCAL';
         
-        console.log(`Processing variable ${variableName}: ${currentScope} → ${newScope}`);
+        console.log(`Processing variable ${variableName}: scope = ${declaredScope} (previous: ${previousScope})`);
         
-        // Handle scope reduction
-        if (this.isScopeDecreasing(currentScope, newScope)) {
-          console.log(`  Variable ${variableName} scope is decreasing, cleaning up...`);
-          this.cleanupReducedScope(variableName, currentScope, newScope, data, updatedTemplateVariables);
+        // Handle scope changes (for migration from old system or template updates)
+        if (this.isScopeDecreasing(previousScope, newScope)) {
+          console.log(`  Variable ${variableName} scope decreased, cleaning up...`);
+          this.cleanupReducedScope(variableName, previousScope, newScope, data, updatedTemplateVariables);
           hasPropagationChanges = true;
         }
         
-        // Find source value and propagate based on new scope
+        // Find source value and propagate based on declared scope
         const sourceValue = this.findSourceValue(variableName, data.documents, project.template_variables);
         
         if (sourceValue) {
@@ -363,7 +326,7 @@ export class VariableProcessor {
         throw new Error('Failed to update general variables');
       }
 
-      console.log(`Updated general variables for project ${projectId}. Has general variables: ${hasGlobalVariables}, Propagation changes: ${hasPropagationChanges}`);
+      console.log(`Updated variables for project ${projectId}. Global: ${hasGlobalVariables}, Changes: ${hasPropagationChanges}`);
     } catch (error) {
       console.error('Error in updateProjectGeneralVariables:', error);
       throw error;

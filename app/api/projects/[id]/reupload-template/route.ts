@@ -26,6 +26,7 @@ export const maxDuration = 60;
 
 /**
  * Compare two variable arrays and generate a changes summary
+ * Detects changes in both type and scope
  */
 function compareVariables(
   oldVars: DocumentVariable[],
@@ -45,14 +46,26 @@ function compareVariables(
   for (const name of Object.keys(newMap)) {
     const newVar = newMap[name];
     const oldVar = oldMap[name];
+    
+    // Get scope values (default to 'local' if not set)
+    const newScope = (newVar as any).scope || 'local';
+    const oldScope = oldVar ? ((oldVar as any).scope || 'local') : undefined;
+    
     if (!oldVar) {
+      // New variable added
       added.push({ name, type: newVar.type });
-    } else if (oldVar.type !== newVar.type) {
-      modified.push({
-        name,
-        oldType: oldVar.type,
-        newType: newVar.type
-      });
+    } else {
+      // Check for type or scope changes
+      const typeChanged = oldVar.type !== newVar.type;
+      const scopeChanged = oldScope !== newScope;
+      
+      if (typeChanged || scopeChanged) {
+        modified.push({
+          name,
+          ...(typeChanged && { oldType: oldVar.type, newType: newVar.type }),
+          ...(scopeChanged && { oldScope, newScope })
+        });
+      }
     }
   }
 
@@ -175,6 +188,7 @@ async function reuploadProjectTemplateHandler(
     const formattedVariables: DocumentVariable[] = newVariables.map((variable: DocumentVariable) => ({
       name: variable.name,
       type: variable.type,
+      scope: 'scope' in variable ? variable.scope : 'local', // Include scope (defaults to 'local')
       originalTag: 'originalTag' in variable ? variable.originalTag : undefined,
       id: 'id' in variable ? variable.id : undefined,
       title: 'title' in variable ? variable.title : undefined,
