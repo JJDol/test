@@ -908,29 +908,6 @@ async function processEnhancedContentControlsWithTypeAwarenessAndCount(
           }
         }
 
-        // Also check if custom options are stored in templateVariables
-        if (!customDropdownOptions && templateVariables) {
-          // Search through all categories and templates for custom dropdown options
-          for (const category of Object.keys(templateVariables)) {
-            const categoryTemplates = templateVariables[category as keyof typeof templateVariables];
-            if (categoryTemplates && typeof categoryTemplates === 'object') {
-              for (const templateName of Object.keys(categoryTemplates)) {
-                const templateData = (categoryTemplates as any)[templateName];
-                if (templateData?.variables) {
-                  const varWithOptions = templateData.variables.find((v: any) => 
-                    v.name === variableName && v.dropdownOptions
-                  );
-                  if (varWithOptions?.dropdownOptions) {
-                    customDropdownOptions = varWithOptions.dropdownOptions;
-                    break;
-                  }
-                }
-              }
-            }
-            if (customDropdownOptions) break;
-          }
-        }
-
         if (selectedValue) {
           let updatedMatch = fullMatch;
           

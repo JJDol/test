@@ -490,15 +490,15 @@ export function useProjectVariables(
                         name: existingVar.name,
                         type: existingVar.type,
                         value: categoryValue !== '' ? String(categoryValue) : existingVar.value
-                      };
+                      } as DocumentVariable;
                     } else if (categoryValue !== '') {
                       // Create new variable entry without custom dropdownOptions
                       const variableType = getVariableType(categoryTemplateName, variableName, allTemplates);
                       updatedTemplateVariables[templateCategory][categoryTemplateName].variables.push({
                         name: variableName,
-                        type: variableType as any,
+                        type: variableType,
                         value: String(categoryValue)
-                      });
+                      } as DocumentVariable);
                     }
                   }
                 } else {
@@ -526,15 +526,15 @@ export function useProjectVariables(
                       name: existingVar.name,
                       type: existingVar.type,
                       value: globalValue !== '' ? String(globalValue) : existingVar.value
-                    };
+                    } as DocumentVariable;
                   } else if (globalValue !== '') {
                     // Create new variable entry without custom dropdownOptions
                     const variableType = getVariableType(categoryTemplateName, variableName, allTemplates);
                     updatedTemplateVariables[templateCategory][categoryTemplateName].variables.push({
                       name: variableName,
-                      type: variableType as any,
+                      type: variableType,
                       value: String(globalValue)
-                    });
+                    } as DocumentVariable);
                   }
                 }
               } else if (!isOverridden) {
@@ -582,15 +582,15 @@ export function useProjectVariables(
                 type: existingVar.type,
                 value: globalValue !== '' ? String(globalValue) : existingVar.value
                 // Note: dropdownOptions is intentionally NOT included - this reverts to template defaults
-              };
+              } as DocumentVariable;
             } else if (globalValue !== '') {
               // Create new variable entry without custom dropdownOptions
               const variableType = getVariableType(templateName, variableName, allTemplates);
               updatedTemplateVariables[templateCategory][templateName].variables.push({
                 name: variableName,
-                type: variableType as any,
+                type: variableType,
                 value: String(globalValue)
-              });
+              } as DocumentVariable);
             }
           }
         }
@@ -696,7 +696,7 @@ export function useProjectVariables(
         variables[existingVarIndex] = {
           ...variables[existingVarIndex],
           dropdownOptions: options
-        };
+        } as DocumentVariable;
       } else {
         // Create new variable entry with dropdown options
         const template = allTemplates.find(t => t.name === templateName);
@@ -706,7 +706,7 @@ export function useProjectVariables(
           type: originalVar?.type || 'dropdown',
           value: '',
           dropdownOptions: options
-        });
+        } as DocumentVariable);
       }
       
       updatedTemplateVariables[category][templateName].variables = variables;

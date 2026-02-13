@@ -397,10 +397,12 @@ export function EnhancedVariableInput({
       // Parse the current date value
       let currentDate: Date | undefined;
       if (variable.value) {
-        const dateStr = typeof variable.value === 'string' 
-          ? variable.value 
-          : typeof variable.value === 'object' && 'value' in (variable.value as any)
-            ? (variable.value as any).value
+        // Handle both string value and potential legacy object format
+        const rawValue = variable.value as unknown;
+        const dateStr = typeof rawValue === 'string' 
+          ? rawValue 
+          : typeof rawValue === 'object' && rawValue !== null && 'value' in rawValue
+            ? (rawValue as { value: string }).value
             : null;
         
         if (dateStr) {
@@ -461,15 +463,16 @@ export function EnhancedVariableInput({
 
     // Handle checkbox type
     if (variable.type === 'checkbox') {
-      // Parse the current checkbox value
+      // Parse the current checkbox value - handle both typed value and potential legacy formats
       let isChecked = false;
-      if (variable.value !== undefined && variable.value !== null) {
-        if (typeof variable.value === 'boolean') {
-          isChecked = variable.value;
-        } else if (typeof variable.value === 'string') {
-          isChecked = variable.value === 'true' || variable.value === '1';
-        } else if (typeof variable.value === 'object' && 'value' in (variable.value as any)) {
-          const val = (variable.value as any).value;
+      const rawValue = variable.value as unknown;
+      if (rawValue !== undefined && rawValue !== null) {
+        if (typeof rawValue === 'boolean') {
+          isChecked = rawValue;
+        } else if (typeof rawValue === 'string') {
+          isChecked = rawValue === 'true' || rawValue === '1';
+        } else if (typeof rawValue === 'object' && rawValue !== null && 'value' in rawValue) {
+          const val = (rawValue as { value: unknown }).value;
           isChecked = val === true || val === 'true' || val === '1';
         }
       }
@@ -501,12 +504,13 @@ export function EnhancedVariableInput({
         ? variable.dropdownOptions 
         : [];
       
-      // Get current selected value
+      // Get current selected value - handle both typed value and potential legacy formats
       let currentValue = '';
-      if (typeof variable.value === 'string') {
-        currentValue = variable.value;
-      } else if (typeof variable.value === 'object' && variable.value && 'value' in (variable.value as any)) {
-        currentValue = String((variable.value as any).value);
+      const rawValue = variable.value as unknown;
+      if (typeof rawValue === 'string') {
+        currentValue = rawValue;
+      } else if (typeof rawValue === 'object' && rawValue !== null && 'value' in rawValue) {
+        currentValue = String((rawValue as { value: unknown }).value);
       }
 
       // Find display text for current value
