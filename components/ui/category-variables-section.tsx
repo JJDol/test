@@ -100,6 +100,11 @@ export function CategoryVariablesSection({
       
       {!collapsed && (
         <div className="grid gap-4">
+          {categoryVariables.length === 0 && (
+            <p className="text-sm text-gray-500 italic">
+              No category variables found. Category variables are shared across templates in this category.
+            </p>
+          )}
           {categoryVariables.map((variable) => {
             // Use declared scope from the variable directly
             const declaredScope = (variable as any).scope || 'category';

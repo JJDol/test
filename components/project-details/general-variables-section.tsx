@@ -96,6 +96,11 @@ export function GeneralVariablesSection({
       
       {!collapsed && (
         <div className="grid gap-4">
+          {globalVariables.length === 0 && (
+            <p className="text-sm text-gray-500 italic">
+              No global variables found. Global variables are shared across all categories.
+            </p>
+          )}
           {globalVariables.map((variable) => {
             // Get the general value (first non-empty value from templates using general mode)
             let generalValue: any = '';

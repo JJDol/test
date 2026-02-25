@@ -213,43 +213,36 @@ export function ProjectDocumentsSection({
                   ) : (
                     <>
                       {/* Variables Section - Global and Category in one box */}
-                      {((project?.global_variables?.variables && project.global_variables.variables.length > 0) || 
-                        (project.category_variables?.[category]?.variables && project.category_variables?.[category]?.variables.length > 0)) && (
-                        <div className="bg-muted rounded-lg p-4 space-y-4">
-                          {/* Global Variables */}
-                          {project?.global_variables?.variables && project.global_variables.variables.length > 0 && (
-                            <GeneralVariablesSection
-                              allTemplates={allTemplates}          
-                              globalVariables={project.global_variables.variables}
-                              templateVariables={templateVariables}
-                              propagationSettings={project?.variable_propagation_settings || {} as any}
-                              project={project}
-                              collapsed={collapsedGlobalSection}
-                              canEdit={canEditGeneralVariables()}
-                              onToggleCollapse={() => onToggleGlobalSectionCollapse()}
-                              onVariableChange={onVariableChange}
-                            />
-                          )}
+                      <div className="bg-muted rounded-lg p-4 space-y-4">
+                        {/* Global Variables */}
+                        <GeneralVariablesSection
+                          allTemplates={allTemplates}          
+                          globalVariables={project?.global_variables?.variables || []}
+                          templateVariables={templateVariables}
+                          propagationSettings={project?.variable_propagation_settings || {} as any}
+                          project={project}
+                          collapsed={collapsedGlobalSection}
+                          canEdit={canEditGeneralVariables()}
+                          onToggleCollapse={() => onToggleGlobalSectionCollapse()}
+                          onVariableChange={onVariableChange}
+                        />
 
-                          {/* Category Variables */}
-                          {project.category_variables?.[category]?.variables && project.category_variables?.[category]?.variables.length > 0 && (
-                            <CategoryVariablesSection
-                              category={category}
-                              categoryVariables={project.category_variables?.[category]?.variables || []}
-                              categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
-                              templateVariables={project.template_variables || {}}
-                              propagationSettings={project.variable_propagation_settings || {}}
-                              globalVariables={project.global_variables?.variables || []}
-                              collapsed={collapsedCategorySections[category] || false}
-                              canEdit={canEditGeneralVariables()}
-                              projectId={project.id}
-                              onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
-                              onVariableChange={onVariableChange}
-                              onPropagationChange={onPropagationChange}
-                            />
-                          )}
-                        </div>
-                      )}
+                        {/* Category Variables */}
+                        <CategoryVariablesSection
+                          category={category}
+                          categoryVariables={project.category_variables?.[category]?.variables || []}
+                          categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
+                          templateVariables={project.template_variables || {}}
+                          propagationSettings={project.variable_propagation_settings || {}}
+                          globalVariables={project.global_variables?.variables || []}
+                          collapsed={collapsedCategorySections[category] || false}
+                          canEdit={canEditGeneralVariables()}
+                          projectId={project.id}
+                          onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
+                          onVariableChange={onVariableChange}
+                          onPropagationChange={onPropagationChange}
+                        />
+                      </div>
 
                       {/* Document Template Cards - Grid Layout */}
                       <div className="border rounded-lg p-4">

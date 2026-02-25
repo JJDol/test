@@ -386,7 +386,7 @@ downloadProjectHandler(
     
     // Set response headers
     response.headers.set('Content-Type', 'application/zip');
-    response.headers.set('Content-Disposition', `attachment; filename="project-${project.name}-documents.zip"`);
+    response.headers.set('Content-Disposition', `attachment; filename="documents.zip"`);
 
     return response;
   } catch (error) {

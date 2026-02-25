@@ -229,7 +229,7 @@ export function DocumentTemplateCard({
 
       {/* Template Title and Version - fixed height for consistency */}
       <div className="mb-4 min-h-[3.5rem] text-center">
-        <h3 className="text-sm font-semibold line-clamp-1 mb-1">{template.name}</h3>
+        <h3 className="text-base font-semibold line-clamp-1 mb-1">{template.name}</h3>
         <div className="flex items-center gap-1 flex-wrap">
           <Badge
             variant={hasNewerVersion ? "outline" : "secondary"}
@@ -346,14 +346,40 @@ export function DocumentTemplateCard({
                     name: variableName,
                     type: variableType as any,
                     value: (() => {
-                      // Show value based on current scope
+                      // All values are stored in template_variables, not in global_variables/category_variables
+                      // The global_variables and category_variables only store metadata (name, type)
                       if (scopeOfVariable === VariablePropagationScope.LOCAL) {
+                        // Local scope: read from this specific template's variables
                         return project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || '';
                       } else if (scopeOfVariable === VariablePropagationScope.CATEGORY) {
-                        return project.category_variables?.[template.category]?.variables?.find(v => v.name === variableName)?.value || '';
+                        // Category scope: find value from any template in same category using CATEGORY scope
+                        const categoryTemplateVars = project.template_variables?.[template.category] || {};
+                        for (const tName of Object.keys(categoryTemplateVars)) {
+                          const tScope = project.variable_propagation_settings?.[template.category]?.[tName]?.[variableName]?.currentScope;
+                          if (tScope === VariablePropagationScope.CATEGORY) {
+                            const varValue = categoryTemplateVars[tName]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
+                            if (varValue !== undefined && varValue !== '') {
+                              return varValue;
+                            }
+                          }
+                        }
+                        return '';
                       } else {
-                        // GLOBAL or undefined - show global value
-                        return project.global_variables?.variables?.find(v => v.name === variableName)?.value || '';
+                        // GLOBAL scope: find value from any template across all categories using GLOBAL scope
+                        const allCategories = Object.keys(project.template_variables || {}) as DocumentCategory[];
+                        for (const cat of allCategories) {
+                          const catTemplateVars = project.template_variables?.[cat] || {};
+                          for (const tName of Object.keys(catTemplateVars)) {
+                            const tScope = project.variable_propagation_settings?.[cat]?.[tName]?.[variableName]?.currentScope;
+                            if (tScope === VariablePropagationScope.GLOBAL) {
+                              const varValue = catTemplateVars[tName]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
+                              if (varValue !== undefined && varValue !== '') {
+                                return varValue;
+                              }
+                            }
+                          }
+                        }
+                        return '';
                       }
                     })(),
                     // Include dropdownOptions - prioritize custom options from project, fall back to template

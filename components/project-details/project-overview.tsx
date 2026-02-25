@@ -129,11 +129,11 @@ export function ProjectOverview({
                 </DropdownMenuItem>
               )}
               
-              {/* Update Project */}
+              {/* Edit Project */}
               {canUpdateProject && (
                 <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Update Project
+                  Edit Project
                 </DropdownMenuItem>
               )}
               
