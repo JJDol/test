@@ -111,73 +111,68 @@ export function DocumentTemplateCard({
 
   return (
     <div
-      className={`py-4 border-b border-foreground/10 cursor-pointer transition-colors ${isExpanded ? 'bg-muted/20' : 'hover:bg-muted/10'}`}
+      className={`py-3 border-b border-foreground/10 cursor-pointer transition-colors ${isExpanded ? 'bg-muted/20' : 'hover:bg-muted/10'}`}
       onClick={onToggleExpanded}
     >
-      <div className="flex items-start justify-between">
-        {/* Left: title + description */}
-        <div className="min-w-0 pr-4">
-          <div className="flex items-center gap-3">
-            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            <span className="text-base font-medium truncate">{template.name}</span>
-            <Badge variant={template.is_public ? "default" : "secondary"}>
-              {template.is_public ? "Public" : "Private"}
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              v{template.current_version || 1}
-            </Badge>
-          </div>
-          {template.description ? (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
-          ) : null}
+      <div className="flex items-center justify-between">
+        {/* Left: chevron + title + badges */}
+        <div className="flex items-center gap-3 min-w-0">
+          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          <span className="text-base font-medium truncate">{template.name}</span>
+          <Badge variant={template.is_public ? "default" : "secondary"} className="shrink-0">
+            {template.is_public ? "Public" : "Private"}
+          </Badge>
+          <Badge variant="outline" className="text-xs shrink-0">
+            v{template.current_version || 1}
+          </Badge>
         </div>
 
         {/* Right: modified + actions */}
         <div className="flex items-center gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            Modified {new Date(template.updated_at ? new Date(template.updated_at).toLocaleDateString() : 'Unknown').toLocaleDateString()}
+          <span className="text-sm text-muted-foreground hidden sm:inline whitespace-nowrap">
+            Modified {template.updated_at ? new Date(template.updated_at).toLocaleDateString() : 'Unknown'}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-foreground/70 hover:text-foreground"
+              className="h-8 w-8 text-foreground/70 hover:text-foreground"
               title={isDownloading ? "Downloading..." : "Download"}
               onClick={handleDownload}
               disabled={isDownloading}
             >
               {isDownloading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <DownloadIcon className="h-5 w-5" />
+                <DownloadIcon className="h-4 w-4" />
               )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-foreground/70 hover:text-foreground"
+              className="h-8 w-8 text-foreground/70 hover:text-foreground"
               title="Upload New Version"
               onClick={onReupload}
             >
-              <UploadCloud className="h-5 w-5" />
+              <UploadCloud className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-foreground/70 hover:text-foreground"
+              className="h-8 w-8 text-foreground/70 hover:text-foreground"
               title="Edit"
               onClick={onEdit}
             >
-              <Pencil className="h-5 w-5" />
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-red-400 hover:text-red-500"
+              className="h-8 w-8 text-red-400 hover:text-red-500"
               title="Delete"
               onClick={onDelete}
             >
-              <Trash2 className="h-5 w-5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

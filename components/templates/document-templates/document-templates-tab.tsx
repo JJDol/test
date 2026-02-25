@@ -16,14 +16,15 @@
 
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CategorySelector } from "@/components/ui/category-selector";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingStateInline } from "@/components/ui/loading-state-inline";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
-import { Plus, Archive, RotateCcw, Loader2 } from "lucide-react";
+import { Plus, Archive, RotateCcw, Loader2, ChevronDown } from "lucide-react";
 import { DocumentTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
 import { TemplateUploadForm } from "@/components/ui/template-upload-form";
 import { DocumentTemplateCard } from "./document-template-card";
@@ -208,30 +209,37 @@ export function DocumentTemplatesTab({
         <LoadingStateInline message="Loading templates..." />
       )}
 
-      {/* Templates grid */}
+      {/* Templates accordion */}
       {!loading.templates || templates.length > 0 ? (
-        <div className="grid gap-8">
+        <Accordion type="multiple" className="w-full">
           {Object.entries(templatesByCategory)
             .filter(([category]) => selectedCategory === 'ALL' || category === selectedCategory)
             .map(([category, categoryTemplates]) => (
-            <div key={category} className="space-y-4">
-              <h2 className="text-xl font-semibold">{category}</h2>
-              <div className="grid gap-0">
-                {categoryTemplates.map((template) => (
-                  <DocumentTemplateCard
-                    key={template.name}
-                    template={template}
-                    isExpanded={!!expandedTemplates[template.name]}
-                    onToggleExpanded={() => actions.toggleTemplateExpanded(template.name)}
-                    onEdit={() => actions.openEditDialog(template)}
-                    onDelete={() => actions.deleteTemplate(template)}
-                    onReupload={() => actions.openReuploadDialog(template)}
-                  />
-                ))}
-              </div>
-            </div>
+            <AccordionItem key={category} value={category} className="border-0 mb-2">
+              <AccordionTrigger className="bg-muted/50 hover:bg-muted px-4 py-4 rounded-lg hover:no-underline justify-start [&>svg]:order-first [&>svg]:mr-3 [&>svg]:ml-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold uppercase tracking-wide">{category}</span>
+                  <span className="text-muted-foreground font-normal">{categoryTemplates.length}</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-0 pl-8">
+                <div className="grid gap-0">
+                  {categoryTemplates.map((template) => (
+                    <DocumentTemplateCard
+                      key={template.name}
+                      template={template}
+                      isExpanded={!!expandedTemplates[template.name]}
+                      onToggleExpanded={() => actions.toggleTemplateExpanded(template.name)}
+                      onEdit={() => actions.openEditDialog(template)}
+                      onDelete={() => actions.deleteTemplate(template)}
+                      onReupload={() => actions.openReuploadDialog(template)}
+                    />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       ) : null}
 
       {/* No templates message */}
