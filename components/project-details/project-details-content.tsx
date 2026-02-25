@@ -147,63 +147,81 @@ export function ProjectDetailsContent({
       loadingMessage="Loading project details..."
       errorTitle="Failed to load project"
     >
-      <div className="space-y-6">
-        {/* Project Overview Section */}
-        <ProjectOverview
-          project={project}
-          currentUser={currentUser}
-          loadingAction={loadingAction}
-          overallProgress={calculateOverallProgress()}
-          checkedProgress={calculateCheckedProgress()}
-          canManageProject={permissions.canManageProject()}
-          canArchiveProject={permissions.canArchiveProject()}
-          canDeleteProject={permissions.canDeleteProject()}
-          canUpdateProject={permissions.canUpdateProject()}
-          canAssignWorkers={permissions.canAssignWorkers()}
-          canDownloadProject={permissions.canDownloadProject()}
-          onBackToDashboard={actions.handleBackToDashboard}
-          onDownloadProject={actions.handleDownloadProject}
-          onArchiveProject={actions.handleArchiveProject}
-          onProjectDeleted={actions.handleProjectDeleted}
-          onProjectUpdated={actions.refreshProject}
-        />
+      <div className="space-y-4">
+        {/* Back to Dashboard Button */}
+        <button
+          onClick={actions.handleBackToDashboard}
+          disabled={loadingAction !== "none"}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+        >
+          ← Back to Dashboard
+        </button>
+        
+        {/* Project Name Header */}
+        <h1 className="text-3xl font-bold">{project?.name}</h1>
+        
+        <div className="flex gap-6 items-start">
+          {/* Left Sidebar - Project Overview */}
+          <div className="w-64 flex-shrink-0">
+          <ProjectOverview
+            project={project}
+            currentUser={currentUser}
+            loadingAction={loadingAction}
+            overallProgress={calculateOverallProgress()}
+            checkedProgress={calculateCheckedProgress()}
+            canManageProject={permissions.canManageProject()}
+            canArchiveProject={permissions.canArchiveProject()}
+            canDeleteProject={permissions.canDeleteProject()}
+            canUpdateProject={permissions.canUpdateProject()}
+            canAssignWorkers={permissions.canAssignWorkers()}
+            canDownloadProject={permissions.canDownloadProject()}
+            onBackToDashboard={actions.handleBackToDashboard}
+            onDownloadProject={actions.handleDownloadProject}
+            onArchiveProject={actions.handleArchiveProject}
+            onProjectDeleted={actions.handleProjectDeleted}
+            onProjectUpdated={actions.refreshProject}
+          />
+        </div>
 
-        {/* Project Documents Section */}
-        <ProjectDocumentsSection
-          project={project}
-          currentUser={currentUser}
-          activeCategory={activeCategory}
-          templates={templates}
-          allTemplates={allTemplates}
-          collapsedTemplates={collapsedTemplates}
-          collapsedGlobalSection={collapsedGlobalSection}
-          collapsedCategorySections={collapsedCategorySections}
-          templateVariables={templateVariables}
-          loading={loading}
-          error={error}
-          canEditVariables={canEditVariables}
-          canCheckVariables={canCheckVariables}
-          canEditGeneralVariables={canEditGeneralVariables}
-          calculateTemplateProgress={calculateTemplateProgress}
-          getVariableType={getVariableType}
-          onTabChange={actions.setActiveCategory}
-          onRefresh={actions.refreshProject}
-          onTemplateSelected={actions.handleTemplateSelected}
-          onProjectTemplateSelected={actions.handleProjectTemplateSelected}
-          onTemplateRemove={actions.handleTemplateRemove}
-          onVariableChange={actions.handleVariableChange}
-          onPropagationChange={actions.handlePropagationChange}
-          onSupervisorCheck={actions.handleSupervisorCheck}
-          onReadyForControl={actions.handleReadyForControl}
-          onGenerateDocument={actions.handleGenerateDocument}
-          onAssignmentUpdate={actions.handleAssignmentUpdate}
-          onUpgradeVersion={actions.handleUpgradeVersion}
-          onToggleTemplateCollapse={actions.toggleTemplateCollapse}
-          onCollapseAllTemplates={actions.collapseAllTemplates}
-          onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
-          onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}
-          onDropdownOptionsChange={actions.handleDropdownOptionsChange}
-        />
+        {/* Right Content - Project Documents Section */}
+        <div className="flex-1 min-w-0">
+          <ProjectDocumentsSection
+            project={project}
+            currentUser={currentUser}
+            activeCategory={activeCategory}
+            templates={templates}
+            allTemplates={allTemplates}
+            collapsedTemplates={collapsedTemplates}
+            collapsedGlobalSection={collapsedGlobalSection}
+            collapsedCategorySections={collapsedCategorySections}
+            templateVariables={templateVariables}
+            loading={loading}
+            error={error}
+            canEditVariables={canEditVariables}
+            canCheckVariables={canCheckVariables}
+            canEditGeneralVariables={canEditGeneralVariables}
+            calculateTemplateProgress={calculateTemplateProgress}
+            getVariableType={getVariableType}
+            onTabChange={actions.setActiveCategory}
+            onRefresh={actions.refreshProject}
+            onTemplateSelected={actions.handleTemplateSelected}
+            onProjectTemplateSelected={actions.handleProjectTemplateSelected}
+            onTemplateRemove={actions.handleTemplateRemove}
+            onVariableChange={actions.handleVariableChange}
+            onPropagationChange={actions.handlePropagationChange}
+            onSupervisorCheck={actions.handleSupervisorCheck}
+            onReadyForControl={actions.handleReadyForControl}
+            onGenerateDocument={actions.handleGenerateDocument}
+            onAssignmentUpdate={actions.handleAssignmentUpdate}
+            onUpgradeVersion={actions.handleUpgradeVersion}
+            onToggleTemplateCollapse={actions.toggleTemplateCollapse}
+            onCollapseAllTemplates={actions.collapseAllTemplates}
+            onToggleGlobalSectionCollapse={actions.toggleGlobalSectionCollapse}
+            onToggleCategorySectionCollapse={actions.toggleCategorySectionCollapse}
+            onDropdownOptionsChange={actions.handleDropdownOptionsChange}
+          />
+        </div>
+        </div>
       </div>
     </LoadingWrapper>
   );

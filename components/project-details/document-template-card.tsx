@@ -228,7 +228,7 @@ export function DocumentTemplateCard({
       </div>
 
       {/* Template Title and Version - fixed height for consistency */}
-      <div className="mb-4 min-h-[3.5rem]">
+      <div className="mb-4 min-h-[3.5rem] text-center">
         <h3 className="text-sm font-semibold line-clamp-1 mb-1">{template.name}</h3>
         <div className="flex items-center gap-1 flex-wrap">
           <Badge
@@ -262,10 +262,10 @@ export function DocumentTemplateCard({
       </div>
 
       {/* Assignment Information - fixed height for consistency */}
-      <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem]">
+      <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem] text-center">
         <p className="truncate">Assigned to: {project.document_assignments?.[template.name]?.assignee_name || 'Not assigned'}</p>
         <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || 'Not assigned'}</p>
-        <div className="h-6 flex items-center">
+        <div className="h-6 flex items-center justify-center">
           {project.document_assignments?.[template.name]?.supervisor_checked && (
             <Badge variant="outline" className="text-xs">Checked by supervisor</Badge>
           )}
@@ -273,7 +273,7 @@ export function DocumentTemplateCard({
       </div>
 
       {/* Checkboxes Section - fixed height for consistency */}
-      <div className="mt-auto pt-3 space-y-2 min-h-[3.5rem]">
+      <div className="mt-auto pt-3 space-y-2 min-h-[3.5rem] flex flex-col items-center">
         {!project.is_archived && canCheckVariables && (
           <div className="flex items-center gap-2">
             <Checkbox

@@ -147,13 +147,13 @@ export function DocumentTemplatesTab({
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-10 mt-10">
         <div>
           <h2 className="text-3xl font-bold">Document Templates</h2>
           <ViewModeSelector
             viewMode={viewMode}
             onViewModeChange={actions.setViewMode}
-            className="mt-2"
+            className="mt-6"
           />
         </div>
         <div className="flex gap-2">

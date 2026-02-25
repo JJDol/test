@@ -1,4 +1,4 @@
-import { Building2, FolderOpen, Users, Globe } from "lucide-react";
+import { Building2, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
@@ -7,9 +7,6 @@ interface DashboardHeaderProps {
   isAdmin: boolean;
   selectedCompanyId?: string | null;
   hasCompany: boolean;
-  projectsCount: number;
-  activeProjectsCount: number;
-  overdueProjectsCount: number;
 }
 
 export function DashboardHeader({
@@ -17,10 +14,7 @@ export function DashboardHeader({
   selectedCompanyName,
   isAdmin,
   selectedCompanyId,
-  hasCompany,
-  projectsCount,
-  activeProjectsCount,
-  overdueProjectsCount
+  hasCompany
 }: DashboardHeaderProps) {
   // Determine which header to show
   let headerType: 'company' | 'selected-company' | 'all-companies' | null = null;
@@ -65,21 +59,6 @@ export function DashboardHeader({
         {badgeText && (
           <Badge variant={badgeVariant} className="text-xs">
             {badgeText}
-          </Badge>
-        )}
-      </div>
-      <div className="flex items-center gap-6 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-4 h-4" />
-          <span>{projectsCount} Total Projects</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4" />
-          <span>{activeProjectsCount} Active</span>
-        </div>
-        {overdueProjectsCount > 0 && (
-          <Badge variant="destructive" className="text-xs">
-            {overdueProjectsCount} Overdue
           </Badge>
         )}
       </div>

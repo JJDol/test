@@ -90,15 +90,92 @@ export function ProjectOverview({
 
 
   return (
-    <div className="bg-muted p-6 rounded-lg w-full">
-      {/* Header Section */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
-          <div className="space-y-1">
-            <p className="text-sm text-gray-600">Project Leader: {project.leaderName}</p>
-            <p className="text-sm text-gray-600">
-              Workers: {project.workers_names && project.workers_names.length > 0 
+    <div className="bg-muted p-4 rounded-lg w-full h-fit sticky top-4 relative">
+      {/* Three Dots Menu - Top Right */}
+      {!project.is_archived && (
+        <div className="absolute top-2 right-2">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              {/* Workers Management */}
+              {canAssignWorkers && (
+                <ProjectWorkersDialog
+                  projectId={Number(project.id)}
+                  currentWorkers={project?.workers || []}
+                  onWorkersUpdated={onProjectUpdated}
+                  leaderId={project?.leader_id}
+                />
+              )}
+              
+              {/* Download Project */}
+              {canDownloadProject && (
+                <DropdownMenuItem 
+                  onClick={onDownloadProject}
+                  disabled={loadingAction !== "none"}
+                >
+                  {loadingAction === "download" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Download Project
+                </DropdownMenuItem>
+              )}
+              
+              {/* Update Project */}
+              {canUpdateProject && (
+                <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Update Project
+                </DropdownMenuItem>
+              )}
+              
+              <DropdownMenuSeparator />
+              
+              {/* Archive Project */}
+              {canArchiveProject && (
+                <DropdownMenuItem 
+                  onClick={onArchiveProject}
+                  className="text-orange-600 focus:text-orange-600"
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archive Project
+                </DropdownMenuItem>
+              )}
+              
+              {/* Delete Project */}
+              {canDeleteProject && (
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Project
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {/* Project Info Section */}
+      <div className="mb-4 pr-8">
+        <div className="space-y-2 text-sm">
+          <div>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
+            <p className="text-gray-700">{project.leaderName || 'Unassigned'}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">Workers</p>
+            <p className="text-gray-700">
+              {project.workers_names && project.workers_names.length > 0 
                 ? (() => {
                     const maxDisplay = 3;
                     const displayNames = project.workers_names.slice(0, maxDisplay);
@@ -109,7 +186,7 @@ export function ProjectOverview({
                         {displayNames.join(', ')}
                         {remainingCount > 0 && (
                           <span className="text-gray-500">
-                            {' '}and {remainingCount} more
+                            {' '}+{remainingCount} more
                           </span>
                         )}
                       </>
@@ -119,117 +196,35 @@ export function ProjectOverview({
             </p>
           </div>
         </div>
-        
-        {/* Action Buttons */}
-        <div className="flex gap-2 justify-end">
-          <Button 
-            variant="outline"
-            onClick={onBackToDashboard}
-            disabled={loadingAction !== "none"}
-          >
-            Back to Dashboard
-          </Button>
-          
-          {!project.is_archived && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* Workers Management */}
-                {canAssignWorkers && (
-                  <ProjectWorkersDialog
-                    projectId={Number(project.id)}
-                    currentWorkers={project?.workers || []}
-                    onWorkersUpdated={onProjectUpdated}
-                    leaderId={project?.leader_id}
-                  />
-                )}
-                
-                {/* Download Project */}
-                {canDownloadProject && (
-                  <DropdownMenuItem 
-                    onClick={onDownloadProject}
-                    disabled={loadingAction !== "none"}
-                  >
-                    {loadingAction === "download" ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 h-4 w-4" />
-                    )}
-                    Download Project
-                  </DropdownMenuItem>
-                )}
-                
-                {/* Update Project */}
-                {canUpdateProject && (
-                  <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Update Project
-                  </DropdownMenuItem>
-                )}
-                
-                <DropdownMenuSeparator />
-                
-                {/* Archive Project */}
-                {canArchiveProject && (
-                  <DropdownMenuItem 
-                    onClick={onArchiveProject}
-                    className="text-orange-600 focus:text-orange-600"
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archive Project
-                  </DropdownMenuItem>
-                )}
-                
-                {/* Delete Project */}
-                {canDeleteProject && (
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Project
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Stats Cards - Vertical Stack */}
+      <div className="space-y-3">
         {/* Variables Progress Card */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Variables Progress</h2>
-          <Progress value={overallProgress} className="mb-2" />
-          <p className="text-gray-600">{overallProgress}% Complete</p>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Variables Progress</h2>
+          <Progress value={overallProgress} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">{overallProgress}% Complete</p>
         </Card>
 
         {/* Supervisor Checks Card */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Supervisor Checks</h2>
-          <Progress value={checkedProgress} className="mb-2" />
-          <p className="text-gray-600">{checkedProgress}% Checked</p>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Supervisor Checks</h2>
+          <Progress value={checkedProgress} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">{checkedProgress}% Checked</p>
         </Card>
 
         {/* Control Progress Card */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Control Progress</h2>
-          <Progress value={0} className="mb-2" />
-          <p className="text-gray-600">0% Complete</p>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Control Progress</h2>
+          <Progress value={0} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">0% Complete</p>
         </Card>
 
         {/* Deadline Card */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Deadline</h2>
-          <p className={`text-lg ${getDeadlineColor(project.deadline)}`}>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Deadline</h2>
+          <p className={`text-sm font-medium ${getDeadlineColor(project.deadline)}`}>
             {formatDate(project.deadline)}
           </p>
         </Card>

@@ -210,7 +210,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
-          <Button className="default" size="lg">
+          <Button variant="default">
             + New Project
           </Button>
         </DialogTrigger>

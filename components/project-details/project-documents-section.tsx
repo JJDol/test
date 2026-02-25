@@ -132,48 +132,11 @@ export function ProjectDocumentsSection({
   }
 
   return (
-    <div className="bg-background border rounded-lg w-full">
-      <div className="w-full p-6">
-        {/* General Variables Section - Global across all categories */}
-        {project?.global_variables?.variables && project.global_variables.variables.length > 0 && (
-          <div className="mb-4">
-            <GeneralVariablesSection
-              allTemplates={allTemplates}          
-              globalVariables={project.global_variables.variables}
-              templateVariables={templateVariables}
-              propagationSettings={project?.variable_propagation_settings || {} as any}
-              project={project}
-              collapsed={collapsedGlobalSection}
-              canEdit={canEditGeneralVariables()}
-              onToggleCollapse={() => onToggleGlobalSectionCollapse()}
-              onVariableChange={onVariableChange}
-            />
-          </div>
-        )}
-
-        {/* Header Section */}
-        <div className="mb-6 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold tracking-tight">
-              {getCategoryDisplayName(activeCategory)} Documents
-            </h1>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onRefresh}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        
-        
-        {/* Category Tabs */}
+    <div className="bg-background w-full">
+      <div className="w-full">
+        {/* Category Tabs - At the top */}
         <Tabs defaultValue={activeCategory} className="w-full">
-          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-8 w-full h-auto">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-6 w-full h-auto">
             {Object.values(DocumentCategory).map((category) => {
               const templateNames = project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || [];
               const count = templateNames.length;
@@ -203,23 +166,25 @@ export function ProjectDocumentsSection({
               );
             })}
           </TabsList>
-          {/* Add Document Button */}
-          {!project.is_archived && (
-            <div className="flex justify-end mb-6">
-              <TemplateSelectorDialog
-                category={activeCategory}
-                onTemplateSelected={onTemplateSelected}
-                onProjectTemplateSelected={onProjectTemplateSelected}
-                existingTemplates={project?.[`${activeCategory.toLowerCase()}_templates` as keyof Project] as string[] || []}
-                trigger={
-                  <Button size="sm" className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add {getCategoryDisplayName(activeCategory)} Document
-                  </Button>
-                }
-              />
+
+          {/* Header Section */}
+          <div className="mt-8 mb-6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-3xl font-bold tracking-tight">
+                {getCategoryDisplayName(activeCategory)} Documents
+              </h1>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onRefresh}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
             </div>
-          )}
+          </div>
+
           {/* Tab Content */}
           {Object.values(DocumentCategory).map((category) => {
             const categoryTemplates = allTemplates.filter(t => t.category === category);
@@ -247,27 +212,65 @@ export function ProjectDocumentsSection({
                     </div>
                   ) : (
                     <>
+                      {/* Variables Section - Global and Category in one box */}
+                      {((project?.global_variables?.variables && project.global_variables.variables.length > 0) || 
+                        (project.category_variables?.[category]?.variables && project.category_variables?.[category]?.variables.length > 0)) && (
+                        <div className="bg-muted rounded-lg p-4 space-y-4">
+                          {/* Global Variables */}
+                          {project?.global_variables?.variables && project.global_variables.variables.length > 0 && (
+                            <GeneralVariablesSection
+                              allTemplates={allTemplates}          
+                              globalVariables={project.global_variables.variables}
+                              templateVariables={templateVariables}
+                              propagationSettings={project?.variable_propagation_settings || {} as any}
+                              project={project}
+                              collapsed={collapsedGlobalSection}
+                              canEdit={canEditGeneralVariables()}
+                              onToggleCollapse={() => onToggleGlobalSectionCollapse()}
+                              onVariableChange={onVariableChange}
+                            />
+                          )}
 
-                      {/* Category Variables Section */}
-                      {project.category_variables?.[category]?.variables&& project.category_variables?.[category]?.variables.length > 0 && (
-                        <CategoryVariablesSection
-                          category={category}
-                          categoryVariables={project.category_variables?.[category]?.variables || []}
-                          categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
-                          templateVariables={project.template_variables || {}}
-                          propagationSettings={project.variable_propagation_settings || {}}
-                          globalVariables={project.global_variables?.variables || []}
-                          collapsed={collapsedCategorySections[category] || false}
-                          canEdit={canEditGeneralVariables()}
-                          projectId={project.id}
-                          onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
-                          onVariableChange={onVariableChange}
-                          onPropagationChange={onPropagationChange}
-                        />
+                          {/* Category Variables */}
+                          {project.category_variables?.[category]?.variables && project.category_variables?.[category]?.variables.length > 0 && (
+                            <CategoryVariablesSection
+                              category={category}
+                              categoryVariables={project.category_variables?.[category]?.variables || []}
+                              categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
+                              templateVariables={project.template_variables || {}}
+                              propagationSettings={project.variable_propagation_settings || {}}
+                              globalVariables={project.global_variables?.variables || []}
+                              collapsed={collapsedCategorySections[category] || false}
+                              canEdit={canEditGeneralVariables()}
+                              projectId={project.id}
+                              onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
+                              onVariableChange={onVariableChange}
+                              onPropagationChange={onPropagationChange}
+                            />
+                          )}
+                        </div>
                       )}
 
                       {/* Document Template Cards - Grid Layout */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      <div className="border rounded-lg p-4">
+                        {/* Add Document Button - Top Right */}
+                        {!project.is_archived && (
+                          <div className="flex justify-end mb-4">
+                            <TemplateSelectorDialog
+                              category={category}
+                              onTemplateSelected={onTemplateSelected}
+                              onProjectTemplateSelected={onProjectTemplateSelected}
+                              existingTemplates={project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || []}
+                              trigger={
+                                <Button size="sm" className="gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  Add {getCategoryDisplayName(category)} Document
+                                </Button>
+                              }
+                            />
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {categoryTemplates
                           .filter(t => templateNames.includes(t.name))
                           .map((template) => {
@@ -321,6 +324,7 @@ export function ProjectDocumentsSection({
                         </div>
                             );
                           })}
+                      </div>
                       </div>
                       
                       {/* Empty State */}
