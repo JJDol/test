@@ -661,14 +661,15 @@ export function useTemplates(): UseTemplatesReturn {
     return true;
   });
 
+  // Initialize all categories with empty arrays, then populate with templates
   const templatesByCategory = state.templates.reduce((acc, template) => {
     const category = template.category;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
     acc[category].push(template);
     return acc;
-  }, {} as Record<DocumentCategory, DocumentTemplate[]>);
+  }, Object.values(DocumentCategory).reduce((acc, category) => {
+    acc[category] = [];
+    return acc;
+  }, {} as Record<DocumentCategory, DocumentTemplate[]>));
 
   const templateStats = {
     total: state.templates.length,

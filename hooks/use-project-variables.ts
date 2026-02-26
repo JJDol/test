@@ -62,7 +62,7 @@ export function useProjectVariables(
   }, []);
 
   // Initialize collapsed state for all templates and categories when project first loads
-  // Only sync templateVariables on subsequent updates (don't reset collapsed states)
+  // On subsequent updates, sync templateVariables and add new templates as collapsed
   useEffect(() => {
     if (project?.template_variables) {
       const templateVariables = project.template_variables;
@@ -92,11 +92,29 @@ export function useProjectVariables(
 
         collapsedInitializedRef.current = true;
       } else {
-        // Subsequent updates - only sync templateVariables, preserve collapsed states
-        setState(prev => ({
-          ...prev,
-          templateVariables
-        }));
+        // Subsequent updates - sync templateVariables and add new templates as collapsed
+        setState(prev => {
+          const newCollapsedTemplates = { ...prev.collapsedTemplates } as { [key: string]: boolean };
+          
+          // Add any new templates as collapsed (default state)
+          Object.keys(templateVariables).forEach(category => {
+            const categoryTemplates = templateVariables[category as DocumentCategory];
+            if (categoryTemplates) {
+              Object.keys(categoryTemplates).forEach(templateName => {
+                // Only add if not already in collapsedTemplates
+                if (!(templateName in newCollapsedTemplates)) {
+                  newCollapsedTemplates[templateName] = true;
+                }
+              });
+            }
+          });
+
+          return {
+            ...prev,
+            templateVariables,
+            collapsedTemplates: newCollapsedTemplates as any
+          };
+        });
       }
     }
   }, [project?.template_variables]);
@@ -351,10 +369,20 @@ export function useProjectVariables(
         updatedTemplateVariables[category]![templateName] = { variables: [] };
       }
       
-      const templateVars = project.template_variables![category][templateName]?.variables || [];
-      const updatedVariables = templateVars.map(variable => 
-        variable.name === name ? { ...variable, value } : variable
-      );
+      const templateVars = project.template_variables?.[category]?.[templateName]?.variables || [];
+      const variableExists = templateVars.some(variable => variable.name === name);
+      
+      let updatedVariables: DocumentVariable[];
+      if (variableExists) {
+        // Update existing variable
+        updatedVariables = templateVars.map(variable => 
+          variable.name === name ? { ...variable, value } : variable
+        );
+      } else {
+        // Add new variable entry
+        const variableType = getVariableType(templateName, name, allTemplates);
+        updatedVariables = [...templateVars, { name, type: variableType, value } as DocumentVariable];
+      }
       
       updatedTemplateVariables[category]![templateName].variables = updatedVariables;
     }
@@ -365,7 +393,14 @@ export function useProjectVariables(
       templateVariables: updatedTemplateVariables as any
     }));
 
-    
+    // Update project state for optimistic UI update (so controlled inputs work correctly)
+    updateProjectState(prev => ({
+      ...prev,
+      project: prev.project ? {
+        ...prev.project,
+        template_variables: updatedTemplateVariables as any
+      } : null
+    }));
 
     try {
       // Use the existing variables API route - it handles propagation logic
@@ -401,8 +436,14 @@ export function useProjectVariables(
         ...prev,
         templateVariables: project?.template_variables || {} as any
       }));
+      
+      // Revert project state on error
+      updateProjectState(prev => ({
+        ...prev,
+        project: project
+      }));
     }
-  }, [project, toast, onProjectUpdate, updateProjectProgress]);
+  }, [project, toast, onProjectUpdate, updateProjectProgress, updateProjectState]);
 
   // Handle propagation change
   // TODO: Enhance this function for categories and phases

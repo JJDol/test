@@ -275,15 +275,11 @@ async function generateDocumentHandler(
 
     // Generate output filename - sanitize to avoid special characters breaking HTTP headers
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const sanitizedProjectName = project.name
-      .replace(/[^\w\s-]/g, '') // Remove special chars except word chars, spaces, hyphens
-      .replace(/\s+/g, '_')      // Replace spaces with underscores
-      .substring(0, 50);         // Limit length
     const sanitizedTemplateName = template.name
       .replace(/[^\w\s.-]/g, '')
       .replace(/\s+/g, '_')
-      .substring(0, 30);
-    const outputFileName = `${sanitizedProjectName}_${sanitizedTemplateName}_${timestamp}.docx`;
+      .substring(0, 50);
+    const outputFileName = `${sanitizedTemplateName}_${timestamp}.docx`;
 
     console.log(`[GENERATE] Document generated successfully. Filename: ${outputFileName}, Size: ${processedBuffer.length} bytes`);
 

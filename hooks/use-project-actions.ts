@@ -66,7 +66,7 @@ export function useProjectActions(
       // Get the filename from the content-disposition header
       const contentDisposition = response.headers.get('content-disposition');
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch ? filenameMatch[1] : `project-${project?.id}.zip`;
+      const filename = filenameMatch ? filenameMatch[1] : `documents.zip`;
 
       // Download the file
       const blob = await response.blob();

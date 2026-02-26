@@ -17,6 +17,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -78,8 +79,11 @@ export function CategoryVariablesSection({
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
             Category Variables
+            <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-200 rounded px-2 min-w-[1.5rem] justify-center">
+              {categoryVariables.length}
+            </Badge>
           </h3>
           <p className="text-sm text-gray-600">
             These variables appear in multiple templates within {category}
@@ -96,6 +100,11 @@ export function CategoryVariablesSection({
       
       {!collapsed && (
         <div className="grid gap-4">
+          {categoryVariables.length === 0 && (
+            <p className="text-sm text-gray-500 italic">
+              No category variables found. Category variables are shared across templates in this category.
+            </p>
+          )}
           {categoryVariables.map((variable) => {
             // Use declared scope from the variable directly
             const declaredScope = (variable as any).scope || 'category';

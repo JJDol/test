@@ -151,9 +151,6 @@ export function DashboardContent({
             isAdmin={isAdmin}
             selectedCompanyId={selectedCompanyId}
             hasCompany={!!company}
-            projectsCount={projectsCount}
-            activeProjectsCount={activeProjects.length}
-            overdueProjectsCount={overdueProjects.length}
           />
 
           {/* Dashboard Actions */}
@@ -173,14 +170,6 @@ export function DashboardContent({
               )}
             </div>
             
-            {/* Project Statistics */}
-            <div className="text-right space-y-1">
-              <p className="text-sm text-muted-foreground">Total Projects: <span className="font-medium">{projectsCount}</span></p>
-              <p className="text-sm text-muted-foreground">Active Projects: <span className="font-medium">{activeProjects.length}</span></p>
-              {overdueProjects.length > 0 && (
-                <p className="text-sm text-destructive">Overdue Projects: <span className="font-medium">{overdueProjects.length}</span></p>
-              )}
-            </div>
           </div>
           
           {/* Projects Grid */}
