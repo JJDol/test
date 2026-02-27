@@ -228,8 +228,8 @@ export function DocumentTemplateCard({
       </div>
 
       {/* Template Title and Version - fixed height for consistency */}
-      <div className="mb-4 min-h-[3.5rem] text-center">
-        <h3 className="text-base font-semibold line-clamp-1 mb-1">{template.name}</h3>
+      <div className="mb-2 min-h-[4.5rem] text-center">
+        <h3 className="text-base font-semibold line-clamp-2 mb-1">{template.name}</h3>
         <div className="flex items-center gap-1 flex-wrap">
           <Badge
             variant={hasNewerVersion ? "outline" : "secondary"}
@@ -257,7 +257,7 @@ export function DocumentTemplateCard({
       </div>
 
       {/* Circular Progress */}
-      <div className="flex justify-center py-3">
+      <div className="flex justify-center py-1">
         <CircularProgress value={progressValue} size={80} strokeWidth={6} />
       </div>
 

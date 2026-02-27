@@ -174,9 +174,9 @@ export function DashboardContent({
           
           {/* Projects Grid */}
           {loading.projects ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {/* Loading skeleton for projects */}
-              {[...Array(6)].map((_, i) => (
+              {[...Array(10)].map((_, i) => (
                 <div key={i} className="h-48 bg-muted animate-pulse rounded-lg"></div>
               ))}
             </div>
@@ -190,7 +190,7 @@ export function DashboardContent({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {projects.map((project) => (
                 <ProjectBox 
                   key={project.id} 

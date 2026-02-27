@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ImageIcon, CalendarIcon, ChevronDownIcon, CheckIcon, TypeIcon, FileTextIcon, Upload, X, Plus, Trash2, Pencil } from 'lucide-react';
+import { ImageIcon, CalendarIcon, ListFilter, CheckIcon, CheckSquare, TypeIcon, Hash, FileTextIcon, Upload, X, Plus, Trash2, Pencil } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DocumentVariable } from '@/lib/types/variable-types';
@@ -148,9 +148,13 @@ export function EnhancedVariableInput({
       case 'date':
         return <CalendarIcon className="h-4 w-4" />;
       case 'dropdown':
-        return <ChevronDownIcon className="h-4 w-4" />;
+        return <ListFilter className="h-4 w-4" />;
       case 'checkbox':
-        return <CheckIcon className="h-4 w-4" />;
+        return <CheckSquare className="h-4 w-4" />;
+      case 'number':
+        return <Hash className="h-4 w-4" />;
+      case 'text':
+        return <TypeIcon className="h-4 w-4" />;
       default:
         return <TypeIcon className="h-4 w-4" />;
     }
@@ -166,9 +170,10 @@ export function EnhancedVariableInput({
         return 'Dropdown';
       case 'checkbox':
         return 'Checkbox';
+      case 'number':
+        return 'Number';
       case 'text':
         return 'Text';
-      // TODO: Eventually support also number type
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }

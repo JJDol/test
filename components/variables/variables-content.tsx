@@ -278,7 +278,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "ARCHITECTURE");
+          .eq("category", "ARCHITECTURE")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load ARCHITECTURE defaults:", error);
@@ -320,7 +321,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "CONSTRUCTION");
+          .eq("category", "CONSTRUCTION")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load construction document_default_variables:", error);
@@ -363,7 +365,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "FIRE");
+          .eq("category", "FIRE")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load FIRE defaults:", error);
@@ -403,7 +406,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "AUTHORITY PROCESSING");
+          .eq("category", "AUTHORITY PROCESSING")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load AUTHORITY_PROCESSING defaults:", error);
@@ -443,7 +447,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "ENERGY");
+          .eq("category", "ENERGY")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load ENERGY defaults:", error);
@@ -483,7 +488,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "HVAC");
+          .eq("category", "HVAC")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load HVAC defaults:", error);
@@ -523,7 +529,8 @@ export function VariablesContent() {
         const { data, error } = await supabase
           .from("document_default_variables")
           .select("document_type, description, variables")
-          .eq("category", "EXECUTION CONTROL");
+          .eq("category", "EXECUTION CONTROL")
+          .neq("document_type", "CATEGORY_DEFAULTS");
 
         if (error) {
           console.error("Failed to load EXECUTION CONTROL defaults:", error);
