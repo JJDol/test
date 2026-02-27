@@ -73,7 +73,7 @@ export function useProjectVariables(
         const collapsedCategorySections: { [key in DocumentCategory]: boolean } = {} as any;
 
         Object.keys(templateVariables).forEach(category => {
-          collapsedCategorySections[category as DocumentCategory] = true;
+          collapsedCategorySections[category as DocumentCategory] = false;
 
           const categoryTemplates = templateVariables[category as DocumentCategory];
           if (categoryTemplates) {

@@ -5,17 +5,18 @@
  * - Displays project templates in organized categories
  * - Handles project template CRUD operations
  * - Manages template assignment dialogs
- * - Professional card-based layout
+ * - Professional card-based layout with collapsible sections
  */
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { CategorySelector } from "@/components/ui/category-selector";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingStateInline } from "@/components/ui/loading-state-inline";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { ProjectTemplate, DocumentCategory, getCategoryDisplayName, DocumentTemplate } from "@/lib/types/types";
 import { ProjectTemplateDialog } from "./project-template-dialog";
 import { ProjectTemplateViewDialog } from "./project-template-view-dialog";
@@ -129,10 +130,23 @@ export function ProjectTemplatesTab({
   documentViewMode,
   onDocumentViewModeChange,
 }: ProjectTemplatesTabProps) {
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 mt-16">
         <h2 className="text-3xl font-bold">Project Templates</h2>
         <Dialog open={dialogs.create} onOpenChange={(open) => open ? actions.openCreateDialog() : actions.closeCreateDialog()}>
           <DialogTrigger asChild>
@@ -166,25 +180,47 @@ export function ProjectTemplatesTab({
 
       {/* Project templates grid */}
       {!loading.projectTemplates || projectTemplates.length > 0 ? (
-        <div className="grid gap-8">
+        <div className="grid gap-6">
           {Object.entries(projectTemplatesByCategory)
             .filter(([category]) => selectedProjectCategory === 'ALL' || category === selectedProjectCategory)
-            .map(([category, categoryProjectTemplates]) => (
-            <div key={category} className="space-y-4">
-              <h3 className="text-xl font-semibold">{getCategoryDisplayName(category as DocumentCategory)}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categoryProjectTemplates.map((pt) => (
-                  <ProjectTemplateCard
-                    key={pt.name}
-                    projectTemplate={pt}
-                    onView={actions.openViewDialog}
-                    onEdit={actions.openEditDialog}
-                    onDelete={actions.openDeleteDialog}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+            .map(([category, categoryProjectTemplates]) => {
+              const isCollapsed = collapsedCategories.has(category);
+              return (
+                <div key={category} className="rounded-lg bg-muted/30 border border-border/50">
+                  <button
+                    onClick={() => toggleCategory(category)}
+                    className="flex items-center gap-3 w-full px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+                  >
+                    <div className="flex items-center justify-center w-6 h-6">
+                      {isCollapsed ? (
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <h3 className="text-lg font-semibold uppercase tracking-wide">
+                      {getCategoryDisplayName(category as DocumentCategory)}
+                    </h3>
+                    <span className="text-sm text-muted-foreground font-medium">
+                      {categoryProjectTemplates.length}
+                    </span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 pb-4">
+                      {categoryProjectTemplates.map((pt) => (
+                        <ProjectTemplateCard
+                          key={pt.name}
+                          projectTemplate={pt}
+                          onView={actions.openViewDialog}
+                          onEdit={actions.openEditDialog}
+                          onDelete={actions.openDeleteDialog}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </div>
       ) : null}
 
