@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ImageIcon, CalendarIcon, ListFilter, CheckIcon, CheckSquare, TypeIcon, Hash, FileTextIcon, Upload, X, Plus, Trash2, Pencil } from 'lucide-react';
+import { ImageIcon, CalendarIcon, CheckIcon, CheckSquare, Hash, FileTextIcon, Upload, X, Plus, Trash2, Pencil } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DocumentVariable } from '@/lib/types/variable-types';
@@ -148,15 +148,15 @@ export function EnhancedVariableInput({
       case 'date':
         return <CalendarIcon className="h-4 w-4" />;
       case 'dropdown':
-        return <ListFilter className="h-4 w-4" />;
+        return <img src="/images/icons/dropdown_input_fields.svg" alt="Dropdown" className="h-6 w-6" />;
       case 'checkbox':
         return <CheckSquare className="h-4 w-4" />;
       case 'number':
         return <Hash className="h-4 w-4" />;
       case 'text':
-        return <TypeIcon className="h-4 w-4" />;
+        return <img src="/images/icons/text_input_fields.svg" alt="Text" className="h-6 w-6" />;
       default:
-        return <TypeIcon className="h-4 w-4" />;
+        return <img src="/images/icons/text_input_fields.svg" alt="Text" className="h-6 w-6" />;
     }
   };
 
