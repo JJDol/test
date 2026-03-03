@@ -292,37 +292,59 @@ export function useProjectVariables(
     const updatedTemplateVariables = { ...project.template_variables };
 
     if (isGlobal) {
-      // Find all occurrences of this variable in all templates in project
-
+      // Find all templates that have this variable in their DEFINITION (allTemplates)
+      // and are assigned to this project, then update all that use global scope
       
-      // Iterate through all categories and templates in the project
-      Object.keys(project.template_variables || {}).forEach(category => {
-        Object.keys(project.template_variables![category as DocumentCategory] || {}).forEach(templateName => {
-          const templateVars = project.template_variables![category as DocumentCategory][templateName]?.variables || [];
-          const hasVariable = templateVars.some(v => v.name === name);
-          
-          if (hasVariable) {
-            // Check if this template has propagation setting set to global for this variable
-            const propagationSetting = project.variable_propagation_settings?.[category as DocumentCategory]?.[templateName]?.[name];
-            const usesGlobal = propagationSetting?.currentScope === VariablePropagationScope.GLOBAL;
-            
-            if (usesGlobal) {
-              // Update the variable value in this template
-              if (!updatedTemplateVariables[category as DocumentCategory]) {
-                updatedTemplateVariables[category as DocumentCategory] = {};
-              }
-              if (!updatedTemplateVariables[category as DocumentCategory]![templateName]) {
-                updatedTemplateVariables[category as DocumentCategory]![templateName] = { variables: [] };
-              }
-              
-              const updatedVariables = templateVars.map(variable => 
-                variable.name === name ? { ...variable, value } : variable
-              );
-              
-              updatedTemplateVariables[category as DocumentCategory]![templateName].variables = updatedVariables;
-            }
+      // Get all template names assigned to this project
+      const projectTemplateNames: string[] = [];
+      Object.values(DocumentCategory).forEach(cat => {
+        const categoryField = `${cat.toLowerCase()}_templates` as keyof typeof project;
+        const templates = project[categoryField] as string[] || [];
+        projectTemplateNames.push(...templates);
+      });
+      
+      // Iterate through all templates that have this variable in their definition
+      allTemplates.forEach(template => {
+        // Check if this template is assigned to the project
+        if (!projectTemplateNames.includes(template.name)) return;
+        
+        // Check if this template has this variable in its definition
+        const hasVariableInDefinition = template.variables.some(v => v.name === name);
+        if (!hasVariableInDefinition) return;
+        
+        // Check if this template uses global scope for this variable
+        const propagationSetting = project.variable_propagation_settings?.[template.category]?.[template.name]?.[name];
+        const usesGlobal = propagationSetting?.currentScope !== VariablePropagationScope.LOCAL && 
+                           propagationSetting?.currentScope !== VariablePropagationScope.CATEGORY;
+        
+        if (usesGlobal) {
+          // Ensure the structure exists
+          if (!updatedTemplateVariables[template.category]) {
+            updatedTemplateVariables[template.category] = {};
           }
-        });
+          if (!updatedTemplateVariables[template.category]![template.name]) {
+            updatedTemplateVariables[template.category]![template.name] = { variables: [] };
+          }
+          
+          // Get existing stored variables for this template
+          const storedVars = updatedTemplateVariables[template.category]![template.name].variables || [];
+          const existingVarIndex = storedVars.findIndex(v => v.name === name);
+          
+          if (existingVarIndex >= 0) {
+            // Update existing variable
+            storedVars[existingVarIndex] = { ...storedVars[existingVarIndex], value };
+          } else {
+            // Create new variable entry with type from template definition
+            const templateVar = template.variables.find(v => v.name === name);
+            storedVars.push({
+              name,
+              type: templateVar?.type || 'text',
+              value
+            } as DocumentVariable);
+          }
+          
+          updatedTemplateVariables[template.category]![template.name].variables = storedVars;
+        }
       });
       
       // Update the project state with the new template variables
