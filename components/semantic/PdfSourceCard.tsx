@@ -15,7 +15,7 @@ export default function PdfSourceCard({
 }) {
     const sendFeedbackGood = async (_:any) => {
         // Send post request
-        await fetch(`http://localhost:3000/api/feedback`, {
+        await fetch(`/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -28,8 +28,7 @@ export default function PdfSourceCard({
         });
     };
     const sendFeedbackBad = async (_:any) => {
-        // Send post request
-        await fetch(`http://localhost:3000/api/feedback`, {
+        await fetch(`/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

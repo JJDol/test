@@ -5,22 +5,11 @@ export const AI_CONFIG = {
     apiKey: process.env.OPENAI_API_KEY,
     models: {
       embedding: 'text-embedding-3-small', // Cost-effective choice
-      chat: 'gpt-5-mini', // Budget-friendly option
+      chat: 'gpt-4o-mini',
     },
     maxTokens: {
       embedding: 8000, // Max tokens per embedding request
       chat: 4000, // Max tokens for chat responses
-    },
-  },
-
-  // Qdrant Cloud Configuration
-  qdrant: {
-    url: process.env.QDRANT_URL,
-    apiKey: process.env.QDRANT_API_KEY,
-    collection: {
-      name: 'autodoc-knowledge',
-      size: 1536, // text-embedding-3-small dimensions
-      distance: 'Cosine' as const,
     },
   },
 
@@ -43,13 +32,13 @@ export const AI_CONFIG = {
   // Cost Optimization
   costs: {
     embeddingPricePerToken: 0.00000002, // $0.02 per 1M tokens for text-embedding-3-small
-    chatPricePerToken: 0.0000005, // $0.50 per 1M tokens for gpt-5-mini
+    chatPricePerToken: 0.00000015, // $0.15 per 1M tokens for gpt-4o-mini
     maxMonthlyBudget: 100, // $100 monthly budget
   },
 };
 
 // Validation
-const requiredEnvVars = ['OPENAI_API_KEY', 'QDRANT_URL', 'QDRANT_API_KEY'];
+const requiredEnvVars = ['OPENAI_API_KEY'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);

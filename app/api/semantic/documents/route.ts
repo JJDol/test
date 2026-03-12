@@ -9,14 +9,14 @@
  * 
  * DOCUMENT PROCESSING:
  * - Documents are uploaded and processed for AI consumption
- * - Content is chunked and vectorized for storage in Qdrant
+ * - Content is chunked and vectorized for storage in pgvector
  * - Chunks serve as knowledge sources for semantic search and chat
  * - Supports company-wide and personal document access
  * 
  * INTEGRATION:
  * - Part of unified semantic system for AI operations
  * - Provides knowledge base for semantic search and chat
- * - Uses Qdrant for vector storage and retrieval
+ * - Uses Supabase pgvector for vector storage and retrieval
  * 
  * ROUTE: /api/semantic/documents
  */

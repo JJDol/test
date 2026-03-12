@@ -30,18 +30,22 @@ export function BR18IngestionPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<IngestionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'idle' | 'test' | 'full'>('idle');
 
-  const handleIngestBR18 = async () => {
+  const handleIngest = async (testMode: boolean) => {
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setMode(testMode ? 'test' : 'full');
 
     try {
-      const response = await fetch('/api/admin/enhanced-br18-ingestion?test=true', {
+      const url = testMode
+        ? '/api/admin/enhanced-br18-ingestion?test=true'
+        : '/api/admin/enhanced-br18-ingestion';
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       const data = await response.json();
@@ -55,6 +59,7 @@ export function BR18IngestionPanel() {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setIsLoading(false);
+      setMode('idle');
     }
   };
 
@@ -66,7 +71,7 @@ export function BR18IngestionPanel() {
       
       if (response.ok) {
         setResult({
-          message: data.data?.isIngested ? 'Enhanced BR18 data is already ingested' : 'Enhanced BR18 data not yet ingested',
+          message: data.data?.isIngested ? 'BR18 data is ingested and ready' : 'BR18 data not yet ingested',
           status: data.data
         });
       }
@@ -79,40 +84,50 @@ export function BR18IngestionPanel() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Download className="h-5 w-5" />
-          BR18 Document Ingestion
+          BR18 Knowledge Base
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Import BR18 building regulations with enhanced processing. This will process 2 pages 
-          in TEST MODE with fact extraction, question generation, and smart chunking.
+          Load Danish building regulations (BR18) into the AI knowledge base so the chatbot can answer regulation questions.
         </p>
 
-        <div className="flex gap-2">
-          <Button 
-            onClick={handleIngestBR18} 
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {isLoading ? 'Processing...' : 'Enhanced BR18 Ingestion (TEST)'}
-          </Button>
-          
+        <div className="flex flex-wrap gap-2">
           <Button 
             onClick={checkStatus} 
             variant="outline"
+            size="sm"
             disabled={isLoading}
           >
             Check Status
           </Button>
+          <Button 
+            onClick={() => handleIngest(false)} 
+            size="sm"
+            disabled={isLoading}
+          >
+            {isLoading && mode === 'full' ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Full Ingestion (all 21 pages)
+          </Button>
         </div>
+
+        {isLoading && (
+          <Alert>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>
+              {mode === 'full' 
+                ? 'Processing all 21 BR18 pages. This may take several minutes...' 
+                : 'Processing test pages...'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {error && (
           <Alert variant="destructive">
@@ -121,7 +136,7 @@ export function BR18IngestionPanel() {
           </Alert>
         )}
 
-        {result && (
+        {result && !isLoading && (
           <Alert variant={result.status?.isIngested || result.data ? "default" : "destructive"}>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
@@ -129,50 +144,37 @@ export function BR18IngestionPanel() {
                 <p className="font-medium">{result.message}</p>
                 
                 {result.data && (
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <Badge variant="secondary">
-                        {result.data.documentsProcessed} Documents
-                      </Badge>
-                    </div>
-                    <div>
-                      <Badge variant="secondary">
-                        {result.data.chunksIngested} Chunks
-                      </Badge>
-                    </div>
-                    <div>
-                      <Badge variant="outline">
-                        Cost: ${result.data.totalCost.toFixed(4)}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Badge variant="outline">
-                        {result.data.enhancementsApplied} Enhanced
-                      </Badge>
-                    </div>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <Badge variant="secondary">
+                      {result.data.documentsProcessed} Documents
+                    </Badge>
+                    <Badge variant="secondary">
+                      {result.data.chunksIngested} Chunks
+                    </Badge>
+                    <Badge variant="outline">
+                      Cost: ${result.data.totalCost.toFixed(4)}
+                    </Badge>
                     {result.data.errors.length > 0 && (
-                      <div>
-                        <Badge variant="destructive">
-                          {result.data.errors.length} Errors
-                        </Badge>
-                      </div>
+                      <Badge variant="destructive">
+                        {result.data.errors.length} Errors
+                      </Badge>
                     )}
                   </div>
                 )}
 
                 {result.status && (
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex flex-wrap gap-2 text-sm">
                     <Badge variant={result.status.isIngested ? "default" : "secondary"}>
                       {result.status.isIngested ? 'Ingested' : 'Not Ingested'}
                     </Badge>
                     {result.status.documentCount > 0 && (
                       <Badge variant="outline">
-                        {result.status.documentCount} Documents in DB
+                        {result.status.documentCount} Documents
                       </Badge>
                     )}
                     {result.status.totalChunks && (
                       <Badge variant="outline">
-                        {result.status.totalChunks} Total Chunks
+                        {result.status.totalChunks} Chunks
                       </Badge>
                     )}
                   </div>
@@ -184,8 +186,8 @@ export function BR18IngestionPanel() {
                       View Errors ({result.data.errors.length})
                     </summary>
                     <ul className="mt-1 list-disc list-inside text-xs">
-                      {result.data.errors.map((error, index) => (
-                        <li key={index} className="text-red-600">{error}</li>
+                      {result.data.errors.map((err, index) => (
+                        <li key={index} className="text-red-600">{err}</li>
                       ))}
                     </ul>
                   </details>
@@ -194,18 +196,7 @@ export function BR18IngestionPanel() {
             </AlertDescription>
           </Alert>
         )}
-
-        <div className="text-xs text-muted-foreground">
-          <p>💡 Enhanced processing (TEST MODE):</p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Scrapes 2 BR18 pages with smart chunking</li>
-            <li>Extracts facts and generates questions for better search</li>
-            <li>Uses OpenAI embeddings (1536 dimensions)</li>
-            <li>Stores in Qdrant Cloud with enhanced metadata</li>
-            <li>Provides cost tracking and quality metrics</li>
-          </ul>
-        </div>
       </CardContent>
     </Card>
   );
-} 
+}

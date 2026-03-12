@@ -41,7 +41,7 @@ export default function Table({
 
             setIsLoading(true);
             try {
-                const response = await fetch(`http://localhost:3000/api/search?query=${query}`);
+                const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
                 const data = await response.json();
                 setResult(data);
             } catch (error) {

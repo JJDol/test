@@ -1,5 +1,5 @@
 import { openaiService } from './openai-client';
-import { qdrantService } from '@/lib/services/integrations/qdrant-client';
+import { vectorStoreService } from '@/lib/services/integrations/vector-store';
 import { SourceAttribution } from '@/lib/types/types';
 
 export interface EnhancedSearchResult {
@@ -38,7 +38,7 @@ export class EnhancedQueryEngine {
       const queryEmbedding = await openaiService.generateEmbedding(query);
 
       // Step 2: Wide initial search (stage 1 retrieval)
-      const initialSources = await qdrantService.searchSimilar(
+      const initialSources = await vectorStoreService.searchSimilar(
         query,
         queryEmbedding,
         companyId,

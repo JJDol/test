@@ -1,33 +1,17 @@
 /**
- * @file Frontend service for managing AI-related documents and their ingestion process.
- * 
- * @purpose This file is intended to be the central client-side service for all interactions
- * with the semantic document APIs. It provides a clean, typed interface for frontend
- * components to upload, list, delete, and monitor the status of AI documents without
- * needing to know the specific API endpoint details.
- * 
- * @architectural_note (Handover Note)
- * Currently, the functions in this service are placeholders. The actual backend logic for
- * these operations has already been implemented in the API routes located under:
- * `/app/api/semantic/documents/`
- * 
- * The next developer should implement the functions in this file to make `fetch` calls
- * to the corresponding API routes. This will centralize all frontend file operations
- * and connect the UI components (like FileUpload, FileList, etc.) to the live backend.
- * 
- * @implementation_details
- * - `uploadFile` should call: `POST /api/semantic/documents/upload`
- * - `listFiles` should call: `GET /api/semantic/documents`
- * - `deleteFile` should call: `DELETE /api/semantic/documents/[id]`
- * - `getIngestionStatus` should call: `GET /api/semantic/documents/ingestion-status`
- * - `reingestDocuments` will need a new API route, likely `POST /api/semantic/documents/reingest`
+ * Frontend service for managing AI-related documents and their ingestion process.
+ * Connects to the backend API routes under /api/semantic/documents/.
  */
 
 export interface FileInfo {
+  id: string;
   name: string;
   uploadedAt: string;
   size: string;
   isTemporary: boolean;
+  ingestionStatus?: string;
+  ingestionProgress?: number;
+  type?: string;
 }
 
 export interface FileListResponse {
@@ -45,48 +29,119 @@ export interface IngestionStatus {
   progress: number;
 }
 
-// TODO: Implement new file upload API
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export async function uploadFile(file: File, isTemporary: boolean): Promise<void> {
-  // Temporarily disabled - will implement with new API
-  console.log('File upload temporarily disabled:', file.name);
-  throw new Error('File upload coming soon! Chat functionality is ready.');
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('is_company_wide', (!isTemporary).toString());
+
+  const response = await fetch('/api/semantic/documents/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(errorData.error || `Upload failed (HTTP ${response.status})`);
+  }
 }
 
-// TODO: Implement new file list API  
 export async function listFiles(): Promise<FileListResponse> {
-  // Return empty list for now
-  return { files: [] };
+  const response = await fetch('/api/semantic/documents', {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Failed to load documents' }));
+    throw new Error(errorData.error || `Failed to load documents (HTTP ${response.status})`);
+  }
+
+  const data = await response.json();
+  const documents = data.documents || [];
+
+  const files: FileInfo[] = documents.map((doc: any) => ({
+    id: doc.id,
+    name: doc.name,
+    uploadedAt: formatDate(doc.created_at),
+    size: formatFileSize(doc.size),
+    isTemporary: !doc.is_company_wide,
+    ingestionStatus: doc.ingestion_status,
+    ingestionProgress: doc.ingestion_progress,
+    type: doc.type,
+  }));
+
+  return { files };
 }
 
-// TODO: Implement new file delete API
-export async function deleteFile(fileName: string): Promise<void> {
-  console.log('File delete temporarily disabled:', fileName);
-  throw new Error('File management coming soon!');
+export async function deleteFile(documentId: string): Promise<void> {
+  const response = await fetch(`/api/semantic/documents/${documentId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Delete failed' }));
+    throw new Error(errorData.error || `Delete failed (HTTP ${response.status})`);
+  }
 }
 
-// TODO: Implement new temporary files API
 export async function removeTemporaryFiles(): Promise<void> {
-  console.log('Remove temporary files temporarily disabled');
-  // Do nothing for now
+  const { files } = await listFiles();
+  const temporaryFiles = files.filter(f => f.isTemporary);
+
+  await Promise.allSettled(
+    temporaryFiles.map(f => deleteFile(f.id))
+  );
 }
 
-// TODO: Implement new reingest API
 export async function reingestDocuments(): Promise<void> {
-  console.log('Reingest temporarily disabled');
-  throw new Error('Document reingestion coming soon!');
+  // Re-ingestion requires deleting and re-uploading; not yet supported as a single operation.
+  throw new Error('Document re-ingestion is not yet available. Please delete and re-upload the document.');
 }
 
-// TODO: Implement new ingestion status API
 export async function getIngestionStatus(): Promise<IngestionStatus> {
-  // Return ready status
+  const { files } = await listFiles();
+
+  const processingFiles = files.filter(f => f.ingestionStatus === 'processing');
+  const completedFiles = files.filter(f => f.ingestionStatus === 'completed');
+  const failedFiles = files.filter(f => f.ingestionStatus === 'failed');
+
+  if (processingFiles.length === 0) {
+    return {
+      is_ingesting: false,
+      total_documents: files.length,
+      completed_documents: completedFiles.length,
+      current_document: null,
+      error: failedFiles.length > 0 ? `${failedFiles.length} document(s) failed processing` : null,
+      success: failedFiles.length === 0,
+      stage: 'Ready',
+      progress: files.length > 0 ? Math.round((completedFiles.length / files.length) * 100) : 0,
+    };
+  }
+
   return {
-    is_ingesting: false,
-    total_documents: 0,
-    completed_documents: 0,
-    current_document: null,
+    is_ingesting: true,
+    total_documents: files.length,
+    completed_documents: completedFiles.length,
+    current_document: processingFiles[0]?.name || null,
     error: null,
-    success: true,
-    stage: "Ready",
-    progress: 0
+    success: false,
+    stage: 'Processing',
+    progress: Math.round((completedFiles.length / files.length) * 100),
   };
-} 
+}
