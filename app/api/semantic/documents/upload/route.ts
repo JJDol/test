@@ -26,8 +26,9 @@ import { enhancedDocumentProcessor } from '@/lib/services/ai/ai-document-process
 import { randomUUID } from 'crypto';
 import mammoth from 'mammoth';
 
-// pdf-parse uses require internally
-const pdfParse = require('pdf-parse');
+// Import from pdf-parse/lib/pdf-parse.js directly to avoid the top-level
+// test-file load in the package's index.js that breaks Next.js builds.
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 async function uploadDocumentHandler(request: AuthenticatedRequest) {
   try {
