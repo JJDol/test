@@ -482,7 +482,7 @@ export interface DocumentRecord {
   file_size?: number;
   content_type?: string;
   metadata: Record<string, any>;
-  qdrant_points?: string[];
+  chunk_ids?: string[];
   embedding_status: 'pending' | 'processing' | 'completed' | 'failed';
   embedding_error?: string;
   is_temporary: boolean;
@@ -519,7 +519,7 @@ export interface SourceAttribution {
   text_snippet: string;
   page_number?: number;
   confidence_score: number;
-  qdrant_point_id: string;
+  chunk_id: string;
 }
 
 export interface DocumentFeedback {

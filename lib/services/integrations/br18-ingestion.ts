@@ -1,6 +1,7 @@
 import { enhancedDocumentProcessor } from '@/lib/services/ai/ai-document-processor';
 import { br18Scraper } from './br18-scraper';
 import { createClient } from '@/lib/supabase/server';
+import { vectorStoreService } from './vector-store';
 
 export class EnhancedBR18IngestionService {
 
@@ -226,42 +227,32 @@ export class EnhancedBR18IngestionService {
   }
 
   private async cleanupExistingBR18Data(): Promise<void> {
+    console.log('🧹 Cleaning up existing BR18 data...');
+
+    // Delete from vector store (non-fatal if table is empty)
     try {
-      console.log('🧹 Cleaning up existing BR18 data...');
-      
+      const deletedCount = await vectorStoreService.deletePointsBySourceType('br18');
+      console.log(`🗑️ Deleted ${deletedCount} BR18 chunks from vector store`);
+    } catch (error) {
+      console.warn('⚠️ Vector store cleanup skipped:', error instanceof Error ? error.message : error);
+    }
+
+    // Delete from Supabase documents table (non-fatal if table is empty)
+    try {
       const supabase = await createClient();
-      
-      // Delete from Qdrant first
-      // TODO: Use API route for this
-      const { data: existingDocs } = await supabase
-        .from('documents')
-        .select('qdrant_points')
-        .eq('source_type', 'br18');
-
-      if (existingDocs && existingDocs.length > 0) {
-        // Note: We'll need to implement deletePointsBySourceType in qdrant-client.ts
-        // For now, we'll log this
-        console.log(`📝 Found ${existingDocs.length} existing BR18 documents to clean up`);
-      }
-
-      // Delete from database
-      // TODO: Use API route for this
       const { error: deleteError } = await supabase
         .from('documents')
         .delete()
         .eq('source_type', 'br18');
 
       if (deleteError) {
-        console.error('❌ Error deleting existing BR18 documents:', deleteError);
-        throw deleteError;
+        console.warn('⚠️ Supabase BR18 cleanup warning:', deleteError.message);
       }
-
-      console.log('✅ Cleanup completed');
-
     } catch (error) {
-      console.error('❌ Error during cleanup:', error);
-      throw error;
+      console.warn('⚠️ Supabase cleanup skipped:', error instanceof Error ? error.message : error);
     }
+
+    console.log('✅ Cleanup completed');
   }
 
   private async createDocumentRecord(pageNumber: number, documents: any[]): Promise<string> {

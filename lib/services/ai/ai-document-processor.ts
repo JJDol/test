@@ -1,6 +1,6 @@
 // TODO: Investigate this whole file
 import { openaiService } from './openai-client';
-import { qdrantService } from '@/lib/services/integrations/qdrant-client';
+import { vectorStoreService } from '@/lib/services/integrations/vector-store';
 import { AI_CONFIG } from '@/lib/config/ai-config';
 
 export interface ProcessedChunk {
@@ -236,9 +236,8 @@ Questions:`;
         }
       }
 
-      // Step 3: Store in Qdrant
       if (processedChunks.length > 0) {
-        const pointIds = await qdrantService.upsertDocumentChunks(
+        const pointIds = await vectorStoreService.upsertDocumentChunks(
           documentId,
           companyId,
           sourceType,

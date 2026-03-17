@@ -80,13 +80,12 @@ export class ProjectContextService {
           .eq('is_archived', false)
           .eq('stage', 'IN_PROGRESS'),
           
-        // Completed projects (this might not exist, but let's count TODO as planned)
         // TODO: Use API route for this
         supabase
           .from('projects')
           .select('id', { count: 'exact', head: true })
           .eq('is_archived', false)
-          .eq('stage', 'TODO'),
+          .eq('stage', 'COMPLETED'),
           
         // Overdue projects (active projects past deadline)
         // TODO: Use API route for this

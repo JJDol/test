@@ -23,7 +23,7 @@ import {
   getIngestionStatus,
   IngestionStatus
 } from '@/lib/file-service';
-import { Trash2, RefreshCw, Loader2, ArrowUpRightSquare, FileText, Plus } from 'lucide-react';
+import { Trash2, RefreshCw, Loader2, FileText, Plus } from 'lucide-react';
 
 interface FileListProps {
   onUpdate?: () => void;
@@ -82,9 +82,9 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
     }
   }, [onUpdate, isReingesting]);
 
-  const handleDelete = async (fileName: string) => {
+  const handleDelete = async (documentId: string) => {
     try {
-      await deleteFile(fileName);
+      await deleteFile(documentId);
       await loadFiles();
       onUpdate?.();
     } catch (error) {
@@ -184,7 +184,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
         <div className="grid gap-3">
           {files.map((file) => (
             <Card
-              key={file.name}
+              key={file.id}
               className={cn(
                 "transition-colors hover:shadow-md",
                 file.isTemporary ? "border-yellow-200 bg-yellow-50/50" : "bg-card"
@@ -206,6 +206,16 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                           Temporary
                         </Badge>
                       )}
+                      {file.ingestionStatus && file.ingestionStatus !== 'completed' && (
+                        <Badge variant="outline" className={cn(
+                          file.ingestionStatus === 'processing' && "text-blue-600 border-blue-300 bg-blue-50",
+                          file.ingestionStatus === 'failed' && "text-red-600 border-red-300 bg-red-50",
+                          file.ingestionStatus === 'pending' && "text-gray-600 border-gray-300 bg-gray-50",
+                        )}>
+                          {file.ingestionStatus === 'processing' ? 'Processing...' : 
+                           file.ingestionStatus === 'failed' ? 'Failed' : 'Pending'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -213,25 +223,8 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="hover:bg-secondary"
-                    asChild
-                    disabled={isReingesting}
-                  >
-                    <a
-                      href={`/api/uploads/${file.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="transition-colors"
-                    >
-                      <ArrowUpRightSquare className="h-4 w-4" />
-                      <span className="sr-only">Open file</span>
-                    </a>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
                     className="hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => handleDelete(file.name)}
+                    onClick={() => handleDelete(file.id)}
                     disabled={isReingesting}
                   >
                     <Trash2 className="h-4 w-4" />

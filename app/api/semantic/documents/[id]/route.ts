@@ -3,7 +3,7 @@
  * 
  * PURPOSE: Delete AI document from database and vector storage
  * - Removes document from ai_documents table
- * - Cleans up vector embeddings in Qdrant
+ * - Cleans up vector embeddings in pgvector
  * - Enforces proper access control and permissions
  * 
  * SECURITY: 
@@ -17,71 +17,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { withAuthDynamic, AuthenticatedRequest, RouteContext } from '@/lib/auth/auth-middleware';
-import { qdrantService } from '@/lib/services/integrations/qdrant-client';
+import { vectorStoreService } from '@/lib/services/integrations/vector-store';
 
-async function deleteDocumentFromQdrant(documentId: string): Promise<number> {
+async function deleteDocumentChunks(documentId: string): Promise<number> {
   try {
-    console.log(`🔍 Searching for points with document_id: ${documentId}`);
+    console.log(`🔍 Searching for chunks with document_id: ${documentId}`);
 
-    // Ensure collection and indexes exist before attempting deletion
-    console.log(`🔧 Ensuring collection and indexes exist...`);
-    await qdrantService.ensureCollection();
+    const chunks = await vectorStoreService.findDocumentPoints(documentId);
 
-    // Get collection info using the service method
-    const collectionInfo = await qdrantService.getCollectionInfo();
-    console.log(`📊 Collection info: ${collectionInfo.points_count} total points`);
-
-    // // First, let's try to scroll without filtering to see if there are any points
-    // console.log(`🔍 Attempting to scroll all points to check collection...`);
-    // try {
-    //   const allPointsResult = await client.scroll(collectionName, {
-    //     limit: 10, // Just get a few to see structure
-    //     with_payload: true,
-    //     with_vector: false
-    //   });
-      
-    //   console.log(`📊 Sample points in collection:`, {
-    //     totalFound: allPointsResult.points?.length || 0,
-    //     samplePayload: allPointsResult.points?.[0]?.payload,
-    //     payloadKeys: allPointsResult.points?.[0]?.payload ? Object.keys(allPointsResult.points[0].payload) : []
-    //   });
-    // } catch (scrollError) {
-    //   console.error('❌ Error scrolling all points:', scrollError);
-    // }
-
-    // Now try to find points for this specific document
-    console.log(`🔍 Searching for points with document_id: ${documentId}`);
-    
-    // Use the service method to find points for this specific document
-    const points = await qdrantService.findDocumentPoints(documentId);
-    
-    const scrollResult = {
-      points: points
-    };
-
-    console.log(`📊 Scroll result:`, {
-      pointsFound: scrollResult.points?.length || 0,
-      samplePayload: scrollResult.points?.[0]?.payload
-    });
-
-    if (!scrollResult.points || scrollResult.points.length === 0) {
-      console.log(`📝 No points found for document ${documentId} in Qdrant`);
+    if (!chunks || chunks.length === 0) {
+      console.log(`📝 No chunks found for document ${documentId}`);
       return 0;
     }
 
-    // Extract point IDs
-    const pointIds = scrollResult.points.map((point: any) => point.id);
-    console.log(`🔍 Found ${pointIds.length} points to delete:`, pointIds.slice(0, 3));
+    const chunkIds = chunks.map((chunk: any) => chunk.id);
+    console.log(`🗑️ Deleting ${chunkIds.length} chunks...`);
+    await vectorStoreService.deleteDocumentPoints(chunkIds);
+    console.log(`✅ Successfully deleted ${chunkIds.length} chunks`);
 
-    // Delete the points
-    console.log(`🗑️ Deleting ${pointIds.length} points from Qdrant...`);
-    await qdrantService.deleteDocumentPoints(pointIds);
-    console.log(`✅ Successfully deleted ${pointIds.length} points from Qdrant`);
-    
-    return pointIds.length;
+    return chunkIds.length;
   } catch (error) {
-    console.error('❌ Error in deleteDocumentFromQdrant:', error);
-    console.error('❌ Error details:', error);
+    console.error('❌ Error in deleteDocumentChunks:', error);
     throw error;
   }
 }
@@ -163,19 +119,18 @@ async function deleteDocumentHandler(
 
     console.log('✅ Permission granted, proceeding with deletion');
 
-    // Delete from Qdrant first - find and delete all points for this document
+    // Delete from vector store first - find and delete all chunks for this document
     // Only attempt if document was successfully processed (has chunks)
     if (document.ingestion_status === 'completed' && document.chunks_count > 0) {
-      console.log(`🔍 Document was processed, attempting Qdrant deletion...`);
+      console.log(`🔍 Document was processed, attempting vector store deletion...`);
       try {
-        const deletedCount = await deleteDocumentFromQdrant(documentId);
-        console.log(`✅ Deleted ${deletedCount} points for document ${documentId} from Qdrant`);
-      } catch (qdrantError) {
-        console.error('❌ Error deleting from Qdrant:', qdrantError);
-        // Continue with database deletion even if Qdrant fails
+        const deletedCount = await deleteDocumentChunks(documentId);
+        console.log(`✅ Deleted ${deletedCount} chunks for document ${documentId}`);
+      } catch (vectorError) {
+        console.error('❌ Error deleting from vector store:', vectorError);
       }
     } else {
-      console.log(`📝 Document not fully processed (status: ${document.ingestion_status}, chunks: ${document.chunks_count}), skipping Qdrant deletion`);
+      console.log(`📝 Document not fully processed (status: ${document.ingestion_status}, chunks: ${document.chunks_count}), skipping vector store deletion`);
     }
 
     // Delete from database

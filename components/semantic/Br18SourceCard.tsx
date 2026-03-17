@@ -18,7 +18,7 @@ export default function Br18SourceCard({
 }) {
     const sendFeedbackGood = async (_:any) => {
         // Send post request
-        await fetch(`http://localhost:3000/api/feedback`, {
+        await fetch(`/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -31,8 +31,7 @@ export default function Br18SourceCard({
         });
     };
     const sendFeedbackBad = async (_:any) => {
-        // Send post request
-        await fetch(`http://localhost:3000/api/feedback`, {
+        await fetch(`/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -121,7 +121,6 @@ export class BR18Scraper {
                   'status': 'active'
                 }
               };
-              console.log(document);
               documents.push(document);
               
             } catch (sectionError) {

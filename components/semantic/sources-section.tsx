@@ -35,32 +35,10 @@ export function SourcesSection({ messages, userRole }: SourcesSectionProps) {
     <Card className="col-span-1 overflow-hidden">
       <ScrollArea className="h-full p-4">
         <div className="space-y-4">
-          {/* Admin Panel - Show only for ADMIN or COMPANY_ADMIN in development */}
-          {hasAdminAccess && process.env.NODE_ENV === 'development' && (
+          {/* Admin Panel - Show for ADMIN or COMPANY_ADMIN */}
+          {hasAdminAccess && (
             <div className="pb-4 border-b">
               <BR18IngestionPanel />
-            </div>
-          )}
-
-          {/* Public Knowledge Table - Show in production */}
-          {/* TODO: This is a placeholder for the public knowledge base */}
-          {process.env.NODE_ENV === 'production' && (
-            <div className="pb-4 border-b">
-              <h4 className="font-medium mb-3">Public Knowledge Base</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center p-2 bg-muted rounded">
-                  <span>Construction Standards</span>
-                  <span className="text-xs text-muted-foreground">Available</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-muted rounded">
-                  <span>Safety Regulations</span>
-                  <span className="text-xs text-muted-foreground">Available</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-muted rounded">
-                  <span>Industry Guidelines</span>
-                  <span className="text-xs text-muted-foreground">Available</span>
-                </div>
-              </div>
             </div>
           )}
           

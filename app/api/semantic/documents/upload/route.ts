@@ -24,6 +24,11 @@ import { createClient } from '@/lib/supabase/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { enhancedDocumentProcessor } from '@/lib/services/ai/ai-document-processor';
 import { randomUUID } from 'crypto';
+import mammoth from 'mammoth';
+
+// Import from pdf-parse/lib/pdf-parse.js directly to avoid the top-level
+// test-file load in the package's index.js that breaks Next.js builds.
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 async function uploadDocumentHandler(request: AuthenticatedRequest) {
   try {
@@ -175,10 +180,36 @@ async function processDocumentInBackground(
       })
       .eq('id', documentId);
 
-    // Convert file to text content for processing
-    const fileContent = await file.text();
+    // Extract text content based on file type
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    let fileContent: string;
 
-    // Process document with enhanced processor (chunking, embedding)
+    if (file.type === 'application/pdf') {
+      const pdfData = await pdfParse(buffer);
+      fileContent = pdfData.text;
+    } else if (
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.type === 'application/msword'
+    ) {
+      const result = await mammoth.extractRawText({ buffer });
+      fileContent = result.value;
+    } else {
+      fileContent = buffer.toString('utf-8');
+    }
+
+    if (!fileContent || fileContent.trim().length === 0) {
+      await supabase
+        .from('ai_documents')
+        .update({
+          ingestion_status: 'failed',
+          ingestion_error: 'Could not extract text content from the file',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', documentId);
+      return;
+    }
+
     const result = await enhancedDocumentProcessor.processDocument(
       documentId,
       companyId,
