@@ -75,16 +75,30 @@ interface UseSemanticEngineReturn {
   canSendMessage: boolean;
 }
 
+const CHAT_STORAGE_KEY = 'semantic-engine-chat';
+
+function loadPersistedChat(): { messages: Message[]; currentSessionId: string | undefined } | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed?.messages)) return parsed;
+  } catch { /* ignore corrupt data */ }
+  return null;
+}
+
 export function useSemanticEngine(): UseSemanticEngineReturn {
-  // State management
-  const [state, setState] = useState<SemanticEngineState>({
-    messages: [],
+  const persisted = useRef(loadPersistedChat());
+
+  const [state, setState] = useState<SemanticEngineState>(() => ({
+    messages: persisted.current?.messages ?? [],
     inputValue: '',
-    currentSessionId: undefined,
+    currentSessionId: persisted.current?.currentSessionId,
     refreshTrigger: 0,
     ingestionStatus: null,
     userRole: null,
-  });
+  }));
 
   const [loading, setLoading] = useState<LoadingState>({
     chat: false,
@@ -176,6 +190,20 @@ export function useSemanticEngine(): UseSemanticEngineReturn {
       }, 10);
     }
   }, [state.messages.length]);
+
+  // Persist chat to sessionStorage so it survives soft navigations
+  useEffect(() => {
+    try {
+      if (state.messages.length > 0) {
+        sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+          messages: state.messages,
+          currentSessionId: state.currentSessionId,
+        }));
+      } else {
+        sessionStorage.removeItem(CHAT_STORAGE_KEY);
+      }
+    } catch { /* storage full or unavailable */ }
+  }, [state.messages, state.currentSessionId]);
 
   // Check ingestion status
   const checkIngestionStatus = useCallback(async () => {
@@ -290,6 +318,7 @@ export function useSemanticEngine(): UseSemanticEngineReturn {
       currentSessionId: undefined
     }));
     setError(prev => ({ ...prev, chat: null }));
+    try { sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
   const setInputValue = useCallback((value: string) => {

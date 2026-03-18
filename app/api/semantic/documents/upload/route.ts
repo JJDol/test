@@ -23,6 +23,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { enhancedDocumentProcessor } from '@/lib/services/ai/ai-document-processor';
+import { openaiService } from '@/lib/services/ai/openai-client';
 import { randomUUID } from 'crypto';
 import mammoth from 'mammoth';
 
@@ -146,6 +147,41 @@ async function uploadDocumentHandler(request: AuthenticatedRequest) {
 // Apply authentication wrapper
 export const POST = withAuth(uploadDocumentHandler);
 
+const MAX_KEYWORDS = 20;
+
+async function extractDocumentKeywords(text: string): Promise<string[]> {
+  try {
+    const sample = text.slice(0, 3000);
+    const response = await openaiService.generateChatResponse([
+      {
+        role: 'system',
+        content: 'You extract keywords from documents. Return ONLY a JSON array of lowercase strings, no other text.',
+      },
+      {
+        role: 'user',
+        content: `Extract 10-20 single-word or short-phrase keywords/topics from this document.
+Return them as a JSON array of lowercase strings.
+Focus on the main subjects, fields, and concepts — not generic words like "the", "and", "is".
+
+Document text:
+${sample}`,
+      },
+    ], 200);
+
+    const parsed = JSON.parse(response.content);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
+        .map(k => k.toLowerCase().trim())
+        .slice(0, MAX_KEYWORDS);
+    }
+    return [];
+  } catch (error) {
+    console.error('Keyword extraction failed, continuing without keywords:', error);
+    return [];
+  }
+}
+
 // TODO: consider if this should be here or in utils
 /**
  * Background document processing function
@@ -223,6 +259,8 @@ async function processDocumentInBackground(
       }
     );
 
+    const extractedKeywords = await extractDocumentKeywords(fileContent);
+
     // Update document with completion status and metadata
     const { error: updateError } = await supabase
       .from('ai_documents')
@@ -230,6 +268,7 @@ async function processDocumentInBackground(
         ingestion_status: 'completed',
         ingestion_progress: 100,
         chunks_count: result.chunksProcessed,
+        extracted_keywords: extractedKeywords.length > 0 ? extractedKeywords : null,
         updated_at: new Date().toISOString()
       })
       .eq('id', documentId);
