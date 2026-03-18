@@ -180,56 +180,31 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     
     console.log('[AUTH] User authenticated:', { userId: user.id, email: user.email });
 
-    // Get user data from JWT metadata - NO database calls!
-    const role = user.user_metadata?.role;
-    const company_id = user.user_metadata?.company_id;
+    // Always validate role/company from the database to prevent stale JWT issues
+    const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
+    const serviceClient = createServiceRoleClient();
+    
+    const { data: userData, error: dbError } = await serviceClient
+      .from('users')
+      .select('role, company_id')
+      .eq('id', user.id)
+      .single();
 
-    // Check if metadata exists in JWT
-    if (!role || !company_id) {
-      console.warn(`User ${user.id} missing metadata in JWT, fetching from database...`);
-      
-      // Use service role client to bypass RLS for user data fetch
-      const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
-      const serviceClient = createServiceRoleClient();
-      
-      const { data: userData, error: dbError } = await serviceClient
-        .from('users')
-        .select('role, company_id')
-        .eq('id', user.id)
-        .single();
-
-      if (dbError || !userData) {
-        console.error('Failed to fetch user data:', dbError);
-        return {
-          error: NextResponse.json(
-            { 
-              error: 'User profile not found. Please log in to the main Aticon app first to complete your account setup.',
-              code: 'USER_PROFILE_NOT_FOUND'
-            },
-            { status: 403 }
-          )
-        };
-      }
-
-      // Update JWT metadata for future requests (only works for cookie-based auth)
-      try {
-        await updateCurrentUserMetadata(userData.role, userData.company_id);
-      } catch (e) {
-        console.warn('Could not update JWT metadata (expected for Bearer token auth)');
-      }
-
+    if (dbError || !userData) {
+      console.error('Failed to fetch user data:', dbError);
       return {
-        user: {
-          id: user.id,
-          email: user.email!,
-          role: userData.role,
-          company_id: userData.company_id
-        }
+        error: NextResponse.json(
+          { 
+            error: 'User profile not found. Please log in to the main Aticon app first to complete your account setup.',
+            code: 'USER_PROFILE_NOT_FOUND'
+          },
+          { status: 403 }
+        )
       };
     }
 
     // Ensure user has a company association (required for multi-tenant)
-    if (!company_id) {
+    if (!userData.company_id) {
       console.error('User has no company association:', user.id);
       return {
         error: NextResponse.json(
@@ -239,15 +214,26 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
       };
     }
 
-    // Return user data from JWT metadata - ZERO database calls! 🚀
-    console.log(`⚡ JWT auth for user ${user.id} - role: ${role}, company: ${company_id}`);
+    // Sync JWT metadata if it drifted from the database
+    const jwtRole = user.user_metadata?.role;
+    const jwtCompanyId = user.user_metadata?.company_id;
+    if (jwtRole !== userData.role || jwtCompanyId !== userData.company_id) {
+      console.warn(`[AUTH] JWT metadata stale for user ${user.id} — JWT role: ${jwtRole}, DB role: ${userData.role}. Syncing...`);
+      try {
+        await updateCurrentUserMetadata(userData.role, userData.company_id);
+      } catch (e) {
+        console.warn('Could not update JWT metadata (expected for Bearer token auth)');
+      }
+    }
+
+    console.log(`[AUTH] Authenticated user ${user.id} - role: ${userData.role}, company: ${userData.company_id}`);
     
     return {
       user: {
         id: user.id,
         email: user.email!,
-        role,
-        company_id
+        role: userData.role,
+        company_id: userData.company_id
       }
     };
   } catch (error) {

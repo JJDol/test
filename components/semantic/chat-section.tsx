@@ -118,6 +118,9 @@ export function ChatSection({
             <span className="sr-only">Send message</span>
           </Button>
         </form>
+        <p className="mt-2 text-xs text-muted-foreground text-center">
+          The information provided by the AI chatbot is for general informational purposes only. While efforts are made to ensure accuracy, AutoDoc does not guarantee completeness or compliance with BR18 or other regulations. Users are solely responsible for verifying all information and ensuring regulatory compliance.
+        </p>
       </div>
     </Card>
   );

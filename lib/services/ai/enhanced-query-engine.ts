@@ -85,7 +85,7 @@ export class EnhancedQueryEngine {
       const response = await openaiService.generateChatResponse([
         { 
           role: 'system', 
-          content: 'You are an expert assistant specializing in analyzing documents and answering questions about building regulations and construction requirements.' 
+          content: 'You are an expert assistant specializing in analyzing documents and answering questions. You handle building regulations, construction requirements, and any user-uploaded documents.' 
         },
         { role: 'user', content: prompt }
       ], 1000); // Reasonable token limit

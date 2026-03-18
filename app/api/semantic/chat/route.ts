@@ -53,50 +53,71 @@ function isPureProjectDataQuery(message: string): boolean {
   return projectDataPatterns.some(pattern => pattern.test(lowerMessage));
 }
 
-function isOnTopicQuery(message: string): boolean {
+const BASE_ALLOWED_TOPICS = [
+  // Construction & architecture
+  'build', 'construct', 'architect', 'design', 'structur', 'foundation',
+  'concrete', 'steel', 'timber', 'insulation', 'facade', 'roof',
+  'wall', 'floor', 'ceiling', 'beam', 'column', 'load', 'bearing',
+  'ventilation', 'hvac', 'plumbing', 'electrical', 'drainage',
+  'fire', 'safety', 'escape', 'sprinkler', 'smoke',
+  'energy', 'thermal', 'u-value', 'heat', 'cooling',
+  'acoustic', 'sound', 'noise', 'lyd',
+  'access', 'elevator', 'stair', 'ramp', 'handicap', 'disability',
+  'parking', 'landscape', 'terrain', 'site',
+
+  // Regulations & standards
+  'br18', 'regulation', 'code', 'requirement', 'standard', 'compliance',
+  'bygningsreglement', 'paragraph', '§', 'section', 'rule',
+  'permit', 'approval', 'inspection', 'certificate', 'authority',
+  'eurocode', 'ds ', 'en ', 'iso',
+  'annex', 'bilag', 'vejledning', 'guideline',
+
+  // Danish building terms
+  'konstruktion', 'brand', 'energi', 'adgang', 'affald', 'afløb',
+  'indretning', 'legeplads', 'udsyn', 'vand', 'fugt', 'vådrum',
+  'byggeri', 'bygning', 'bygge', 'bolig',
+  'ophævet', 'gældende', 'krav', 'bestemmelse',
+
+  // Project management
+  'project', 'deadline', 'progress', 'team', 'leader', 'worker',
+  'template', 'document', 'variable', 'category', 'assignment',
+  'kanban', 'status', 'stage', 'milestone', 'task', 'schedule',
+  'company', 'member', 'colleague', 'capacity', 'workload',
+
+  // Document queries
+  'file', 'upload', 'document', 'report', 'template', 'docx', 'pdf',
+  'content', 'contains', 'search', 'find',
+
+  // General assistant interactions (greetings, help)
+  'hello', 'hi', 'hey', 'help', 'what can you', 'who are you',
+  'how do you', 'thank', 'thanks', 'hej', 'tak',
+];
+
+function isOnTopicQuery(message: string, documentKeywords: string[] = []): boolean {
   const lowerMessage = message.toLowerCase();
+  const allTopics = [...BASE_ALLOWED_TOPICS, ...documentKeywords];
+  return allTopics.some(topic => lowerMessage.includes(topic));
+}
 
-  const allowedTopics = [
-    // Construction & architecture
-    'build', 'construct', 'architect', 'design', 'structur', 'foundation',
-    'concrete', 'steel', 'timber', 'insulation', 'facade', 'roof',
-    'wall', 'floor', 'ceiling', 'beam', 'column', 'load', 'bearing',
-    'ventilation', 'hvac', 'plumbing', 'electrical', 'drainage',
-    'fire', 'safety', 'escape', 'sprinkler', 'smoke',
-    'energy', 'thermal', 'u-value', 'heat', 'cooling',
-    'acoustic', 'sound', 'noise', 'lyd',
-    'access', 'elevator', 'stair', 'ramp', 'handicap', 'disability',
-    'parking', 'landscape', 'terrain', 'site',
+async function fetchDocumentKeywords(supabase: any, companyId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('ai_documents')
+    .select('extracted_keywords')
+    .eq('company_id', companyId)
+    .eq('ingestion_status', 'completed')
+    .not('extracted_keywords', 'is', null);
 
-    // Regulations & standards
-    'br18', 'regulation', 'code', 'requirement', 'standard', 'compliance',
-    'bygningsreglement', 'paragraph', '§', 'section', 'rule',
-    'permit', 'approval', 'inspection', 'certificate', 'authority',
-    'eurocode', 'ds ', 'en ', 'iso',
-    'annex', 'bilag', 'vejledning', 'guideline',
+  if (error || !data) return [];
 
-    // Danish building terms
-    'konstruktion', 'brand', 'energi', 'adgang', 'affald', 'afløb',
-    'indretning', 'legeplads', 'udsyn', 'vand', 'fugt', 'vådrum',
-    'byggeri', 'bygning', 'bygge', 'bolig',
-    'ophævet', 'gældende', 'krav', 'bestemmelse',
-
-    // Project management
-    'project', 'deadline', 'progress', 'team', 'leader', 'worker',
-    'template', 'document', 'variable', 'category', 'assignment',
-    'kanban', 'status', 'stage', 'milestone', 'task', 'schedule',
-    'company', 'member', 'colleague', 'capacity', 'workload',
-
-    // Document queries
-    'file', 'upload', 'document', 'report', 'template', 'docx', 'pdf',
-    'content', 'contains', 'search', 'find',
-
-    // General assistant interactions (greetings, help)
-    'hello', 'hi', 'hey', 'help', 'what can you', 'who are you',
-    'how do you', 'thank', 'thanks', 'hej', 'tak',
-  ];
-
-  return allowedTopics.some(topic => lowerMessage.includes(topic));
+  const keywords = new Set<string>();
+  for (const doc of data) {
+    if (Array.isArray(doc.extracted_keywords)) {
+      for (const kw of doc.extracted_keywords) {
+        keywords.add(kw.toLowerCase());
+      }
+    }
+  }
+  return Array.from(keywords);
 }
 
 const OFF_TOPIC_RESPONSE = `I'm sorry, but I can only help with topics related to:
@@ -122,12 +143,18 @@ async function chatHandler(request: AuthenticatedRequest) {
       );
     }
 
-    // Reject off-topic queries before any expensive processing
-    if (!isOnTopicQuery(message)) {
-      const supabase = await createClient();
+    const supabase = await createClient();
 
-      let currentSessionId = session_id;
-      if (!currentSessionId) {
+    // Skip topic filter for follow-up messages in an existing session —
+    // the session was already established as on-topic from the first message.
+    const isNewConversation = !session_id;
+
+    if (isNewConversation) {
+      const documentKeywords = request.user.company_id
+        ? await fetchDocumentKeywords(supabase, request.user.company_id)
+        : [];
+
+      if (!isOnTopicQuery(message, documentKeywords)) {
         const { data: newSession, error: sessionError } = await supabase
           .from('chat_sessions')
           .insert({
@@ -139,42 +166,39 @@ async function chatHandler(request: AuthenticatedRequest) {
           .select()
           .single();
         if (sessionError) throw sessionError;
-        currentSessionId = newSession.id;
-      }
 
-      await supabase.from('chat_messages').insert({
-        session_id: currentSessionId,
-        role: 'user',
-        content: message,
-        metadata: { timestamp: new Date().toISOString(), user_id: request.user.id },
-      });
+        await supabase.from('chat_messages').insert({
+          session_id: newSession.id,
+          role: 'user',
+          content: message,
+          metadata: { timestamp: new Date().toISOString(), user_id: request.user.id },
+        });
 
-      const { data: assistantMsg } = await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: currentSessionId,
-          role: 'assistant',
+        const { data: assistantMsg } = await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: newSession.id,
+            role: 'assistant',
+            content: OFF_TOPIC_RESPONSE,
+            sources: [],
+            metadata: { off_topic: true, response_time_ms: Date.now() - startTime },
+          })
+          .select()
+          .single();
+
+        return NextResponse.json({
+          message_id: assistantMsg?.id || '',
+          session_id: newSession.id,
           content: OFF_TOPIC_RESPONSE,
           sources: [],
-          metadata: { off_topic: true, response_time_ms: Date.now() - startTime },
-        })
-        .select()
-        .single();
-
-      return NextResponse.json({
-        message_id: assistantMsg?.id || '',
-        session_id: currentSessionId!,
-        content: OFF_TOPIC_RESPONSE,
-        sources: [],
-        metadata: {
-          tokens_used: 0,
-          response_time_ms: Date.now() - startTime,
-          model_used: 'none',
-        },
-      } as ChatResponse);
+          metadata: {
+            tokens_used: 0,
+            response_time_ms: Date.now() - startTime,
+            model_used: 'none',
+          },
+        } as ChatResponse);
+      }
     }
-
-    const supabase = await createClient();
 
     // Step 1: Get or create chat session
     let currentSessionId = session_id;
@@ -297,7 +321,19 @@ async function chatHandler(request: AuthenticatedRequest) {
       
       let systemPrompt: string;
       // TODO: Test different prompts for different queries,assess the quality of the response
-      const domainGuardrail = `
+      const hasUploadedDocSources = sources.some(
+        (s: any) => s.document_type === 'upload' || s.source_type === 'upload'
+      );
+
+      const domainGuardrail = hasUploadedDocSources
+        ? `
+IMPORTANT RESTRICTION: You are ONLY allowed to answer questions about:
+1. Construction, architecture, and building engineering
+2. Danish Building Regulations (BR18 / Bygningsreglementet) and related standards
+3. Project management data from the user's company
+4. Content from user-uploaded documents — answer questions about any document the user has uploaded
+If a question is outside these domains, politely decline and explain what topics you can help with.`
+        : `
 IMPORTANT RESTRICTION: You are ONLY allowed to answer questions about:
 1. Construction, architecture, and building engineering
 2. Danish Building Regulations (BR18 / Bygningsreglementet) and related standards
@@ -319,7 +355,7 @@ Instructions:
 - If project data is not available, clearly state this
 - Do not make assumptions about projects not in the data`;
       } else {
-        systemPrompt = `You are an AI assistant for the construction industry with access to Danish building regulations (BR18) and project data.
+        systemPrompt = `You are an AI assistant with access to Danish building regulations (BR18), project data, and user-uploaded documents.
 ${domainGuardrail}
 
 Context available:
@@ -327,13 +363,13 @@ ${combinedContext}
 
 Instructions:
 - ALWAYS use the provided DOCUMENT KNOWLEDGE BASE when available to answer questions
+- If the user's question relates to an uploaded document, answer based on that document's content regardless of domain
 - The documents may be in Danish - translate and explain the content in English
 - For BR18/building regulation questions, reference the specific sections (§) mentioned in the documents
 - Quote relevant parts of the regulations and explain their meaning
 - If asking about "my projects" vs "company projects", use PROJECT DATA appropriately  
 - Be specific and cite the exact sources provided
 - If you have relevant BR18 content, use it even if it's in Danish
-- Focus on construction, architecture, and building regulations
 - When referencing regulations, include the section numbers (like § 49, § 50, etc.)
 - If no relevant data is available, state this clearly`;
       }

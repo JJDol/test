@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -24,7 +24,6 @@ interface UseAuthReturn {
 }
 
 export function useAuth(): UseAuthReturn {
-  const router = useRouter();
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [user, setUser] = useState<User | null>(null); // Raw Supabase user
@@ -72,17 +71,12 @@ export function useAuth(): UseAuthReturn {
         
         // Handle specific auth session missing error
         if (userError.message?.includes('Auth session missing')) {
-          console.log("Auth session missing - user not authenticated, redirecting to sign-in");
+          console.log("Auth session missing - user not authenticated");
           setUser(null);
           setCurrentUser(null);
           setIsAdmin(false);
           setIsCompanyAdmin(false);
-          setError(null); // Don't set error for missing session
-          
-          // Force immediate redirect using window.location (browser only)
-          if (typeof window !== 'undefined') {
-            window.location.href = "/sign-in?reason=session_missing";
-          }
+          setError(null);
           return false;
         }
         
@@ -95,16 +89,11 @@ export function useAuth(): UseAuthReturn {
       }
       
       if (!authUser) {
-        console.log("No user found in useAuth, redirecting to sign-in");
+        console.log("No user found in useAuth");
         setUser(null);
         setCurrentUser(null);
         setIsAdmin(false);
         setIsCompanyAdmin(false);
-        
-        // Force immediate redirect using window.location (browser only)
-        if (typeof window !== 'undefined') {
-          window.location.href = "/sign-in?reason=no_user";
-        }
         return false;
       }
 
@@ -190,14 +179,11 @@ export function useAuth(): UseAuthReturn {
           setIsAdmin(false);
           setIsCompanyAdmin(false);
           setIsLoading(false);
-          // Force redirect on sign out
-          if (typeof window !== 'undefined') {
-            window.location.href = "/sign-in?reason=signed_out";
-          }
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed, updating user...');
-          setUser(session?.user ?? null);
-          // Don't call checkAuth here to avoid loops
+          console.log('Token refreshed');
+          // Don't re-set user here — the user object hasn't changed,
+          // only the tokens. Re-setting would trigger unnecessary re-renders
+          // and profile re-fetches.
         }
       }
     );
