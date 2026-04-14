@@ -143,26 +143,8 @@ cp .env.example .env.local
 
 Fill in all values in `.env.local` (see [Environment Variables](#environment-variables) below).
 
-### 3. Set up the database
 
-**Option A — Remote Supabase project:**
-
-```bash
-npx supabase login
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push
-```
-
-**Option B — Local Supabase (requires Docker):**
-
-```bash
-npx supabase start       # Starts local Postgres, Auth, Storage
-npx supabase db push     # Applies all migrations
-```
-
-The local Supabase dashboard will be at `http://localhost:54323`.
-
-### 4. Start development server
+### 3. Start development server
 
 ```bash
 npm run dev
