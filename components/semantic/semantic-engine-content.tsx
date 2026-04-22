@@ -17,7 +17,6 @@
 
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { ChatSection } from "./chat-section";
 import { SourcesSection } from "./sources-section"
 import { IngestionOverlay } from "./ingestion-overlay";
@@ -33,22 +32,6 @@ export function SemanticEngineContent() {
     progressPercentage,
     canSendMessage,
   } = useSemanticEngine();
-
-  // Backend offline state
-  if (error.backend) {
-    return (
-      <div className="container mx-auto p-4 h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)]">
-        <div className="flex items-center justify-center h-full">
-          <Card className="p-8 max-w-lg text-center">
-            <h2 className="text-2xl font-bold mb-4">Not available right now</h2>
-            <p className="text-muted-foreground">
-              The semantic search engine is currently offline. Please check back later.
-            </p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)]">
