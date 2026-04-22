@@ -78,20 +78,19 @@ export async function POST(request: Request) {
     const isPreviewDeployment = vercelUrl && vercelUrl.includes('git-');
     
     if (isPreviewDeployment) {
-      // We're in a preview deployment - ALWAYS use the preview URL
       console.log('🚀 [forgot-password] Preview deployment detected, using Vercel branch URL:', vercelUrl);
       resetUrl = `https://${vercelUrl}/reset-password/${token}`;
     } else if (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) {
-      // Production deployment - use the configured SITE_URL
       const siteUrl = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
       console.log('🏭 [forgot-password] Production deployment, using SITE_URL:', siteUrl);
       resetUrl = `${siteUrl}/reset-password/${token}`;
+    } else if (vercelUrl) {
+      console.log('🌐 [forgot-password] Vercel deployment without SITE_URL, using VERCEL_URL:', vercelUrl);
+      resetUrl = `https://${vercelUrl}/reset-password/${token}`;
     } else if (process.env.NODE_ENV === 'development') {
-      // Local development
       console.log('🖥️ [forgot-password] Local development, using localhost fallback');
       resetUrl = `http://localhost:3000/reset-password/${token}`;
     } else {
-      // Fallback - this shouldn't happen
       console.error('❌ [forgot-password] Could not determine reset URL - configuration error');
       return NextResponse.json({ 
         error: 'Server configuration error. Please contact support.' 

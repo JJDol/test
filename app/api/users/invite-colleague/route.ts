@@ -90,8 +90,8 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
     const invitationToken = randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
-    // Create invitation record
-    const { error: invitationError } = await supabase
+    // Use service role client to bypass RLS (API middleware already verified ADMIN/COMPANY_ADMIN role)
+    const { error: invitationError } = await supabaseAdmin
       .from('user_invitations')
       .insert({
         email,

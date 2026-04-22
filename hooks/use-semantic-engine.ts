@@ -290,10 +290,8 @@ export function useSemanticEngine(): UseSemanticEngineReturn {
       console.error('Error:', error);
       setError(prev => ({ 
         ...prev, 
-        backend: true,
         chat: 'Failed to get response. Please try again.'
       }));
-      // Remove loading message on error
       setState(prev => ({ ...prev, messages: prev.messages.slice(0, -1) }));
     } finally {
       setLoading(prev => ({ ...prev, chat: false }));

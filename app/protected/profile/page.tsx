@@ -134,19 +134,19 @@ export default function ProfilePage() {
     <ProtectedPageWrapper loadingMessage="Loading profile...">
       <div className="container mx-auto py-10">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className={`grid w-full max-w-md ${isCompanyAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          <TabsList className={`grid w-full max-w-md ${(isCompanyAdmin || isAdmin) ? 'grid-cols-4' : 'grid-cols-2'}`}>
             <TabsTrigger value="profile" aria-label="Profile settings and personal information">
               Profile
             </TabsTrigger>
             <TabsTrigger value="projects" aria-label="View your assigned projects">
               My Projects
             </TabsTrigger>
-            {isCompanyAdmin && (
+            {(isCompanyAdmin || isAdmin) && (
               <TabsTrigger value="colleagues" aria-label="Manage team members and colleagues">
                 Team
               </TabsTrigger>
             )}
-            {isCompanyAdmin && (
+            {(isCompanyAdmin || isAdmin) && (
               <TabsTrigger value="company-settings" aria-label="Company settings and configuration">
                 Company
               </TabsTrigger>
