@@ -90,6 +90,9 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
         role: "USER"
       });
 
+      // Close dialog after successful invitation
+      setOpen(false);
+
       // Notify parent component
       if (onColleagueAdded) {
         onColleagueAdded();

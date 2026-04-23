@@ -30,10 +30,13 @@ export default function ProfilePage() {
 
   const {
     colleagues,
+    invitations,
     loadingStates: colleaguesLoadingStates,
     errors: colleaguesErrors,
     fetchColleagues,
     deleteColleague,
+    revokeInvitation,
+    resendInvitation,
     onColleagueAdded,
     canDeleteColleague,
     getDeletionBlockReason,
@@ -171,10 +174,14 @@ export default function ProfilePage() {
             <TabsContent value="colleagues" id="colleagues">
               <ColleaguesManagement
                 colleagues={colleagues}
+                invitations={invitations}
                 isLoading={colleaguesLoadingStates.colleagues}
+                isInvitationActionPending={colleaguesLoadingStates.invitationAction}
                 error={colleaguesErrors.colleagues}
                 currentUserId={currentUser?.id || ""}
                 onColleagueAdded={onColleagueAdded}
+                onRevokeInvitation={revokeInvitation}
+                onResendInvitation={resendInvitation}
                 canDeleteColleague={canDeleteColleague}
                 getDeletionBlockReason={getDeletionBlockReason}
               />
