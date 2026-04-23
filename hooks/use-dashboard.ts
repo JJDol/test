@@ -227,14 +227,19 @@ export function useDashboard(): UseDashboardReturn {
     }
   };
 
-  // Effects for data fetching
+  // Only fetch dashboard data after the user is authenticated. Firing these
+  // requests during the "verifying authentication" phase creates a burst of
+  // parallel API calls that race the Supabase token refresh on Vercel and
+  // can corrupt the refresh-token rotation.
   useEffect(() => {
+    if (!currentUser) return;
     fetchCompanyInfo();
-  }, [fetchCompanyInfo]);
+  }, [fetchCompanyInfo, currentUser]);
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchProjects, currentUser]);
 
   // Computed values
   const activeProjects = state.projects.filter(p => p.progress < 100);

@@ -7,11 +7,13 @@ import { Crown, FolderKanban, FileText, MessageSquare, HelpCircle } from "lucide
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function NavigationBar() {
   const [navWidth, setNavWidth] = useState("w-64");
   const [widthValue, setWidthValue] = useState("16rem"); // 64 / 4 = 16rem
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { currentUser } = useAuth();
+  const userRole = currentUser?.role ?? null;
 
 
   // Function to handle screen size changes
@@ -32,34 +34,17 @@ export default function NavigationBar() {
     }
   };
 
-  // Fetch user role
-  const fetchUserRole = async () => {
-    try {
-      const response = await fetch('/api/auth/current-user');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user role: ${response.status}`);
-      }
-      const userData = await response.json();
-      setUserRole(userData.role);
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-    }
-  };
-
   // Add resize listener
   useEffect(() => {
     // Set initial width
     handleResize();
-    
+
     // Add event listener
     window.addEventListener("resize", handleResize);
 
     // Set CSS variable for width
     document.documentElement.style.setProperty('--nav-width', widthValue);
-    
-    // Fetch user role
-    fetchUserRole();
-    
+
     // Cleanup
     return () => window.removeEventListener("resize", handleResize);
   }, [widthValue]);

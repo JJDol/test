@@ -1,28 +1,55 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/**
+ * Next.js Middleware - Session gating for page routes
+ *
+ * Design notes:
+ * - Static assets, API routes, and the OAuth callback short-circuit BEFORE any
+ *   Supabase call. API routes run their own auth via `withAuth` in each handler,
+ *   so running `getSession()` here is pure duplication and triggers unnecessary
+ *   token-refresh races on Vercel serverless (multiple instances refreshing in
+ *   parallel can corrupt the refresh-token rotation).
+ * - We intentionally do NOT access `session.user` here. Using `getSession()` only
+ *   for existence/expiry checks avoids Supabase's "insecure" warning and avoids
+ *   unnecessary round-trips to the Auth server. Admin routes fall back to the
+ *   authoritative `getUser()` because role checks must be trustworthy.
+ * - Cookie options are left to Supabase defaults; forcing `httpOnly: true` would
+ *   prevent the browser client from hydrating the session.
+ */
 export async function middleware(request: NextRequest) {
-  console.log('Middleware executing for path:', request.nextUrl.pathname);
-  
-  // Initialize response object
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
-  
+
+  const path = request.nextUrl.pathname;
+
+  // Route type detection (no Supabase call required)
+  const isStaticRoute = !!path.match(/^\/(_next|images|favicon\.ico)/) || path === '/sw.js';
+  const isApiRoute = path.startsWith('/api/');
+  const isAuthCallback = path === '/auth/callback';
+  const isProtectedRoute = path.startsWith('/protected/');
+  const isAdminRoute = path.startsWith('/admin/');
+  const isSignInOrUp = path === '/sign-in' || path === '/sign-up';
+
+  // Fast paths - no session check needed
+  if (isStaticRoute || isApiRoute || isAuthCallback) {
+    return response;
+  }
+
+  // Redirect root to sign-in (preserves existing behavior)
+  if (path === '/') {
+    return NextResponse.redirect(new URL('/sign-in', request.url));
+  }
+
   try {
-    // Validate environment variables
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables in middleware:', {
-        hasUrl: !!supabaseUrl,
-        hasAnonKey: !!supabaseAnonKey
-      });
-      
-      // If we can't authenticate, allow the request but log the issue
+      console.error('Missing Supabase environment variables in middleware');
       return response;
     }
 
@@ -32,134 +59,70 @@ export async function middleware(request: NextRequest) {
       {
         cookies: {
           get(name: string) {
-            return request.cookies.get(name)?.value
+            return request.cookies.get(name)?.value;
           },
           set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-              sameSite: 'lax',
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production'
-            })
+            response.cookies.set({ name, value, ...options });
           },
           remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-              maxAge: 0,
-            })
+            response.cookies.set({ name, value: '', ...options, maxAge: 0 });
           },
         },
       }
-    )
+    );
 
-    // Always redirect root path to sign-in
-    if (request.nextUrl.pathname === '/') {
-      return NextResponse.redirect(new URL('/sign-in', request.url))
+    // Only check for session existence/expiry here — do NOT read session.user.
+    // That avoids Supabase's "insecure" warning and doesn't require contacting
+    // the Auth server on every page navigation.
+    const { data: { session } } = await supabase.auth.getSession();
+    const now = Math.floor(Date.now() / 1000);
+    const hasValidSession = !!session && (!session.expires_at || session.expires_at > now);
+
+    // Gate protected/admin routes for unauthenticated users
+    if (!hasValidSession && (isProtectedRoute || isAdminRoute)) {
+      const redirectUrl = new URL('/sign-in', request.url);
+      redirectUrl.searchParams.set('redirect', path);
+      redirectUrl.searchParams.set('reason', session ? 'session_expired' : 'auth_required');
+      return NextResponse.redirect(redirectUrl);
     }
 
-    // Get the session and user data
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    const user = session?.user || null
-
-    // Check if session is expired
-    let sessionValid = false
-    if (session && session.expires_at) {
-      const now = Math.floor(Date.now() / 1000)
-      sessionValid = session.expires_at > now
-    } else if (session) {
-      sessionValid = true // No expiry time means it's valid
-    }
-
-    // Debug logging
-    console.log('Auth state:', {
-      path: request.nextUrl.pathname,
-      hasSession: !!session,
-      sessionValid,
-      hasUser: !!user,
-      userEmail: user?.email,
-      sessionExpiry: session?.expires_at
-    })
-
-    // Define route types
-    const isPublicRoute = ['/sign-in', '/sign-up', '/auth/callback', '/forgot-password', '/reset-password'].includes(request.nextUrl.pathname) || request.nextUrl.pathname.startsWith('/reset-password/')
-    const isAuthRoute = request.nextUrl.pathname.startsWith('/auth/')
-    const isProtectedRoute = request.nextUrl.pathname.startsWith('/protected/')
-    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
-    const isAdminRoute = request.nextUrl.pathname.startsWith('/admin/')
-    const isStaticRoute = request.nextUrl.pathname.match(/^\/(_next|images|favicon\.ico)/)
-
-    // Allow static routes to pass through
-    if (isStaticRoute) {
-      return response
-    }
-
-    // Allow API routes to pass through - they have their own auth middleware
-    if (isApiRoute) {
-      return response
-    }
-
-    // Handle auth callback route
-    if (request.nextUrl.pathname === '/auth/callback') {
-      return response
-    }
-
-    // Redirect unauthenticated users or users with invalid sessions trying to access protected routes
-    if ((!user || !sessionValid) && (isProtectedRoute || isAdminRoute)) {
-      const redirectUrl = new URL('/sign-in', request.url)
-      redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
-      redirectUrl.searchParams.set('reason', sessionValid ? 'auth_required' : 'session_expired')
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // If user is authenticated and session is valid
-    if (user && sessionValid) {
-      // Allow sign-in page to show if there's an inactivity reason (for dialog display)
-      if (request.nextUrl.pathname === '/sign-in' && request.nextUrl.searchParams.get('reason') === 'inactivity') {
-        return response
+    // Redirect authenticated users away from sign-in/sign-up, unless they
+    // arrived with a specific reason (e.g. inactivity, session_expired) or a
+    // post-auth redirect target.
+    if (hasValidSession && isSignInOrUp) {
+      if (request.nextUrl.searchParams.has('redirect') || request.nextUrl.searchParams.has('reason')) {
+        return response;
       }
-      
-      // Only redirect from sign-in/sign-up pages if there's no redirect parameter AND no reason parameter
-      // This prevents redirect loops when user is being redirected due to auth issues
-      if ((request.nextUrl.pathname === '/sign-in' || request.nextUrl.pathname === '/sign-up') 
-          && !request.nextUrl.searchParams.has('redirect')
-          && !request.nextUrl.searchParams.has('reason')) {
-        return NextResponse.redirect(new URL('/protected/dashboard', request.url))
+      return NextResponse.redirect(new URL('/protected/dashboard', request.url));
+    }
+
+    // Admin routes need authoritative role validation — use getUser() here
+    // because it verifies the JWT with the Supabase Auth server.
+    if (hasValidSession && isAdminRoute) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return NextResponse.redirect(new URL('/sign-in?reason=auth_required', request.url));
       }
+      try {
+        const { data: userData, error: roleError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
 
-      // Handle admin routes
-      if (isAdminRoute) {
-        try {
-          const { data: userData, error: roleError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-          if (roleError || !userData || userData.role !== 'ADMIN') {
-            console.log('Access denied: Not an admin', {
-              userId: user.id,
-              role: userData?.role,
-              error: roleError
-            })
-            return NextResponse.redirect(new URL('/protected/dashboard', request.url))
-          }
-        } catch (dbError) {
-          console.error('Database error checking admin role:', dbError)
-          // Redirect to dashboard on database error to be safe
-          return NextResponse.redirect(new URL('/protected/dashboard', request.url))
+        if (roleError || !userData || userData.role !== 'ADMIN') {
+          return NextResponse.redirect(new URL('/protected/dashboard', request.url));
         }
+      } catch (dbError) {
+        console.error('Database error checking admin role:', dbError);
+        return NextResponse.redirect(new URL('/protected/dashboard', request.url));
       }
     }
 
-    return response
+    return response;
   } catch (error) {
-    console.error('Middleware error:', error)
-    // On critical error, still allow the request to proceed but log the issue
-    return response
+    console.error('Middleware error:', error);
+    return response;
   }
 }
 

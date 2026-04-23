@@ -50,14 +50,11 @@ export function AuthSessionManager() {
         clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = setTimeout(() => {
-        console.log('Timeout triggered - user inactive for 1 hour');
         performSignOut();
       }, 60 * 60 * 1000);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, _session) => {
-      console.log('Auth state changed:', event);
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT' && !isSigningOut.current) {
         router.replace('/sign-in?reason=signout');
       }
@@ -77,11 +74,9 @@ export function AuthSessionManager() {
           // getSession() reads from storage and can miss the session
           // during an auto-refresh race. Fall back to the authoritative
           // server check before deciding to redirect.
-          console.log('Local session check returned empty, verifying with server...');
           const { data: { user }, error: userError } = await supabase.auth.getUser();
 
           if (userError || !user) {
-            console.log('Server confirmed no valid session');
             router.replace('/sign-in?reason=session_expired');
           }
           return;
@@ -94,7 +89,6 @@ export function AuthSessionManager() {
           const timeUntilExpiry = expiresAt - now;
 
           if (timeUntilExpiry < 300) {
-            console.log('Session expiring soon, refreshing...');
             await supabase.auth.refreshSession();
             // Don't redirect on refresh failure — the session may still
             // be valid until it actually expires. Next interval will retry.

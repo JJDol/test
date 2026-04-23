@@ -44,14 +44,12 @@ export function useAuth(): UseAuthReturn {
   const checkAuth = useCallback(async (): Promise<boolean> => {
     // Don't run auth checks on auth pages
     if (isAuthPage) {
-      console.log('Skipping auth check on auth page:', pathname);
       setIsLoading(false);
       return false;
     }
 
     // Prevent multiple simultaneous auth checks
     if (isCheckingAuth.current) {
-      console.log('Auth check already in progress, skipping...');
       return false;
     }
     
@@ -60,18 +58,17 @@ export function useAuth(): UseAuthReturn {
     try {
       setIsLoading(true);
       setError(null);
-      
-      console.log('useAuth: Starting auth check...');
-      
+
       const supabase = createClient();
       const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
       
       if (userError) {
-        console.error("Error getting user:", userError);
-        
-        // Handle specific auth session missing error
-        if (userError.message?.includes('Auth session missing')) {
-          console.log("Auth session missing - user not authenticated");
+        // "Auth session missing" is the expected state for unauthenticated visitors.
+        // Treat it as an informational signal rather than an error to keep the
+        // browser console clean in production.
+        const isMissingSession = userError.message?.includes('Auth session missing');
+
+        if (isMissingSession) {
           setUser(null);
           setCurrentUser(null);
           setIsAdmin(false);
@@ -79,7 +76,8 @@ export function useAuth(): UseAuthReturn {
           setError(null);
           return false;
         }
-        
+
+        console.error("Error getting user:", userError);
         setUser(null);
         setCurrentUser(null);
         setIsAdmin(false);
@@ -89,7 +87,6 @@ export function useAuth(): UseAuthReturn {
       }
       
       if (!authUser) {
-        console.log("No user found in useAuth");
         setUser(null);
         setCurrentUser(null);
         setIsAdmin(false);
@@ -97,7 +94,6 @@ export function useAuth(): UseAuthReturn {
         return false;
       }
 
-      console.log("Auth check successful, user found:", authUser.email);
       setUser(authUser);
       return true;
       
@@ -146,7 +142,6 @@ export function useAuth(): UseAuthReturn {
           return;
         }
 
-        console.log("Profile fetched for user:", profile);
         setCurrentUser(profile);
         setIsAdmin(profile?.role === 'ADMIN');
         setIsCompanyAdmin(profile?.role === 'COMPANY_ADMIN');
@@ -166,25 +161,18 @@ export function useAuth(): UseAuthReturn {
     const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change in useAuth:', event);
-        
         if (event === 'SIGNED_IN') {
-          console.log('User signed in, updating state...');
           setUser(session?.user ?? null);
           // Don't call checkAuth here to avoid loops - just update the user state
         } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out, clearing state...');
           setUser(null);
           setCurrentUser(null);
           setIsAdmin(false);
           setIsCompanyAdmin(false);
           setIsLoading(false);
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed');
-          // Don't re-set user here — the user object hasn't changed,
-          // only the tokens. Re-setting would trigger unnecessary re-renders
-          // and profile re-fetches.
         }
+        // TOKEN_REFRESHED / INITIAL_SESSION: no-op. Re-setting the user would
+        // trigger unnecessary re-renders and profile re-fetches.
       }
     );
 

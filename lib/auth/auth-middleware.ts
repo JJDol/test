@@ -65,7 +65,6 @@ export async function forceRefreshUserToken(userId: string): Promise<boolean> {
       return false;
     }
 
-    console.log(`🔄 JWT token refreshed for user ${userId} with role: ${userData.role}, company: ${userData.company_id}`);
     return true;
   } catch (error) {
     console.error('Error refreshing user token:', error);
@@ -93,7 +92,6 @@ export async function updateCurrentUserMetadata(role: string, company_id: string
       return false;
     }
 
-    console.log(`✅ Current user JWT metadata updated: role=${role}, company_id=${company_id}`);
     return true;
   } catch (error) {
     console.error('Error updating current user metadata:', error);
@@ -115,8 +113,7 @@ export async function batchRefreshTokens(userIds: string[]): Promise<{ success: 
       results.failed.push(userId);
     }
   }
-  
-  console.log(`🔄 Batch token refresh completed: ${results.success.length} successful, ${results.failed.length} failed`);
+
   return results;
 }
 
@@ -133,18 +130,15 @@ export const jwtUtils = {
 
 async function authenticateRequest(request: NextRequest): Promise<{ user: AuthenticatedUser } | { error: NextResponse }> {
   try {
-    console.log('[AUTH] Starting authentication for:', request.nextUrl.pathname);
-    
     // Check for Bearer token in Authorization header (for Word add-in and external clients)
     const authHeader = request.headers.get('authorization');
     let user = null;
     let error = null;
     let supabase: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createSupabaseClient>;
-    
+
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      console.log('[AUTH] Bearer token found, authenticating via token...');
-      
+
       // Create a Supabase client and set the session from the token
       supabase = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -155,13 +149,12 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
           }
         }
       );
-      
+
       const result = await supabase.auth.getUser(token);
       user = result.data.user;
       error = result.error;
     } else {
       // Fall back to cookie-based authentication
-      console.log('[AUTH] No Bearer token, using cookie-based auth...');
       supabase = await createClient();
       const result = await supabase.auth.getUser();
       user = result.data.user;
@@ -169,7 +162,6 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     }
 
     if (error || !user) {
-      console.error('[AUTH] Authentication failed:', { error: error?.message, hasUser: !!user });
       return {
         error: NextResponse.json(
           { error: 'Authentication required' },
@@ -177,13 +169,11 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
         )
       };
     }
-    
-    console.log('[AUTH] User authenticated:', { userId: user.id, email: user.email });
 
     // Always validate role/company from the database to prevent stale JWT issues
     const { createServiceRoleClient } = await import('@/lib/supabase/service-role');
     const serviceClient = createServiceRoleClient();
-    
+
     const { data: userData, error: dbError } = await serviceClient
       .from('users')
       .select('role, company_id')
@@ -194,7 +184,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
       console.error('Failed to fetch user data:', dbError);
       return {
         error: NextResponse.json(
-          { 
+          {
             error: 'User profile not found. Please log in to the main Aticon app first to complete your account setup.',
             code: 'USER_PROFILE_NOT_FOUND'
           },
@@ -218,16 +208,13 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     const jwtRole = user.user_metadata?.role;
     const jwtCompanyId = user.user_metadata?.company_id;
     if (jwtRole !== userData.role || jwtCompanyId !== userData.company_id) {
-      console.warn(`[AUTH] JWT metadata stale for user ${user.id} — JWT role: ${jwtRole}, DB role: ${userData.role}. Syncing...`);
       try {
         await updateCurrentUserMetadata(userData.role, userData.company_id);
-      } catch (e) {
-        console.warn('Could not update JWT metadata (expected for Bearer token auth)');
+      } catch {
+        // Expected for Bearer token auth where updateUser is not permitted.
       }
     }
 
-    console.log(`[AUTH] Authenticated user ${user.id} - role: ${userData.role}, company: ${userData.company_id}`);
-    
     return {
       user: {
         id: user.id,
@@ -238,10 +225,9 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: Authen
     };
   } catch (error) {
     console.error('[AUTH] Authentication middleware error:', error);
-    console.error('[AUTH] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return {
       error: NextResponse.json(
-        { 
+        {
           error: 'Authentication failed',
           details: error instanceof Error ? error.message : 'Unknown authentication error'
         },
@@ -276,19 +262,14 @@ export function withAuth(handler: SimpleHandler) {
 // Higher-order function to wrap dynamic API routes with authentication
 export function withAuthDynamic<T = any>(handler: DynamicHandler<T>) {
   return async (
-   request: NextRequest, 
+    request: NextRequest,
     context: RouteContext<T>
   ): Promise<NextResponse> => {
-    console.log('[AUTH] withAuthDynamic called for:', request.nextUrl.pathname);
-    
     const authResult = await authenticateRequest(request);
-    
+
     if ('error' in authResult) {
-      console.log('[AUTH] Authentication failed, returning error response');
       return authResult.error;
     }
-
-    console.log('[AUTH] Authentication successful, calling handler with user:', authResult.user.id);
 
     // Add user to request object
     const authenticatedRequest = Object.assign(request, {
