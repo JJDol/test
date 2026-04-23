@@ -12,39 +12,58 @@ export type Colleague = {
   created_at: string;
 };
 
+export type InvitationStatus = 'pending' | 'expired';
+
+export type Invitation = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  invited_by: string;
+  created_at: string;
+  expires_at: string;
+  status: InvitationStatus;
+};
+
 interface ColleaguesState {
   colleagues: Colleague[];
+  invitations: Invitation[];
 }
 
 interface LoadingState {
   colleagues: boolean;
   deleting: boolean;
+  invitationAction: boolean;
 }
 
 interface ErrorState {
   colleagues: string | null;
   deleting: string | null;
+  invitationAction: string | null;
 }
 
 export function useColleagues() {
   // State management
   const [state, setState] = useState<ColleaguesState>({
-    colleagues: []
+    colleagues: [],
+    invitations: []
   });
 
   const [loadingStates, setLoadingStates] = useState<LoadingState>({
     colleagues: false,
-    deleting: false
+    deleting: false,
+    invitationAction: false
   });
 
   const [errors, setErrors] = useState<ErrorState>({
     colleagues: null,
-    deleting: null
+    deleting: null,
+    invitationAction: null
   });
 
   const { toast } = useToast();
 
-  // Fetch colleagues
+  // Fetch colleagues + invitations
   const fetchColleagues = useCallback(async () => {
     try {
       setLoadingStates(prev => ({ ...prev, colleagues: true }));
@@ -63,10 +82,10 @@ export function useColleagues() {
         throw new Error(result.message || 'Failed to fetch colleagues');
       }
 
-      
       // Additional safety filter: ensure no ADMIN users are displayed
       const safeColleagues = (result.colleagues || []).filter((c: any) => c.role !== 'ADMIN');
-      setState(prev => ({ ...prev, colleagues: safeColleagues }));
+      const invitations = (result.invitations || []) as Invitation[];
+      setState(prev => ({ ...prev, colleagues: safeColleagues, invitations }));
       
     } catch (error) {
       console.error('Error fetching colleagues:', error);
@@ -129,6 +148,90 @@ export function useColleagues() {
     }
   }, [toast]);
 
+  // Revoke pending/expired invitation
+  const revokeInvitation = useCallback(async (invitationId: string) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, invitationAction: true }));
+      setErrors(prev => ({ ...prev, invitationAction: null }));
+
+      const response = await fetch(`/api/users/invitations/${invitationId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to revoke invitation');
+      }
+
+      setState(prev => ({
+        ...prev,
+        invitations: prev.invitations.filter(inv => inv.id !== invitationId)
+      }));
+
+      toast({
+        title: "Invitation revoked",
+        description: "The invitation has been cancelled.",
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error revoking invitation:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to revoke invitation";
+      setErrors(prev => ({ ...prev, invitationAction: errorMessage }));
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setLoadingStates(prev => ({ ...prev, invitationAction: false }));
+    }
+  }, [toast]);
+
+  // Resend (refresh token + email) an invitation
+  const resendInvitation = useCallback(async (invitationId: string) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, invitationAction: true }));
+      setErrors(prev => ({ ...prev, invitationAction: null }));
+
+      const response = await fetch(`/api/users/invitations/${invitationId}/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to resend invitation');
+      }
+
+      // Refresh to pick up new expires_at/status
+      await fetchColleagues();
+
+      toast({
+        title: "Invitation resent",
+        description: "A new invitation email has been sent.",
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to resend invitation";
+      setErrors(prev => ({ ...prev, invitationAction: errorMessage }));
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setLoadingStates(prev => ({ ...prev, invitationAction: false }));
+    }
+  }, [toast, fetchColleagues]);
+
   // Add colleague (refresh after external add)
   const onColleagueAdded = useCallback(() => {
     fetchColleagues();
@@ -171,6 +274,7 @@ export function useColleagues() {
   return {
     // State
     colleagues: state.colleagues,
+    invitations: state.invitations,
     
     // Loading states
     loadingStates,
@@ -181,6 +285,8 @@ export function useColleagues() {
     // Actions
     fetchColleagues,
     deleteColleague,
+    revokeInvitation,
+    resendInvitation,
     onColleagueAdded,
     
     // Utilities

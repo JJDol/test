@@ -6,30 +6,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoadingState } from "@/components/ui/loading-state";
 import { AddColleagueForm } from "@/components/ui/add-colleague-form";
 import { DeleteColleagueDialog } from "@/components/ui/delete-colleague-dialog";
-import { Trash2, AlertTriangle } from "lucide-react";
-import type { Colleague } from "@/hooks/use-colleagues";
+import { Trash2, AlertTriangle, Mail, RefreshCw, X, Loader2 } from "lucide-react";
+import type { Colleague, Invitation } from "@/hooks/use-colleagues";
 
 interface ColleaguesManagementProps {
   colleagues: Colleague[];
+  invitations: Invitation[];
   isLoading: boolean;
+  isInvitationActionPending: boolean;
   error: string | null;
   currentUserId: string;
   onColleagueAdded: () => void;
+  onRevokeInvitation: (invitationId: string) => Promise<boolean>;
+  onResendInvitation: (invitationId: string) => Promise<boolean>;
   canDeleteColleague: (colleague: Colleague, currentUserId: string) => boolean;
   getDeletionBlockReason: (colleague: Colleague, currentUserId: string) => string | null;
 }
 
 export function ColleaguesManagement({
   colleagues,
+  invitations,
   isLoading,
+  isInvitationActionPending,
   error,
   currentUserId,
   onColleagueAdded,
+  onRevokeInvitation,
+  onResendInvitation,
   canDeleteColleague,
   getDeletionBlockReason,
 }: ColleaguesManagementProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colleagueToDelete, setColleagueToDelete] = useState<Colleague | null>(null);
+  const [pendingInvitationId, setPendingInvitationId] = useState<string | null>(null);
 
   const handleDeleteColleague = (colleague: Colleague) => {
     setColleagueToDelete(colleague);
@@ -45,6 +54,24 @@ export function ColleaguesManagement({
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setColleagueToDelete(null);
+  };
+
+  const handleRevoke = async (invitationId: string) => {
+    setPendingInvitationId(invitationId);
+    try {
+      await onRevokeInvitation(invitationId);
+    } finally {
+      setPendingInvitationId(null);
+    }
+  };
+
+  const handleResend = async (invitationId: string) => {
+    setPendingInvitationId(invitationId);
+    try {
+      await onResendInvitation(invitationId);
+    } finally {
+      setPendingInvitationId(null);
+    }
   };
 
   /**
@@ -92,20 +119,33 @@ export function ColleaguesManagement({
     );
   }
 
+  const hasAny = colleagues.length > 0 || invitations.length > 0;
+
   return (
     <>
       <Card>
         {renderHeader()}
         <CardContent>
-          {colleagues.length > 0 ? (
+          {hasAny ? (
             <div className="grid gap-4">
               {colleagues.map((colleague) => (
                 <ColleagueCard
                   key={colleague.id}
                   colleague={colleague}
                   onDelete={() => handleDeleteColleague(colleague)}
-                                canDelete={canDeleteColleague(colleague, currentUserId)}
-              deletionBlockReason={getDeletionBlockReason(colleague, currentUserId)}
+                  canDelete={canDeleteColleague(colleague, currentUserId)}
+                  deletionBlockReason={getDeletionBlockReason(colleague, currentUserId)}
+                />
+              ))}
+              {invitations.map((invitation) => (
+                <InvitationCard
+                  key={invitation.id}
+                  invitation={invitation}
+                  isActionPending={
+                    isInvitationActionPending && pendingInvitationId === invitation.id
+                  }
+                  onRevoke={() => handleRevoke(invitation.id)}
+                  onResend={() => handleResend(invitation.id)}
                 />
               ))}
             </div>
@@ -176,6 +216,75 @@ function ColleagueCard({
             </p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface InvitationCardProps {
+  invitation: Invitation;
+  isActionPending: boolean;
+  onRevoke: () => void;
+  onResend: () => void;
+}
+
+function InvitationCard({ invitation, isActionPending, onRevoke, onResend }: InvitationCardProps) {
+  const isExpired = invitation.status === 'expired';
+  const badgeClasses = isExpired
+    ? 'bg-red-100 text-red-700 border border-red-200'
+    : 'bg-amber-100 text-amber-800 border border-amber-200';
+  const badgeLabel = isExpired ? 'EXPIRED' : 'PENDING';
+
+  const sentDate = new Date(invitation.created_at).toLocaleDateString();
+  const expiryDate = new Date(invitation.expires_at).toLocaleDateString();
+
+  return (
+    <div className="border rounded-lg p-4 bg-muted/20">
+      <div className="flex justify-between items-center mb-2 gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+          <h3 className="text-lg font-medium truncate">
+            {invitation.name || invitation.email}
+          </h3>
+          <span className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-full shrink-0 ${badgeClasses}`}>
+            {badgeLabel}
+          </span>
+        </div>
+        <span className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground shrink-0">
+          {invitation.role}
+        </span>
+      </div>
+      <div className="text-sm text-muted-foreground space-y-0.5">
+        <p>Email: {invitation.email}</p>
+        <p>Invited: {sentDate}</p>
+        <p>
+          {isExpired ? 'Expired on: ' : 'Expires on: '}
+          {expiryDate}
+        </p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onResend}
+          disabled={isActionPending}
+        >
+          {isActionPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          {isExpired ? 'Resend Invitation' : 'Resend'}
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onRevoke}
+          disabled={isActionPending}
+        >
+          <X className="mr-2 h-4 w-4" />
+          Revoke
+        </Button>
       </div>
     </div>
   );
