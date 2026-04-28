@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { PostgrestError } from "@supabase/supabase-js";
 import { NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
-import { VariableProcessor } from '@/lib/services/processors/project-variable-processor';
+import { DocumentCategory, VariablePropagationScope } from '@/lib/types/types';
+import type { DocumentVariable } from '@/lib/types/variable-types';
 
 /**
  * Projects Collection API Routes
@@ -100,257 +101,590 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
   }
 }
 
+/** Map `project_templates.category` (mixed-case text) → DocumentCategory enum. */
+function normalizeCategory(raw: string): DocumentCategory | null {
+  const key = String(raw || '').toUpperCase();
+  return (Object.values(DocumentCategory) as string[]).includes(key)
+    ? (key as DocumentCategory)
+    : null;
+}
+
+interface TemplatePick {
+  templateName: string;
+  category: DocumentCategory;
+}
+
+/**
+ * Expand a list of project_template bundle names → (templateName, category)
+ * pairs. Duplicates are collapsed (first-wins). Empty / "none" entries are
+ * stripped so callers can pass raw client selections directly.
+ */
+async function expandBundlesToTemplates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  bundleNames: string[]
+): Promise<TemplatePick[]> {
+  const clean = bundleNames.filter(
+    (v): v is string => typeof v === 'string' && v.length > 0 && v !== 'none'
+  );
+  if (clean.length === 0) return [];
+
+  const { data: projectTemplates, error } = await supabase
+    .from('project_templates')
+    .select('name, category, templates')
+    .eq('company_id', companyId)
+    .in('name', clean);
+  if (error) throw error;
+
+  const picks: TemplatePick[] = [];
+  for (const row of projectTemplates ?? []) {
+    const category = normalizeCategory(row.category);
+    if (!category) continue;
+    for (const templateName of row.templates ?? []) {
+      if (!templateName) continue;
+      picks.push({ templateName, category });
+    }
+  }
+  const seen = new Set<string>();
+  return picks.filter((p) => {
+    if (seen.has(p.templateName)) return false;
+    seen.add(p.templateName);
+    return true;
+  });
+}
+
+/**
+ * Legacy (pre-PR3d) single-phase payload resolver. Maps
+ * `selectedTemplates: { [category]: projectTemplateName }` → picks for the
+ * first phase. Kept for backwards compat — the UI and AI-contract flow are
+ * expected to migrate to the `phases` payload.
+ */
+async function resolvePickedTemplates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  selectedTemplates: Record<string, string> | undefined
+): Promise<TemplatePick[]> {
+  if (!selectedTemplates || typeof selectedTemplates !== 'object') return [];
+  return expandBundlesToTemplates(
+    supabase,
+    companyId,
+    Object.values(selectedTemplates)
+  );
+}
+
+interface VariableScopeDecision {
+  templateName: string;
+  category: DocumentCategory;
+  variables: DocumentVariable[];
+  /** Per-variable scope computed across the full project selection. */
+  scopes: Record<string, VariablePropagationScope>;
+}
+
+/**
+ * Detect global / category / local scope for each variable across the picked
+ * templates. Mirrors VariableProcessor's rules but works on raw template rows
+ * (no dependency on the legacy `projects.*_templates[]` columns).
+ */
+function decideVariableScopes(
+  picks: TemplatePick[],
+  templatesByName: Map<string, { variables: DocumentVariable[] }>
+): VariableScopeDecision[] {
+  interface Registry {
+    categories: Set<DocumentCategory>;
+    templatesPerCategory: Map<DocumentCategory, Set<string>>;
+  }
+  const registry = new Map<string, Registry>();
+
+  for (const pick of picks) {
+    const tpl = templatesByName.get(pick.templateName);
+    if (!tpl) continue;
+    for (const variable of tpl.variables ?? []) {
+      const key = variable.name;
+      let entry = registry.get(key);
+      if (!entry) {
+        entry = { categories: new Set(), templatesPerCategory: new Map() };
+        registry.set(key, entry);
+      }
+      entry.categories.add(pick.category);
+      const set = entry.templatesPerCategory.get(pick.category) ?? new Set<string>();
+      set.add(pick.templateName);
+      entry.templatesPerCategory.set(pick.category, set);
+    }
+  }
+
+  const scopeFor = (varName: string, category: DocumentCategory): VariablePropagationScope => {
+    const entry = registry.get(varName);
+    if (!entry) return VariablePropagationScope.LOCAL;
+    if (entry.categories.size > 1) return VariablePropagationScope.GLOBAL;
+    const countInCat = entry.templatesPerCategory.get(category)?.size ?? 0;
+    if (countInCat > 1) return VariablePropagationScope.CATEGORY;
+    return VariablePropagationScope.LOCAL;
+  };
+
+  return picks.map((pick) => {
+    const tpl = templatesByName.get(pick.templateName);
+    const variables = tpl?.variables ?? [];
+    const scopes: Record<string, VariablePropagationScope> = {};
+    for (const variable of variables) {
+      scopes[variable.name] = scopeFor(variable.name, pick.category);
+    }
+    return { templateName: pick.templateName, category: pick.category, variables, scopes };
+  });
+}
+
+/**
+ * Build the project-level `global_variables` / `category_variables` payloads
+ * for storage on `projects`. Schema mirrors the historical one:
+ *   global_variables   = { variables: DocumentVariable[] }
+ *   category_variables = { [category]: { variables: DocumentVariable[] } }
+ *
+ * Values always start empty; users fill them in after creation.
+ */
+function buildProjectVariableBuckets(decisions: VariableScopeDecision[]) {
+  const globalMap = new Map<string, DocumentVariable>();
+  const categoryMap = new Map<DocumentCategory, Map<string, DocumentVariable>>();
+
+  for (const dec of decisions) {
+    for (const variable of dec.variables) {
+      const scope = dec.scopes[variable.name];
+      const blank = { ...variable, value: '' } as DocumentVariable;
+      if (scope === VariablePropagationScope.GLOBAL) {
+        if (!globalMap.has(variable.name)) globalMap.set(variable.name, blank);
+      } else if (scope === VariablePropagationScope.CATEGORY) {
+        let catVars = categoryMap.get(dec.category);
+        if (!catVars) {
+          catVars = new Map();
+          categoryMap.set(dec.category, catVars);
+        }
+        if (!catVars.has(variable.name)) catVars.set(variable.name, blank);
+      }
+    }
+  }
+
+  const category_variables: Record<string, { variables: DocumentVariable[] }> = {};
+  Array.from(categoryMap.entries()).forEach(([cat, vars]) => {
+    category_variables[cat] = { variables: Array.from(vars.values()) };
+  });
+
+  return {
+    global_variables: { variables: Array.from(globalMap.values()) },
+    category_variables,
+  };
+}
+
 async function createProjectHandler(request: AuthenticatedRequest) {
   const supabase = await createClient();
 
   try {
-    // Get current user profile (auth middleware already verified user exists)
+    // Current user profile (auth middleware already validated the session).
     const { data: currentUserProfile, error: currentUserError } = await supabase
       .from('users')
       .select('company_id, role')
       .eq('id', request.user.id)
       .single();
-
     if (currentUserError) throw currentUserError;
 
-    // Ensure user has a company_id (multi-tenancy requirement)
     if (!currentUserProfile.company_id) {
-      return NextResponse.json({ error: "User not assigned to a company" }, { status: 403 });
+      return NextResponse.json({ error: 'User not assigned to a company' }, { status: 403 });
     }
+    const companyId = currentUserProfile.company_id as string;
 
     const body = await request.json();
-    const { name, location, deadline, assignedTo, selectedTemplates } = body;
-    
-    console.log('Creating project with input:', { name, location, deadline, assignedTo, selectedTemplates });
+    const {
+      name,
+      location,
+      deadline,
+      assignedTo,
+      selectedTemplates,
+      phases: phasesPayload,
+    } = body as {
+      name: string;
+      location: string;
+      deadline: string;
+      assignedTo: string;
+      selectedTemplates?: Record<string, string>;
+      phases?: Array<{
+        phase_definition_id: string;
+        deadline?: string | null;
+        is_current?: boolean;
+        // Either (a) legacy category-keyed map or (b) flat list; both normalized
+        // below. The flat list is what the new wizard sends.
+        selected_templates?: Record<string, string>;
+        templates?: Array<{ category?: string; template_name: string }>;
+      }>;
+    };
 
-    // Find the assigned user and ensure they're in the same company
+    // Resolve leader.
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .or(`id.eq."${assignedTo}",email.eq."${assignedTo}"`)
-      .eq('company_id', currentUserProfile.company_id) // 🔑 MULTI-TENANT FILTER
+      .eq('company_id', companyId)
       .single();
-
-    if (userError) {
-      console.error('Error querying users:', userError);
-      throw userError;
-    }
-
+    if (userError) throw userError;
     if (!userData) {
-      console.error('No user found with id/email in same company:', assignedTo);
-      return NextResponse.json({ 
-        error: 'User not found or not in your company',
-        details: `No user found with provided identifier in your company: ${assignedTo}`,
-      }, { status: 404 });
+      return NextResponse.json(
+        { error: 'User not found or not in your company' },
+        { status: 404 }
+      );
     }
 
-    console.log('Found user:', userData);
+    // ----------------------------------------------------------------------
+    // Resolve phase selections.
+    //
+    // Two accepted shapes:
+    //   (1) Legacy single-phase: `selectedTemplates: { [category]: bundleName }`
+    //       → treated as P1-only selection.
+    //   (2) Phase-scoped (PR 3d): `phases: Array<{ phase_definition_id,
+    //       selected_templates? / templates?, deadline? }>`
+    //       → lets the wizard pre-populate multiple phases.
+    // ----------------------------------------------------------------------
+    interface ResolvedPhase {
+      phaseDefinitionId: string;
+      deadline: string | null;
+      picks: TemplatePick[];
+    }
+    const resolvedPhases: ResolvedPhase[] = [];
 
-    // Prepare template arrays based on selectedTemplates
-    const architecture_templates: string[] = [];
-    const constructions_templates: string[] = [];
-    const fire_templates: string[] = [];
-    const authority_processing_templates: string[] = [];
-    const energy_templates: string[] = [];
-    const hvac_templates: string[] = [];
-    const execution_control_templates: string[] = [];
-    
-    // Collect all selected template names to fetch their details
-    const allSelectedTemplateNames: string[] = [];
+    // Load the company's phase catalog once so we can validate ids and find P1.
+    const { data: phaseDefs, error: phaseDefsError } = await supabase
+      .from('phase_definitions')
+      .select('id, display_order, is_enabled')
+      .eq('company_id', companyId);
+    if (phaseDefsError) throw phaseDefsError;
+    const defsById = new Map(
+      (phaseDefs ?? []).map((d) => [d.id as string, d])
+    );
+    const firstPhaseDef = (phaseDefs ?? []).find(
+      (d) => d.display_order === 1 && d.is_enabled
+    );
+    if (!firstPhaseDef) {
+      console.error(
+        '[POST /api/projects] No enabled display_order=1 phase_definition for company',
+        companyId
+      );
+      return NextResponse.json(
+        {
+          error:
+            'Company has no enabled phase_definitions row at display_order=1.',
+        },
+        { status: 500 }
+      );
+    }
 
-    // Process selected templates
-    if (selectedTemplates && typeof selectedTemplates === 'object') {
-      console.log('Processing selected templates:', selectedTemplates);
-      
-      // Get all selected project template names
-      const projectTemplateEntries = Object.entries(selectedTemplates)
-        .filter(([_, templateName]) => templateName && templateName !== 'none');
-      
-      console.log('Project template entries:', projectTemplateEntries);
-      
-      if (projectTemplateEntries.length > 0) {
-        // Fetch all selected project templates at once
-        const projectTemplateNames = projectTemplateEntries.map(([_, name]) => String(name));
-        
-        if (projectTemplateNames.length > 0) {
-          // Fetch project templates to get their associated document templates
-          const { data: projectTemplates, error: projectTemplateError } = await supabase
-            .from('project_templates')
-            .select('name, category, templates')
-            .eq('company_id', currentUserProfile.company_id)
-            .in('name', projectTemplateNames);
-            
-          if (projectTemplateError) {
-            console.error('Error fetching project templates:', projectTemplateError);
-          }
-          else if (projectTemplates && projectTemplates.length > 0) {
-            console.log('Found project templates:', projectTemplates);
-            
-            // Process each project template
-            for (const projectTemplate of projectTemplates) {
-              const category = projectTemplate.category.toLowerCase();
-              const docTemplates = projectTemplate.templates || [];
-              
-              console.log(`Project template ${projectTemplate.name} (${category}) has ${docTemplates.length} document templates`);
-              
-            // Since project template category = document template category,
-            // we can directly assign them without additional lookups or database queries
-              if (Array.isArray(docTemplates) && docTemplates.length > 0) {
-                // Add all document templates to the appropriate category array
-                switch (category) {
-                  case 'architecture':
-                    architecture_templates.push(...docTemplates);
-                    break;
-                  case 'constructions':
-                    constructions_templates.push(...docTemplates);
-                    break;
-                  case 'fire':
-                    fire_templates.push(...docTemplates);
-                    break;
-                  case 'authority_processing':
-                    authority_processing_templates.push(...docTemplates);
-                    break;
-                  case 'energy':
-                    energy_templates.push(...docTemplates);
-                    break;
-                  case 'hvac':
-                    hvac_templates.push(...docTemplates);
-                    break;
-                  case 'execution_control':
-                    execution_control_templates.push(...docTemplates);
-                    break;
-                  default:
-                    console.warn(`Unknown project template category: ${category}`);
-                }
-                
-                // Also collect all template names for the final assignment
-                allSelectedTemplateNames.push(...docTemplates);
-              }
-            }
-          }
+    if (Array.isArray(phasesPayload) && phasesPayload.length > 0) {
+      for (const p of phasesPayload) {
+        if (!p?.phase_definition_id) continue;
+        const def = defsById.get(p.phase_definition_id);
+        if (!def || !def.is_enabled) {
+          console.error(
+            '[POST /api/projects] Unknown/disabled phase_definition_id in payload',
+            { provided: p.phase_definition_id, companyId }
+          );
+          return NextResponse.json(
+            {
+              error: `Unknown or disabled phase_definition_id: ${p.phase_definition_id}`,
+            },
+            { status: 400 }
+          );
         }
+        // Prefer the flat list; fall back to the category-keyed map.
+        let picks: TemplatePick[];
+        if (Array.isArray(p.templates) && p.templates.length > 0) {
+          picks = await expandBundlesToTemplates(
+            supabase,
+            companyId,
+            p.templates.map((t) => t.template_name)
+          );
+        } else if (p.selected_templates) {
+          picks = await expandBundlesToTemplates(
+            supabase,
+            companyId,
+            Object.values(p.selected_templates)
+          );
+        } else {
+          picks = [];
+        }
+        resolvedPhases.push({
+          phaseDefinitionId: p.phase_definition_id,
+          deadline: p.deadline ?? null,
+          picks,
+        });
       }
+    } else {
+      // Legacy path — route the whole selection onto P1.
+      const picks = await resolvePickedTemplates(
+        supabase,
+        companyId,
+        selectedTemplates
+      );
+      resolvedPhases.push({
+        phaseDefinitionId: firstPhaseDef.id as string,
+        deadline: deadline ?? null,
+        picks,
+      });
     }
 
-    console.log('Final template arrays:', {
-      architecture_templates,
-      constructions_templates,
-      fire_templates,
-      authority_processing_templates,
-      energy_templates,
-      hvac_templates,
-      execution_control_templates
-    });
+    // Ensure P1 always exists in the plan so the trigger-created row is
+    // represented even if the client forgot to include it.
+    if (
+      !resolvedPhases.some((rp) => rp.phaseDefinitionId === firstPhaseDef.id)
+    ) {
+      resolvedPhases.unshift({
+        phaseDefinitionId: firstPhaseDef.id as string,
+        deadline: deadline ?? null,
+        picks: [],
+      });
+    }
 
-    // Validate that all selected templates exist (only the ones we actually collected)
-    // TODO: Maybe this is duplicate
-    if (allSelectedTemplateNames.length > 0) {
-      const { data: existingTemplates, error: validationError } = await supabase
+    // Flatten for cross-phase scope detection. A variable is GLOBAL when it
+    // shows up in multiple categories; CATEGORY when it shows up in multiple
+    // templates of the same category; LOCAL otherwise. Phase is not part of
+    // this decision — scope is project-wide so carrying a variable between
+    // phases uses the same bucket.
+    const allPicks: TemplatePick[] = [];
+    for (const rp of resolvedPhases) allPicks.push(...rp.picks);
+
+    const templatesByName = new Map<string, { variables: DocumentVariable[] }>();
+    if (allPicks.length > 0) {
+      const uniqueNames = Array.from(new Set(allPicks.map((p) => p.templateName)));
+      const { data: templateRows, error: templateError } = await supabase
         .from('document_templates')
-        .select('name')
-        .in('name', allSelectedTemplateNames);
+        .select('name, variables')
+        .eq('company_id', companyId)
+        .in('name', uniqueNames);
+      if (templateError) throw templateError;
 
-      if (validationError) {
-        console.error('Template validation error:', validationError);
-        throw validationError;
+      const found = new Set<string>();
+      for (const row of templateRows ?? []) {
+        templatesByName.set(row.name, {
+          variables: (row.variables ?? []) as DocumentVariable[],
+        });
+        found.add(row.name);
       }
-
-      const existingTemplateNames = existingTemplates?.map(t => t.name) || [];
-      const missingTemplates = allSelectedTemplateNames.filter(name => !existingTemplateNames.includes(name));
-
-      if (missingTemplates.length > 0) {
-        console.error('Missing templates:', missingTemplates);
-        return NextResponse.json({
-          error: 'Some selected templates do not exist',
-          missingTemplates
-        }, { status: 400 });
+      const missing = uniqueNames.filter((n) => !found.has(n));
+      if (missing.length > 0) {
+        console.error(
+          '[POST /api/projects] Template names referenced by project_templates do not exist in document_templates',
+          { missing, companyId }
+        );
+        return NextResponse.json(
+          {
+            error: `Some selected templates do not exist: ${missing.join(', ')}`,
+            missingTemplates: missing,
+          },
+          { status: 400 }
+        );
       }
     }
 
-    // Create the project
-    // TODO: Change id to be UUID type
-    // TODO: Think about what we need to select from the project table
-    const { data, error } = await supabase
-      .from("projects")
+    const decisions = decideVariableScopes(allPicks, templatesByName);
+    const { global_variables, category_variables } =
+      buildProjectVariableBuckets(decisions);
+
+    // Quick lookup: for a given (templateName, category), return the matching
+    // decision so we can seed phase documents consistently.
+    const decisionIndex = new Map<string, (typeof decisions)[number]>();
+    for (const d of decisions) {
+      decisionIndex.set(`${d.category}::${d.templateName}`, d);
+    }
+
+    // ---- Insert project row ------------------------------------------------
+    // Legacy *_templates[] and per-template jsonb columns are about to be
+    // dropped; we no longer populate them here.
+    const { data: projectRow, error: projectError } = await supabase
+      .from('projects')
       .insert({
         name,
         location,
         deadline,
         leader_id: userData.id,
-        company_id: currentUserProfile.company_id, // 🔑 MULTI-TENANT ASSIGNMENT
-        architecture_templates,
-        constructions_templates,
-        fire_templates,
-        authority_processing_templates,
-        energy_templates,
-        hvac_templates,
-        execution_control_templates,
+        company_id: companyId,
+        global_variables,
+        category_variables,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .select(`
+      .select(
+        `
         *,
-        leader:leader_id (
-          id,
-          email,
-          name,
-          role
-        )
-      `)
+        leader:leader_id ( id, email, name, role )
+      `
+      )
       .single();
+    if (projectError) throw projectError;
 
-    if (error) {
-      console.error("Error creating project:", error);
-      throw error;
+    // ---- First phase is auto-created by DB trigger -------------------------
+    // Read back the P1 row the trigger created. Reuse/update it instead of
+    // inserting a duplicate.
+    const { data: firstPhase, error: phaseError } = await supabase
+      .from('project_phases')
+      .select('id, phase_definition_id')
+      .eq('project_id', projectRow.id)
+      .eq('is_current', true)
+      .maybeSingle();
+    if (phaseError) throw phaseError;
+    if (!firstPhase) {
+      return NextResponse.json(
+        {
+          error:
+            'First phase was not auto-created. Ensure migration 20260422000000 ran and the company has an enabled display_order=1 phase definition.',
+        },
+        { status: 500 }
+      );
     }
 
-    console.log("Project created successfully:", data);
+    // ---- Insert additional phases (everything except P1) ------------------
+    //
+    // P1 already exists courtesy of the trigger. For any other phase the user
+    // selected, create a row here so documents have somewhere to live.
+    const phaseIdByDefId = new Map<string, string>();
+    phaseIdByDefId.set(
+      firstPhase.phase_definition_id as string,
+      firstPhase.id as string
+    );
 
-    // Detect and store general variables for the newly created project
-    // TODO: Check if this works - VERY IMPORTANT
-    if (allSelectedTemplateNames.length > 0) {
-      try {
-        const variableProcessor = new VariableProcessor();
-        await variableProcessor.updateProjectGeneralVariables(
-          data.id,
-          data.company_id,
-          request.user.id
+    const extraPhaseRows = resolvedPhases
+      .filter((rp) => rp.phaseDefinitionId !== firstPhase.phase_definition_id)
+      .map((rp) => ({
+        project_id: projectRow.id,
+        phase_definition_id: rp.phaseDefinitionId,
+        deadline: rp.deadline,
+        is_current: false,
+      }));
+    if (extraPhaseRows.length > 0) {
+      const { data: extras, error: extrasError } = await supabase
+        .from('project_phases')
+        .insert(extraPhaseRows)
+        .select('id, phase_definition_id');
+      if (extrasError) throw extrasError;
+      for (const row of extras ?? []) {
+        phaseIdByDefId.set(
+          row.phase_definition_id as string,
+          row.id as string
         );
-        console.log("General variables detected and stored for new project:", data.id);
-      } catch (error) {
-        console.error('Error detecting general variables for new project:', error);
-        // Don't fail the project creation if general variable detection fails
       }
     }
 
-    // Update the assigned user's assigned_projects array
-    const { data: assignedUser, error: assignedUserError } = await supabase
-      .from("users")
-      .select("assigned_projects")
-      .eq("id", userData.id)
-      .single();
-
-    if (!assignedUserError && assignedUser) {
-      const currentAssignedProjects = assignedUser.assigned_projects || [];
-      const updatedAssignedProjects = [...currentAssignedProjects, data.id];
-
+    // Optional: update the auto-created P1 deadline if the user supplied one
+    // via the phases payload (the trigger used project.deadline as the seed).
+    const p1Plan = resolvedPhases.find(
+      (rp) => rp.phaseDefinitionId === firstPhase.phase_definition_id
+    );
+    if (p1Plan && p1Plan.deadline && p1Plan.deadline !== deadline) {
       await supabase
-        .from("users")
-        .update({ 
-          assigned_projects: updatedAssignedProjects,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", userData.id);
+        .from('project_phases')
+        .update({ deadline: p1Plan.deadline })
+        .eq('id', firstPhase.id);
     }
 
-    return NextResponse.json(data);
+    // ---- Seed phase documents ---------------------------------------------
+    const docRows: Array<Record<string, unknown>> = [];
+    for (const rp of resolvedPhases) {
+      const phaseId = phaseIdByDefId.get(rp.phaseDefinitionId);
+      if (!phaseId) continue;
+      for (const pick of rp.picks) {
+        const dec = decisionIndex.get(`${pick.category}::${pick.templateName}`);
+        if (!dec) continue;
+        const blankVariables: DocumentVariable[] = dec.variables.map(
+          (v) => ({ ...v, value: '' } as DocumentVariable)
+        );
+        const propagation: Record<
+          string,
+          {
+            currentScope: VariablePropagationScope;
+            possibleScopes: VariablePropagationScope[];
+            isOverridden: boolean;
+          }
+        > = {};
+        for (const variable of dec.variables) {
+          const scope = dec.scopes[variable.name];
+          const possible: VariablePropagationScope[] = [
+            VariablePropagationScope.LOCAL,
+          ];
+          const catCount = decisions.filter(
+            (d) => d.category === dec.category
+          ).length;
+          if (catCount > 1) possible.push(VariablePropagationScope.CATEGORY);
+          const seenCategories = new Set(
+            decisions
+              .filter((d) => d.variables.some((v) => v.name === variable.name))
+              .map((d) => d.category)
+          );
+          if (seenCategories.size > 1)
+            possible.push(VariablePropagationScope.GLOBAL);
+          propagation[variable.name] = {
+            currentScope: scope,
+            possibleScopes: possible,
+            isOverridden: false,
+          };
+        }
+        docRows.push({
+          project_phase_id: phaseId,
+          template_name: dec.templateName,
+          category: dec.category,
+          responsible_discipline: null,
+          variables: { variables: blankVariables },
+          propagation_settings: propagation,
+          assignments: {},
+          review_status: {},
+          template_version_lock: null,
+        });
+      }
+    }
+    if (docRows.length > 0) {
+      // `upsert(onConflict)` lets the same template land on multiple phases
+      // without colliding — the unique constraint is (phase_id, template_name),
+      // and we never duplicate a template within the same phase (dedup in
+      // expandBundlesToTemplates).
+      const { error: docError } = await supabase
+        .from('project_phase_documents')
+        .insert(docRows);
+      if (docError) throw docError;
+    }
+
+    // ---- Assign leader's assigned_projects --------------------------------
+    const { data: assignedUser } = await supabase
+      .from('users')
+      .select('assigned_projects')
+      .eq('id', userData.id)
+      .single();
+    if (assignedUser) {
+      const next = [...(assignedUser.assigned_projects || []), projectRow.id];
+      await supabase
+        .from('users')
+        .update({
+          assigned_projects: next,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userData.id);
+    }
+
+    return NextResponse.json(projectRow);
   } catch (error) {
     const pgError = error as PostgrestError;
-    console.log("Error in POST request:", pgError);
-    return NextResponse.json({ error: pgError.message }, { status: 500 });
+    // Log the full object (message + details + hint + code) so the Postgres
+    // side of any failure is visible in the dev terminal.
+    console.error('[POST /api/projects] Unhandled error:', {
+      message: pgError?.message,
+      details: pgError?.details,
+      hint: pgError?.hint,
+      code: pgError?.code,
+      raw: error,
+    });
+    return NextResponse.json(
+      {
+        error:
+          pgError?.message ||
+          (error instanceof Error ? error.message : 'Unknown error'),
+        details: pgError?.details,
+        hint: pgError?.hint,
+        code: pgError?.code,
+      },
+      { status: 500 }
+    );
   }
 }
-
 // Handle CORS preflight for Word add-in
 export async function OPTIONS() {
   return new NextResponse(null, {
