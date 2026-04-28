@@ -56,6 +56,7 @@
     "react-dom": "^18.2.0",
     "react-pdf": "^9.1.0",
     "shadcn-ui": "^0.9.4",
+    "undici": "^7.25.0",
     "xmldom": "^0.6.0"
   },
   "devDependencies": {
