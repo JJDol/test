@@ -17,12 +17,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  discipline?: string | null;
 }
 
 interface ProjectWorkersDialogProps {
@@ -188,7 +190,14 @@ export function ProjectWorkersDialog({
                     onCheckedChange={() => handleUserToggle(user.id)}
                   />
                   <Label htmlFor={`assigned-${user.id}`} className="flex-1">
-                    <div>{user.name || user.email}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{user.name || user.email}</span>
+                      {user.discipline ? (
+                        <Badge variant="secondary" className="text-xs font-normal">
+                          {user.discipline}
+                        </Badge>
+                      ) : null}
+                    </div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </Label>
                 </div>
@@ -222,7 +231,14 @@ export function ProjectWorkersDialog({
                     onCheckedChange={() => handleUserToggle(user.id)}
                   />
                   <Label htmlFor={`unassigned-${user.id}`} className="flex-1">
-                    <div>{user.name || user.email}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{user.name || user.email}</span>
+                      {user.discipline ? (
+                        <Badge variant="secondary" className="text-xs font-normal">
+                          {user.discipline}
+                        </Badge>
+                      ) : null}
+                    </div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </Label>
                 </div>
