@@ -400,15 +400,44 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
 
   // --- Extraction ---
 
+  const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB — Vercel body limit is 4.5MB
+
   const handleExtract = async () => {
     if (!contractFile) return;
     setExtractionStep("extracting");
     setExtractionError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", contractFile);
-      const response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
-      const result = await response.json();
+      let response: Response;
+
+      if (contractFile.size > FILE_SIZE_THRESHOLD) {
+        const { upload } = await import("@vercel/blob/client");
+        const blob = await upload(
+          `contract-uploads/${Date.now()}-${contractFile.name}`,
+          contractFile,
+          { access: "public", handleUploadUrl: "/api/ai/extract-contract-blob" }
+        );
+        response = await fetch(
+          `/api/ai/extract-contract?blobUrl=${encodeURIComponent(blob.url)}`,
+          { method: "POST" }
+        );
+      } else {
+        const formData = new FormData();
+        formData.append("file", contractFile);
+        response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
+      }
+
+      let result: Record<string, any>;
+      const text = await response.text();
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(
+          text.includes("Request Entity")
+            ? "File too large for server. Please try a smaller file."
+            : `Server error: ${text.slice(0, 100)}`
+        );
+      }
+
       if (!response.ok || !result.success) {
         throw new Error(result.details || result.error || "Failed to extract contract information");
       }
