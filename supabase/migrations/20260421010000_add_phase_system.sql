@@ -443,8 +443,8 @@ SELECT
   coalesce(p.template_variables            -> ld.category::text -> ld.template_name, '{}'::jsonb),
   coalesce(p.variable_propagation_settings -> ld.category::text -> ld.template_name, '{}'::jsonb),
   coalesce(p.document_assignments          -> ld.template_name, '{}'::jsonb),
-  coalesce(p.document_review_status        -> ld.template_name, '{}'::jsonb),
-  NULLIF(p.template_version_locks         ->> ld.template_name, '')::integer
+  '{}'::jsonb,
+  NULL::integer
 FROM legacy_doc_rows ld
 INNER JOIN public.projects p              ON p.id = ld.project_id
 INNER JOIN project_first_phase pfp        ON pfp.project_id = ld.project_id
