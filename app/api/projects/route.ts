@@ -442,7 +442,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     // templates of the same category; LOCAL otherwise. Phase is not part of
     // this decision — scope is project-wide so carrying a variable between
     // phases uses the same bucket.
-    const allPicks: TemplatePick[] = [];
+    let allPicks: TemplatePick[] = [];
     for (const rp of resolvedPhases) allPicks.push(...rp.picks);
 
     const templatesByName = new Map<string, { variables: DocumentVariable[] }>();
@@ -464,17 +464,15 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       }
       const missing = uniqueNames.filter((n) => !found.has(n));
       if (missing.length > 0) {
-        console.error(
-          '[POST /api/projects] Template names referenced by project_templates do not exist in document_templates',
+        console.warn(
+          '[POST /api/projects] Skipping templates not found in document_templates',
           { missing, companyId }
         );
-        return NextResponse.json(
-          {
-            error: `Some selected templates do not exist: ${missing.join(', ')}`,
-            missingTemplates: missing,
-          },
-          { status: 400 }
-        );
+        for (const rp of resolvedPhases) {
+          rp.picks = rp.picks.filter((p) => !missing.includes(p.templateName));
+        }
+        allPicks = [];
+        for (const rp of resolvedPhases) allPicks.push(...rp.picks);
       }
     }
 

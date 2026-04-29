@@ -60,8 +60,7 @@ export default function NavigationBar() {
     return 'projects';
   };
 
-  // Avoid SSR/client mismatch: start collapsed and set after mount based on pathname
-  const [openSection, setOpenSection] = useState<string | undefined>(undefined);
+  const [openSection, setOpenSection] = useState<string>("");
 
   useEffect(() => {
     setOpenSection(getSectionFromPath(pathname || '/protected'));
@@ -85,7 +84,7 @@ export default function NavigationBar() {
             type="single"
             collapsible
             value={openSection}
-            onValueChange={(v) => setOpenSection(v || undefined)}
+            onValueChange={(v) => setOpenSection(v ?? "")}
           >
             {/* Projects */}
             <AccordionItem value="projects" className="border-foreground/10">

@@ -738,6 +738,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
         </DialogTrigger>
         <DialogContent
           className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
+          lang="en"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
@@ -790,7 +791,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                         </div>
                         <div className="grid w-full items-center gap-2">
                           {renderFieldLabel("deadline", "Deadline", "deadline")}
-                          <Input id="deadline" name="deadline" type="date" value={deadline} onChange={(e) => handleFieldChange("deadline", e.target.value)} required />
+                          <Input id="deadline" name="deadline" type="date" value={deadline} onChange={(e) => handleFieldChange("deadline", e.target.value)} required lang="en" />
                         </div>
                         <div className="grid w-full items-center gap-2">
                           <Label htmlFor="assignedTo">Project Leader</Label>
@@ -861,10 +862,24 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                 const count = countTemplates(cfg);
                                 return (
                                   <TabsTrigger key={def.id} value={def.id} className="group relative gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                    <Checkbox checked={included} disabled={isFirst}
-                                      onCheckedChange={(checked) => { if (isFirst) return; updatePhaseConfig(def.id, (prev) => ({ ...prev, included: !!checked })); }}
-                                      onClick={(e) => e.stopPropagation()} className="h-3.5 w-3.5" aria-label={`Include phase ${def.short_label}`}
-                                    />
+                                    <span
+                                      role="checkbox"
+                                      aria-checked={included}
+                                      aria-disabled={isFirst}
+                                      aria-label={`Include phase ${def.short_label}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isFirst) return;
+                                        updatePhaseConfig(def.id, (prev) => ({ ...prev, included: !prev.included }));
+                                      }}
+                                      className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ring-offset-background ${included ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"} ${isFirst ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                    >
+                                      {included && (
+                                        <svg width="10" height="10" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3354 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.5553 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                                        </svg>
+                                      )}
+                                    </span>
                                     <span className="text-xs font-medium">{def.short_label}</span>
                                     {count > 0 && (<span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">{count}</span>)}
                                     {isFirst && (<span className="text-[10px] uppercase tracking-wide text-muted-foreground">required</span>)}
@@ -898,7 +913,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                     <div className="grid grid-cols-2 gap-3">
                                       <div className="grid gap-1">
                                         <Label htmlFor={`deadline-${def.id}`} className="text-xs text-muted-foreground">Phase deadline (optional)</Label>
-                                        <Input id={`deadline-${def.id}`} type="date" value={cfg.deadline} onChange={(e) => updatePhaseConfig(def.id, (prev) => ({ ...prev, deadline: e.target.value }))} disabled={!cfg.included} className="h-9" />
+                                        <Input id={`deadline-${def.id}`} type="date" value={cfg.deadline} onChange={(e) => updatePhaseConfig(def.id, (prev) => ({ ...prev, deadline: e.target.value }))} disabled={!cfg.included} className="h-9" lang="en" />
                                       </div>
                                       <div className="grid gap-1">
                                         <Label className="text-xs text-muted-foreground">Templates selected</Label>
