@@ -216,17 +216,6 @@ export function ProjectOverview({
                   />
                 )}
 
-                {canUseHold && !hold.is_on_hold && (
-                  <DropdownMenuItem
-                    className="text-[#1ABE6C] focus:text-[#1ABE6C] cursor-pointer"
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={() => setHoldDialogOpen(true)}
-                  >
-                    <PauseCircle className="mr-2 h-4 w-4" />
-                    Put project on hold
-                  </DropdownMenuItem>
-                )}
-
                 {canDownloadProject && (
                   <DropdownMenuItem
                     onClick={onDownloadProject}
@@ -249,6 +238,17 @@ export function ProjectOverview({
                 )}
 
                 <DropdownMenuSeparator />
+
+                {canUseHold && !hold.is_on_hold && (
+                  <DropdownMenuItem
+                    className="text-[#1ABE6C] focus:text-[#1ABE6C] cursor-pointer"
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => setHoldDialogOpen(true)}
+                  >
+                    <PauseCircle className="mr-2 h-4 w-4" />
+                    Put project on hold
+                  </DropdownMenuItem>
+                )}
 
                 {canArchiveProject && (
                   <DropdownMenuItem
