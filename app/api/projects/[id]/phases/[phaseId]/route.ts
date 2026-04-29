@@ -126,4 +126,89 @@ async function patchPhaseHandler(
   }
 }
 
+async function deletePhaseHandler(
+  request: AuthenticatedRequest,
+  { params }: RouteContext<Params>
+) {
+  try {
+    const { id, phaseId } = await params;
+    const supabase = await createClient();
+
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, leader_id, company_id")
+      .eq("id", id)
+      .single();
+
+    if (projectError || !project) {
+      return NextResponse.json(
+        { message: "Project not found or not accessible" },
+        { status: 404 }
+      );
+    }
+
+    const role = request.user.role;
+    const isAdmin = role === "ADMIN" || role === "COMPANY_ADMIN";
+    const isLeader = project.leader_id === request.user.id;
+    if (!isAdmin && !isLeader) {
+      return NextResponse.json(
+        { message: "Only the project leader or an admin can delete phases" },
+        { status: 403 }
+      );
+    }
+
+    const { data: phase, error: phaseError } = await supabase
+      .from("project_phases")
+      .select("id, project_id, is_current, phase_definition_id")
+      .eq("id", phaseId)
+      .single();
+
+    if (phaseError || !phase || String(phase.project_id) !== String(id)) {
+      return NextResponse.json(
+        { message: "Phase not found on this project" },
+        { status: 404 }
+      );
+    }
+
+    if (phase.is_current) {
+      return NextResponse.json(
+        { message: "Cannot delete the current phase. Promote another phase first." },
+        { status: 409 }
+      );
+    }
+
+    const { data: def } = await supabase
+      .from("phase_definitions")
+      .select("display_order")
+      .eq("id", phase.phase_definition_id)
+      .single();
+
+    if (def?.display_order === 1) {
+      return NextResponse.json(
+        { message: "Cannot delete the P1 phase." },
+        { status: 409 }
+      );
+    }
+
+    const { error: deleteError } = await supabase
+      .from("project_phases")
+      .delete()
+      .eq("id", phaseId);
+
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({ deleted: true, phaseId });
+  } catch (error) {
+    console.error("[phase DELETE] error:", error);
+    return NextResponse.json(
+      {
+        message: "Failed to delete phase",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export const PATCH = withAuthDynamic(patchPhaseHandler);
+export const DELETE = withAuthDynamic(deletePhaseHandler);
