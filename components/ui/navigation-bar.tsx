@@ -54,14 +54,13 @@ export default function NavigationBar() {
   const searchParams = useSearchParams();
   const getSectionFromPath = (path: string): string => {
     if (path.startsWith('/protected/semantic-engine') || path.startsWith('/protected/documents')) return 'ai';
-    if (path.startsWith('/protected/templates') || path.startsWith('/protected/variables')) return 'templates';
+    if (path.startsWith('/protected/templates') || path.startsWith('/protected/variables') || path.startsWith('/protected/team')) return 'templates';
     if (path.startsWith('/protected/documentation')) return 'manual';
     if (path.startsWith('/protected')) return 'projects';
     return 'projects';
   };
 
-  // Avoid SSR/client mismatch: start collapsed and set after mount based on pathname
-  const [openSection, setOpenSection] = useState<string | undefined>(undefined);
+  const [openSection, setOpenSection] = useState<string>("");
 
   useEffect(() => {
     setOpenSection(getSectionFromPath(pathname || '/protected'));
@@ -85,7 +84,7 @@ export default function NavigationBar() {
             type="single"
             collapsible
             value={openSection}
-            onValueChange={(v) => setOpenSection(v || undefined)}
+            onValueChange={(v) => setOpenSection(v ?? "")}
           >
             {/* Projects */}
             <AccordionItem value="projects" className="border-foreground/10">
@@ -169,6 +168,20 @@ export default function NavigationBar() {
                         className={cn("w-full justify-start text-sm", isActive('/protected/variables') && "bg-accent text-accent-foreground")}
                       >
                         Variables
+                      </Button>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/protected/team">
+                      <Button
+                        variant="ghost"
+                        aria-current={isActive('/protected/team') ? 'page' : undefined}
+                        className={cn(
+                          "w-full justify-start text-sm",
+                          isActive('/protected/team') && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        Team
                       </Button>
                     </Link>
                   </li>

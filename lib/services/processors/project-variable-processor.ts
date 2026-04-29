@@ -35,7 +35,9 @@ export class VariableProcessor {
   async processProjectVariables(
     projectId: string, 
     companyId: string, 
-    userId: string
+    userId: string,
+    /** When set (e.g. built from `project_phase_documents`), use this row for template lists + JSONB instead of legacy `projects` columns. */
+    projectTemplateSource?: Record<string, unknown> | null
   ): Promise<ProjectVariables & { project: any, templates: DocumentTemplate[] }> {
     
     // RBAC Check - ensure user can access this project
@@ -45,7 +47,7 @@ export class VariableProcessor {
     }
     
     // Get templates with company_id filter for multi-tenancy (Project-Aware)
-    const { templates, project } = await this.getProjectTemplates(projectId, companyId, userId);
+    const { templates, project } = await this.getProjectTemplates(projectId, companyId, userId, projectTemplateSource);
 
     // Build variable registry - now using declared scope from variables
     const variableRegistry = new Map<string, {
@@ -155,11 +157,18 @@ export class VariableProcessor {
     );
   }
   
-  private async getProjectTemplates(projectId: string, companyId: string, userId: string): Promise<{ templates: DocumentTemplate[], project: any }> {
+  private async getProjectTemplates(
+    projectId: string,
+    companyId: string,
+    userId: string,
+    projectTemplateSource?: Record<string, unknown> | null
+  ): Promise<{ templates: DocumentTemplate[], project: any }> {
     const supabase = await createClient();
     
     // Get project to find all template names and custom templates
-    const { data: project } = await supabase
+    const { data: project } = projectTemplateSource
+      ? { data: projectTemplateSource as any }
+      : await supabase
       .from('projects')
       .select('architecture_templates, constructions_templates, fire_templates, authority_processing_templates, energy_templates, hvac_templates, execution_control_templates, custom_templates, company_id, leader_id, workers, template_variables, global_variables, category_variables, variable_propagation_settings')
       .eq('id', projectId)
@@ -167,6 +176,15 @@ export class VariableProcessor {
       .single();
     
     if (!project) return { templates: [], project: null };
+
+    if (
+      projectTemplateSource &&
+      (String((project as any).id) !== String(projectId) ||
+        String((project as any).company_id) !== String(companyId))
+    ) {
+      console.warn('processProjectVariables: projectTemplateSource id/company mismatch; ignoring override');
+      return this.getProjectTemplates(projectId, companyId, userId, null);
+    }
     
     // Collect all template names from all categories
     const allTemplateNames = [

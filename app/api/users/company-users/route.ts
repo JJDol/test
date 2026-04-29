@@ -25,7 +25,7 @@ async function getCompanyUsersHandler(request: AuthenticatedRequest) {
     // Build query - always exclude ADMIN users and apply company filter
     let query = supabase
       .from('users')
-      .select('id, name, email, role')
+      .select('id, name, email, role, discipline')
       .eq('company_id', currentUser.company_id) // Always filter by company
       .neq('role', 'ADMIN') // Always exclude ADMIN users
       .order('name');

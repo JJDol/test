@@ -204,80 +204,57 @@ async function deleteTemplateHandler(
 
 // TODO: Maybe move this to utils
 async function cleanupProjectReferences(supabase: any, templateName: string, companyId: string) {
-  // Find all projects in the company that use this template
   const { data: projects, error: projectsError } = await supabase
     .from('projects')
-    .select('id, architecture_templates, constructions_templates, fire_templates, authority_processing_templates, energy_templates, hvac_templates, execution_control_templates, document_assignments, template_variables')
+    .select('id')
     .eq('company_id', companyId);
 
   if (projectsError) {
     throw new Error(`Failed to fetch projects: ${projectsError.message}`);
   }
 
-  const categoryFields = [
-    'architecture_templates',
-    'constructions_templates', 
-    'fire_templates',
-    'authority_processing_templates',
-    'energy_templates',
-    'hvac_templates',
-    'execution_control_templates'
-  ];
+  const projectIds = (projects ?? []).map((p: { id: string }) => p.id);
+  if (projectIds.length === 0) {
+    return {
+      projectsUpdated: 0,
+      assignmentsRemoved: 0,
+      variablesRemoved: 0,
+      phaseDocumentsRemoved: 0,
+    };
+  }
 
-  let updatedProjectsCount = 0;
-  let updatedAssignmentsCount = 0;
-  let updatedVariablesCount = 0;
+  const { data: phases, error: phasesError } = await supabase
+    .from('project_phases')
+    .select('id')
+    .in('project_id', projectIds);
 
-  // Process each project
-  for (const project of projects || []) {
-    let hasChanges = false;
-    const updates: any = {};
+  if (phasesError) {
+    throw new Error(`Failed to fetch project phases: ${phasesError.message}`);
+  }
 
-    // Remove template from category arrays
-    for (const field of categoryFields) {
-      const templates = project[field as keyof typeof project] as string[];
-      if (templates && templates.includes(templateName)) {
-        updates[field] = templates.filter(t => t !== templateName);
-        hasChanges = true;
-      }
-    }
+  const phaseIds = (phases ?? []).map((row: { id: string }) => row.id);
+  let phaseDocumentsRemoved = 0;
 
-    // Remove template from document_assignments
-    if (project.document_assignments && project.document_assignments[templateName]) {
-      const { [templateName]: removed, ...remainingAssignments } = project.document_assignments;
-      updates.document_assignments = remainingAssignments;
-      hasChanges = true;
-      updatedAssignmentsCount++;
-    }
+  if (phaseIds.length > 0) {
+    const { data: removedRows, error: delError } = await supabase
+      .from('project_phase_documents')
+      .delete()
+      .in('project_phase_id', phaseIds)
+      .eq('template_name', templateName)
+      .select('id');
 
-    // Remove template from template_variables
-    if (project.template_variables && project.template_variables[templateName]) {
-      const { [templateName]: removed, ...remainingVariables } = project.template_variables;
-      updates.template_variables = remainingVariables;
-      hasChanges = true;
-      updatedVariablesCount++;
-    }
-
-    // Update project if there are changes
-    if (hasChanges) {
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update(updates)
-        .eq('id', project.id);
-
-      if (updateError) {
-        console.error(`Error updating project ${project.id}:`, updateError);
-        // Continue with other projects even if one fails
-      } else {
-        updatedProjectsCount++;
-      }
+    if (delError) {
+      console.error('cleanupProjectReferences phase_documents:', delError);
+    } else {
+      phaseDocumentsRemoved = removedRows?.length ?? 0;
     }
   }
 
   return {
-    projectsUpdated: updatedProjectsCount,
-    assignmentsRemoved: updatedAssignmentsCount,
-    variablesRemoved: updatedVariablesCount
+    projectsUpdated: 0,
+    assignmentsRemoved: 0,
+    variablesRemoved: 0,
+    phaseDocumentsRemoved,
   };
 }
 

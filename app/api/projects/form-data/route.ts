@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { createClient } from '@/lib/supabase/server';
-import { DocumentCategory, DocumentStatus } from '@/lib/types/types';
-
 /**
  * Projects Form Data API Route
  * 
@@ -32,12 +30,12 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
       return NextResponse.json({ message: "User not assigned to a company" }, { status: 403 });
     }
 
-    // Fetch users and templates in parallel
-    const [usersResponse, templatesResponse] = await Promise.all([
+    // Fetch users, templates, and phase catalog in parallel
+    const [usersResponse, templatesResponse, phaseDefsResponse] = await Promise.all([
       // Get company users (exclude ADMIN users)
       supabase
         .from('users')
-        .select('id, name, email, role')
+        .select('id, name, email, role, discipline')
         .eq('company_id', currentUser.company_id)
         .neq('role', 'ADMIN')
         .order('name'),
@@ -47,7 +45,14 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
         .from('project_templates')
         .select('*')
         .eq('company_id', currentUser.company_id)
-        .order('name')
+        .order('name'),
+
+      supabase
+        .from('phase_definitions')
+        .select('id, name, short_label, display_order, description, is_enabled')
+        .eq('company_id', currentUser.company_id)
+        .eq('is_enabled', true)
+        .order('display_order'),
     ]);
 
     // Handle users response
@@ -68,9 +73,18 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
       }, { status: 500 });
     }
 
+    if (phaseDefsResponse.error) {
+      console.error('Error fetching phase_definitions:', phaseDefsResponse.error);
+      return NextResponse.json({
+        message: "Failed to fetch phase definitions",
+        error: phaseDefsResponse.error.message,
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
       users: usersResponse.data || [],
-      templates: templatesResponse.data || []
+      templates: templatesResponse.data || [],
+      phaseDefinitions: phaseDefsResponse.data || [],
     });
 
   } catch (error: any) {
