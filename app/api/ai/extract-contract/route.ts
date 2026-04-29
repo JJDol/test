@@ -15,8 +15,13 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { contractTextExtractor } from '@/lib/services/extractors/contract-text-extractor';
 import { contractExtractor } from '@/lib/services/ai/contract-extractor';
 import { createClient } from '@/lib/supabase/server';
+import { del } from '@vercel/blob';
+
+export const maxDuration = 60;
 
 async function extractContractHandler(request: AuthenticatedRequest) {
+  let blobUrlToCleanup: string | null = null;
+
   try {
     const supabase = await createClient();
     const user = request.user;
@@ -33,21 +38,44 @@ async function extractContractHandler(request: AuthenticatedRequest) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
 
-    // Ensure user has a company (multi-tenancy requirement)
     if (!userData.company_id) {
       return NextResponse.json({ 
         error: 'User not assigned to a company' 
       }, { status: 403 });
     }
 
-    // Parse form data
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    // Support two modes: direct FormData upload OR blobUrl (for large files)
+    const url = new URL(request.url);
+    const blobUrl = url.searchParams.get('blobUrl');
 
-    if (!file) {
-      return NextResponse.json({ 
-        error: 'No file provided' 
-      }, { status: 400 });
+    let file: File | null = null;
+    let fileBuffer: Buffer;
+    let fileType: string;
+    let fileName: string;
+
+    if (blobUrl) {
+      // Large file mode: download from Vercel Blob
+      blobUrlToCleanup = blobUrl;
+      const blobRes = await fetch(blobUrl);
+      if (!blobRes.ok) {
+        return NextResponse.json({ error: 'Failed to fetch file from storage' }, { status: 400 });
+      }
+      fileBuffer = Buffer.from(await blobRes.arrayBuffer());
+      fileType = blobRes.headers.get('content-type') || 'application/octet-stream';
+      fileName = blobUrl.split('/').pop()?.split('?')[0] || 'contract';
+    } else {
+      // Direct upload mode (small files < 4.5MB)
+      const formData = await request.formData();
+      file = formData.get('file') as File;
+
+      if (!file) {
+        return NextResponse.json({ 
+          error: 'No file provided' 
+        }, { status: 400 });
+      }
+      fileBuffer = Buffer.from(await file.arrayBuffer());
+      fileType = file.type;
+      fileName = file.name;
     }
 
     // Validate file type
@@ -57,33 +85,33 @@ async function extractContractHandler(request: AuthenticatedRequest) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain'
     ];
+    const lowerName = fileName.toLowerCase();
 
-    if (!allowedTypes.includes(file.type) && 
-        !file.name.toLowerCase().endsWith('.pdf') && 
-        !file.name.toLowerCase().endsWith('.docx') &&
-        !file.name.toLowerCase().endsWith('.doc') &&
-        !file.name.toLowerCase().endsWith('.txt')) {
+    if (!allowedTypes.includes(fileType) && 
+        !lowerName.endsWith('.pdf') && 
+        !lowerName.endsWith('.docx') &&
+        !lowerName.endsWith('.doc') &&
+        !lowerName.endsWith('.txt')) {
       return NextResponse.json({ 
         error: 'Unsupported file type. Please upload PDF, DOCX, or TXT files.' 
       }, { status: 400 });
     }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
+    // Validate file size (max 20MB)
+    const maxSize = 20 * 1024 * 1024;
+    if (fileBuffer.length > maxSize) {
       return NextResponse.json({ 
-        error: 'File too large. Maximum size is 10MB.' 
+        error: 'File too large. Maximum size is 20MB.' 
       }, { status: 400 });
     }
 
-    console.log(`📄 Processing contract: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)`);
+    console.log(`📄 Processing contract: ${fileName} (${fileType}, ${(fileBuffer.length / 1024).toFixed(2)} KB)`);
 
     // Step 1: Extract text from the file
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
     const textExtractionResult = await contractTextExtractor.extractText(
       fileBuffer,
-      file.type,
-      file.name
+      fileType,
+      fileName
     );
 
     if (!textExtractionResult.success) {
@@ -119,29 +147,24 @@ async function extractContractHandler(request: AuthenticatedRequest) {
     // Step 4: Get extraction summary for user review
     const summary = contractExtractor.getExtractionSummary(extractionResult.data);
 
-    // Return structured response
+    // Clean up blob after successful processing
+    if (blobUrlToCleanup) {
+      del(blobUrlToCleanup).catch((e) => console.warn('Blob cleanup failed:', e));
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Contract information extracted successfully',
       extraction: {
-        // Raw extracted data
         contractData: extractionResult.data,
-        
-        // Variable mapping for AutoDoc
         variableMapping,
-        
-        // Summary for user review
         summary: {
           critical: summary.critical.filter(item => item.value),
           optional: summary.optional.filter(item => item.value),
           missing: summary.missing,
         },
-        
-        // Metadata
         confidence: extractionResult.data.extractionConfidence,
         isLikelyContract: isContract,
-        
-        // AI usage stats
         stats: {
           tokensUsed: extractionResult.tokensUsed,
           estimatedCost: extractionResult.estimatedCost,
@@ -154,6 +177,9 @@ async function extractContractHandler(request: AuthenticatedRequest) {
 
   } catch (error) {
     console.error('❌ Error in contract extraction:', error);
+    if (blobUrlToCleanup) {
+      del(blobUrlToCleanup).catch(() => {});
+    }
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',

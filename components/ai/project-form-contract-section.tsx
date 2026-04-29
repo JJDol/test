@@ -44,6 +44,8 @@ export function ProjectFormContractSection({
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<ContractData | null>(null);
 
+  const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB
+
   const runExtract = async () => {
     if (!file) {
       setError("Select a PDF, DOCX, or TXT file first.");
@@ -53,13 +55,40 @@ export function ProjectFormContractSection({
     setError(null);
     setExtracted(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/ai/extract-contract", {
-        method: "POST",
-        body: fd,
-      });
-      const body = await res.json().catch(() => ({}));
+      let res: Response;
+
+      if (file.size > FILE_SIZE_THRESHOLD) {
+        const { upload } = await import("@vercel/blob/client");
+        const customPath = `contract-uploads/${Date.now()}-${file.name}`;
+        const blob = await upload(customPath, file, {
+          access: "public",
+          handleUploadUrl: "/api/ai/extract-contract-blob",
+        });
+        res = await fetch(
+          `/api/ai/extract-contract?blobUrl=${encodeURIComponent(blob.url)}`,
+          { method: "POST" }
+        );
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        res = await fetch("/api/ai/extract-contract", {
+          method: "POST",
+          body: fd,
+        });
+      }
+
+      let body: Record<string, any>;
+      const text = await res.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        throw new Error(
+          text.includes("Request Entity")
+            ? "File too large for server. Please try a smaller file."
+            : `Server error: ${text.slice(0, 100)}`
+        );
+      }
+
       if (!res.ok) {
         throw new Error(body.error || body.message || "Extraction failed");
       }

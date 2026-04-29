@@ -123,6 +123,8 @@ export function ContractUploadDialog({ onProjectCreated }: ContractUploadDialogP
     }
   };
 
+  const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB
+
   const handleExtractContract = async () => {
     if (!file) {
       setError('Please select a file first');
@@ -133,15 +135,39 @@ export function ContractUploadDialog({ onProjectCreated }: ContractUploadDialogP
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      let response: Response;
 
-      const response = await fetch('/api/ai/extract-contract', {
-        method: 'POST',
-        body: formData,
-      });
+      if (file.size > FILE_SIZE_THRESHOLD) {
+        const { upload } = await import('@vercel/blob/client');
+        const customPath = `contract-uploads/${Date.now()}-${file.name}`;
+        const blob = await upload(customPath, file, {
+          access: 'public',
+          handleUploadUrl: '/api/ai/extract-contract-blob',
+        });
+        response = await fetch(
+          `/api/ai/extract-contract?blobUrl=${encodeURIComponent(blob.url)}`,
+          { method: 'POST' }
+        );
+      } else {
+        const formData = new FormData();
+        formData.append('file', file);
+        response = await fetch('/api/ai/extract-contract', {
+          method: 'POST',
+          body: formData,
+        });
+      }
 
-      const result = await response.json();
+      let result: Record<string, any>;
+      const text = await response.text();
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(
+          text.includes('Request Entity')
+            ? 'File too large for server. Please try a smaller file.'
+            : `Server error: ${text.slice(0, 100)}`
+        );
+      }
 
       if (!response.ok || !result.success) {
         throw new Error(result.details || result.error || 'Failed to extract contract information');
