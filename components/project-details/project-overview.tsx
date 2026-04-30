@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Download, Archive, Loader2, MoreHorizontal, Edit, Trash2, PauseCircle } from "lucide-react";
+import { UserAvatar, UserAvatarStack } from "@/components/ui/user-avatar";
 import { formatDate, getDeadlineColor } from "@/utils/project-utils";
 import { User, Project } from "@/lib/types/types";
 
@@ -212,27 +213,30 @@ export function ProjectOverview({
         <div className="space-y-2 text-sm">
           <div>
             <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
-            <p className="text-gray-700">{project.leaderName || 'Unassigned'}</p>
+            {project.leaderName ? (
+              <div className="mt-1">
+                <UserAvatar user={{ id: project.leader_id, name: project.leaderName }} size="sm" />
+              </div>
+            ) : (
+              <p className="text-gray-700">Unassigned</p>
+            )}
           </div>
           <div>
             <p className="text-gray-500 text-xs uppercase tracking-wide">Workers</p>
-            <p className="text-gray-700">
-              {project.workers_names && project.workers_names.length > 0
-                ? (() => {
-                    const maxDisplay = 3;
-                    const displayNames = project.workers_names.slice(0, maxDisplay);
-                    const remainingCount = project.workers_names.length - maxDisplay;
-                    return (
-                      <>
-                        {displayNames.join(', ')}
-                        {remainingCount > 0 && (
-                          <span className="text-gray-500"> +{remainingCount} more</span>
-                        )}
-                      </>
-                    );
-                  })()
-                : 'No workers assigned'}
-            </p>
+            {project.workers && project.workers.length > 0 ? (
+              <div className="mt-1">
+                <UserAvatarStack
+                  users={project.workers.map((id, idx) => ({
+                    id,
+                    name: project.workers_names?.[idx] || null,
+                  }))}
+                  size="sm"
+                  emptyLabel="No workers assigned"
+                />
+              </div>
+            ) : (
+              <p className="text-gray-700">No workers assigned</p>
+            )}
           </div>
         </div>
       </div>
@@ -319,3 +323,4 @@ export function ProjectOverview({
     </div>
   );
 }
+

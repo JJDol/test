@@ -280,9 +280,8 @@ export async function setCurrentPhase(
     .eq("id", phaseId);
   if (setError) throw setError;
 
-  if (oldPhaseId && oldPhaseId !== phaseId) {
-    await carryOverDocumentsBetweenPhases(supabase, oldPhaseId, phaseId);
-  }
+  // Documents are NOT carried over — each phase starts with its own seeded
+  // documents and should not inherit data from the previous current phase.
 }
 
 export interface SetProjectHoldInput {

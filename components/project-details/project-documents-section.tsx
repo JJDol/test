@@ -59,6 +59,9 @@ interface ProjectDocumentsSectionProps {
   error?: {
     templates: string | null;
   };
+
+  /** When the active phase is locked, all interactive elements are disabled except Generate Document and navigation tabs. */
+  isLocked?: boolean;
   
   // Computed values
   canEditVariables: (templateName: string) => boolean;
@@ -125,6 +128,7 @@ export function ProjectDocumentsSection({
   onCollapseAllTemplates,
   onToggleGlobalSectionCollapse,
   onToggleCategorySectionCollapse,
+  isLocked = false,
   onDropdownOptionsChange,
 }: ProjectDocumentsSectionProps) {
   if (!project) {
@@ -222,7 +226,7 @@ export function ProjectDocumentsSection({
                           propagationSettings={project?.variable_propagation_settings || {} as any}
                           project={project}
                           collapsed={collapsedGlobalSection}
-                          canEdit={canEditGeneralVariables()}
+                          canEdit={isLocked ? false : canEditGeneralVariables()}
                           onToggleCollapse={() => onToggleGlobalSectionCollapse()}
                           onVariableChange={onVariableChange}
                         />
@@ -236,7 +240,7 @@ export function ProjectDocumentsSection({
                           propagationSettings={project.variable_propagation_settings || {}}
                           globalVariables={project.global_variables?.variables || []}
                           collapsed={collapsedCategorySections[category] || false}
-                          canEdit={canEditGeneralVariables()}
+                          canEdit={isLocked ? false : canEditGeneralVariables()}
                           projectId={project.id}
                           onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
                           onVariableChange={onVariableChange}
@@ -255,7 +259,7 @@ export function ProjectDocumentsSection({
                               onProjectTemplateSelected={onProjectTemplateSelected}
                               existingTemplates={project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || []}
                               trigger={
-                                <Button size="sm" className="gap-2">
+                                <Button size="sm" className="gap-2" disabled={isLocked}>
                                   <Plus className="h-4 w-4" />
                                   Add {getCategoryDisplayName(category)} Document
                                 </Button>
@@ -293,9 +297,10 @@ export function ProjectDocumentsSection({
                             collapsed={collapsedTemplates[template.name]}
                             categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
                             globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
-                            canEditVariables={canEditVariables(template.name)}
-                            canCheckVariables={canCheckVariables(template.name)}
-                            canEditGeneralVariables={canEditGeneralVariables()}
+                            canEditVariables={isLocked ? false : canEditVariables(template.name)}
+                            canCheckVariables={isLocked ? false : canCheckVariables(template.name)}
+                            canEditGeneralVariables={isLocked ? false : canEditGeneralVariables()}
+                            isLocked={isLocked}
                             calculateProgress={calculateTemplateProgress}
                             getVariableType={getVariableType}
                             onToggleCollapse={() => onToggleTemplateCollapse(template.name)}
@@ -308,9 +313,9 @@ export function ProjectDocumentsSection({
                             onAssignmentUpdate={onAssignmentUpdate}
                             onUpgradeVersion={onUpgradeVersion}
                             onRefresh={onRefresh}
-                            canAssignDocuments={currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id ||
-                              currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id}
-                            canManageProject={currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id}
+                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id ||
+                              currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
+                            canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
                             onDropdownOptionsChange={onDropdownOptionsChange}
                           />
                           </ErrorBoundary>

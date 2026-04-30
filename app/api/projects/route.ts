@@ -5,6 +5,8 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { DocumentCategory, VariablePropagationScope } from '@/lib/types/types';
 import type { DocumentVariable } from '@/lib/types/variable-types';
 
+export const maxDuration = 60;
+
 /**
  * Projects Collection API Routes
  * 
@@ -330,6 +332,12 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     };
 
     // Resolve leader.
+    if (!assignedTo || typeof assignedTo !== 'string' || assignedTo.trim() === '') {
+      return NextResponse.json(
+        { error: 'Project leader (assignedTo) is required' },
+        { status: 400 }
+      );
+    }
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -538,8 +546,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     }
 
     // ---- Insert project row ------------------------------------------------
-    // Legacy *_templates[] and per-template jsonb columns are about to be
-    // dropped; we no longer populate them here.
+    // Insert with empty variables first; populate after documents are confirmed.
     const { data: projectRow, error: projectError } = await supabase
       .from('projects')
       .insert({
@@ -548,8 +555,8 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         deadline,
         leader_id: userData.id,
         company_id: companyId,
-        global_variables,
-        category_variables,
+        global_variables: { variables: [] },
+        category_variables: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -564,22 +571,31 @@ async function createProjectHandler(request: AuthenticatedRequest) {
 
     // ---- First phase is auto-created by DB trigger -------------------------
     // Read back the P1 row the trigger created. Reuse/update it instead of
-    // inserting a duplicate.
-    const { data: firstPhase, error: phaseError } = await supabase
+    // inserting a duplicate. If the trigger didn't fire (e.g. missing migration),
+    // create P1 manually as a fallback.
+    let firstPhase: { id: string; phase_definition_id: string } | null = null;
+    const { data: triggerPhase, error: phaseError } = await supabase
       .from('project_phases')
       .select('id, phase_definition_id')
       .eq('project_id', projectRow.id)
       .eq('is_current', true)
       .maybeSingle();
     if (phaseError) throw phaseError;
+    firstPhase = triggerPhase as { id: string; phase_definition_id: string } | null;
+
     if (!firstPhase) {
-      return NextResponse.json(
-        {
-          error:
-            'First phase was not auto-created. Ensure migration 20260422000000 ran and the company has an enabled display_order=1 phase definition.',
-        },
-        { status: 500 }
-      );
+      const { data: manualP1, error: manualError } = await supabase
+        .from('project_phases')
+        .insert({
+          project_id: projectRow.id,
+          phase_definition_id: firstPhaseDef.id,
+          deadline: deadline ?? null,
+          is_current: true,
+        })
+        .select('id, phase_definition_id')
+        .single();
+      if (manualError) throw manualError;
+      firstPhase = manualP1 as { id: string; phase_definition_id: string };
     }
 
     // ---- Insert additional phases (everything except P1) ------------------
@@ -689,14 +705,20 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       }
     }
     if (docRows.length > 0) {
-      // `upsert(onConflict)` lets the same template land on multiple phases
-      // without colliding — the unique constraint is (phase_id, template_name),
-      // and we never duplicate a template within the same phase (dedup in
-      // expandBundlesToTemplates).
       const { error: docError } = await supabase
         .from('project_phase_documents')
         .insert(docRows);
       if (docError) throw docError;
+
+      // Documents created successfully — now populate project-level variables.
+      await supabase
+        .from('projects')
+        .update({
+          global_variables,
+          category_variables,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', projectRow.id);
     }
 
     // ---- Assign leader's assigned_projects --------------------------------

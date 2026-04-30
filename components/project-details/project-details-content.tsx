@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { ProjectOverview } from "./project-overview";
@@ -429,6 +429,11 @@ export function ProjectDetailsContent({
     [activePhase, findDocByTemplate, phasesState, toast]
   );
 
+  const variableDebounceRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const pendingPatchRef = useRef<Record<string, { phaseId: string; docId: string; patch: Record<string, unknown> }>>({});
+  const phasesStateRef = useRef(phasesState);
+  phasesStateRef.current = phasesState;
+
   const handleVariableChangePhase = useCallback(
     async (templateName: string, variableName: string, value: unknown, category: DocumentCategory, _isGlobal: boolean, _isCategory: boolean) => {
       if (!activePhase) return;
@@ -442,11 +447,27 @@ export function ProjectDetailsContent({
         return v;
       });
       if (!found) nextVars.push({ name: variableName, value } as DocumentVariable);
-      await phasesState.patchPhaseDocument(activePhase.id, doc.id, {
-        variables: { ...currentWrapper, variables: nextVars },
-      });
+
+      const patch = { variables: { ...currentWrapper, variables: nextVars } };
+
+      phasesStateRef.current.patchPhaseDocument(activePhase.id, doc.id, patch, { localOnly: true });
+
+      const debounceKey = `${doc.id}::${variableName}`;
+      pendingPatchRef.current[debounceKey] = { phaseId: activePhase.id, docId: doc.id, patch };
+
+      if (variableDebounceRef.current[debounceKey]) {
+        clearTimeout(variableDebounceRef.current[debounceKey]);
+      }
+      variableDebounceRef.current[debounceKey] = setTimeout(() => {
+        delete variableDebounceRef.current[debounceKey];
+        const pending = pendingPatchRef.current[debounceKey];
+        if (pending) {
+          delete pendingPatchRef.current[debounceKey];
+          phasesStateRef.current.patchPhaseDocument(pending.phaseId, pending.docId, pending.patch, { optimistic: false, skipResponseMerge: true });
+        }
+      }, 600);
     },
-    [activePhase, findDocByTemplate, phasesState]
+    [activePhase, findDocByTemplate]
   );
 
   const handleSupervisorCheckPhase = useCallback(
@@ -691,6 +712,7 @@ export function ProjectDetailsContent({
               templateVariables={phaseTemplateVariables}
               loading={loading}
               error={error}
+              isLocked={activePhase?.is_locked ?? false}
               canEditVariables={canEditVariables}
               canCheckVariables={canCheckVariables}
               canEditGeneralVariables={canEditGeneralVariables}

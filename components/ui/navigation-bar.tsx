@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Crown, FolderKanban, FileText, MessageSquare, HelpCircle } from "lucide-react";
+import { Crown, FolderKanban, FileText, MessageSquare, HelpCircle, Users } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,8 @@ export default function NavigationBar() {
   const searchParams = useSearchParams();
   const getSectionFromPath = (path: string): string => {
     if (path.startsWith('/protected/semantic-engine') || path.startsWith('/protected/documents')) return 'ai';
-    if (path.startsWith('/protected/templates') || path.startsWith('/protected/variables') || path.startsWith('/protected/team')) return 'templates';
+    if (path.startsWith('/protected/templates') || path.startsWith('/protected/variables')) return 'templates';
+    if (path.startsWith('/protected/team')) return 'resources';
     if (path.startsWith('/protected/documentation')) return 'manual';
     if (path.startsWith('/protected')) return 'projects';
     return 'projects';
@@ -171,6 +172,20 @@ export default function NavigationBar() {
                       </Button>
                     </Link>
                   </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Resources */}
+            <AccordionItem value="resources" className="border-foreground/10">
+              <AccordionTrigger className="px-2">
+                <span className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4" />
+                  Resources
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="px-2 pt-0">
+                <ul className="space-y-1">
                   <li>
                     <Link href="/protected/team">
                       <Button
