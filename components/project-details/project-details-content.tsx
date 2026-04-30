@@ -430,6 +430,9 @@ export function ProjectDetailsContent({
   );
 
   const variableDebounceRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const pendingPatchRef = useRef<Record<string, { phaseId: string; docId: string; patch: Record<string, unknown> }>>({});
+  const phasesStateRef = useRef(phasesState);
+  phasesStateRef.current = phasesState;
 
   const handleVariableChangePhase = useCallback(
     async (templateName: string, variableName: string, value: unknown, category: DocumentCategory, _isGlobal: boolean, _isCategory: boolean) => {
@@ -447,20 +450,24 @@ export function ProjectDetailsContent({
 
       const patch = { variables: { ...currentWrapper, variables: nextVars } };
 
-      // Optimistic local update immediately for UI responsiveness (no API call)
-      phasesState.patchPhaseDocument(activePhase.id, doc.id, patch, { localOnly: true });
+      phasesStateRef.current.patchPhaseDocument(activePhase.id, doc.id, patch, { localOnly: true });
 
-      // Debounce the actual API call to avoid flooding on rapid typing
       const debounceKey = `${doc.id}::${variableName}`;
+      pendingPatchRef.current[debounceKey] = { phaseId: activePhase.id, docId: doc.id, patch };
+
       if (variableDebounceRef.current[debounceKey]) {
         clearTimeout(variableDebounceRef.current[debounceKey]);
       }
       variableDebounceRef.current[debounceKey] = setTimeout(() => {
         delete variableDebounceRef.current[debounceKey];
-        phasesState.patchPhaseDocument(activePhase.id, doc.id, patch, { optimistic: false });
+        const pending = pendingPatchRef.current[debounceKey];
+        if (pending) {
+          delete pendingPatchRef.current[debounceKey];
+          phasesStateRef.current.patchPhaseDocument(pending.phaseId, pending.docId, pending.patch, { optimistic: false, skipResponseMerge: true });
+        }
       }, 600);
     },
-    [activePhase, findDocByTemplate, phasesState]
+    [activePhase, findDocByTemplate]
   );
 
   const handleSupervisorCheckPhase = useCallback(

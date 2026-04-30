@@ -109,7 +109,7 @@ export interface UseProjectPhasesReturn {
       template_version_lock: number | null;
       carryover_review_state: Record<string, unknown>;
     }>,
-    options?: { optimistic?: boolean }
+    options?: { optimistic?: boolean; localOnly?: boolean; skipResponseMerge?: boolean }
   ) => Promise<ProjectPhaseDocument | null>;
 }
 
@@ -365,6 +365,8 @@ export function useProjectPhases(
             : prev
         );
       }
+      // localOnly: update state only, skip API call (used for debounced typing)
+      if (options?.localOnly) return null;
       try {
         const response = await fetch(
           `/api/projects/${projectId}/phases/${phaseId}/documents/${documentId}`,
@@ -379,23 +381,25 @@ export function useProjectPhases(
           throw new Error(body?.message || "Failed to update document");
         }
         const json = (await response.json()) as { document: ProjectPhaseDocument };
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                phases: prev.phases.map((p) =>
-                  p.id === phaseId
-                    ? {
-                        ...p,
-                        documents: (p.documents ?? []).map((d) =>
-                          d.id === documentId ? json.document : d
-                        ),
-                      }
-                    : p
-                ),
-              }
-            : prev
-        );
+        if (!options?.skipResponseMerge) {
+          setData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  phases: prev.phases.map((p) =>
+                    p.id === phaseId
+                      ? {
+                          ...p,
+                          documents: (p.documents ?? []).map((d) =>
+                            d.id === documentId ? json.document : d
+                          ),
+                        }
+                      : p
+                  ),
+                }
+              : prev
+          );
+        }
         return json.document;
       } catch (err) {
         if (previous) setData(previous);
