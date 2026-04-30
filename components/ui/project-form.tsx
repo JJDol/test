@@ -344,9 +344,26 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setExtractionStep("extracting");
     setExtractionError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", contractFile);
-      const response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
+      const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB
+      let response: Response;
+
+      if (contractFile.size > FILE_SIZE_THRESHOLD) {
+        const { upload } = await import("@vercel/blob/client");
+        const customPath = `contract-uploads/${Date.now()}-${contractFile.name}`;
+        const blob = await upload(customPath, contractFile, {
+          access: "public",
+          handleUploadUrl: "/api/ai/extract-contract-blob",
+        });
+        response = await fetch(
+          `/api/ai/extract-contract?blobUrl=${encodeURIComponent(blob.url)}`,
+          { method: "POST" }
+        );
+      } else {
+        const formData = new FormData();
+        formData.append("file", contractFile);
+        response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
+      }
+
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.details || result.error || "Failed to extract contract information");
       setExtractionResult(result.extraction);
