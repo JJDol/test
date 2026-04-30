@@ -407,6 +407,10 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
+    if (!selectedUserId) {
+      alert("Please select a Project Leader.");
+      return;
+    }
     setIsSubmitting(true);
 
     const phasesPayload = phaseDefinitions.length > 0
@@ -458,7 +462,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       onProjectCreated();
     } catch (err) {
       console.error("Error creating project:", err);
-      alert("Failed to create project. Please try again.");
+      alert(err instanceof Error ? err.message : "Failed to create project. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

@@ -5,6 +5,8 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { DocumentCategory, VariablePropagationScope } from '@/lib/types/types';
 import type { DocumentVariable } from '@/lib/types/variable-types';
 
+export const maxDuration = 60;
+
 /**
  * Projects Collection API Routes
  * 
@@ -330,6 +332,12 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     };
 
     // Resolve leader.
+    if (!assignedTo || typeof assignedTo !== 'string' || assignedTo.trim() === '') {
+      return NextResponse.json(
+        { error: 'Project leader (assignedTo) is required' },
+        { status: 400 }
+      );
+    }
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -564,22 +572,31 @@ async function createProjectHandler(request: AuthenticatedRequest) {
 
     // ---- First phase is auto-created by DB trigger -------------------------
     // Read back the P1 row the trigger created. Reuse/update it instead of
-    // inserting a duplicate.
-    const { data: firstPhase, error: phaseError } = await supabase
+    // inserting a duplicate. If the trigger didn't fire (e.g. missing migration),
+    // create P1 manually as a fallback.
+    let firstPhase: { id: string; phase_definition_id: string } | null = null;
+    const { data: triggerPhase, error: phaseError } = await supabase
       .from('project_phases')
       .select('id, phase_definition_id')
       .eq('project_id', projectRow.id)
       .eq('is_current', true)
       .maybeSingle();
     if (phaseError) throw phaseError;
+    firstPhase = triggerPhase as { id: string; phase_definition_id: string } | null;
+
     if (!firstPhase) {
-      return NextResponse.json(
-        {
-          error:
-            'First phase was not auto-created. Ensure migration 20260422000000 ran and the company has an enabled display_order=1 phase definition.',
-        },
-        { status: 500 }
-      );
+      const { data: manualP1, error: manualError } = await supabase
+        .from('project_phases')
+        .insert({
+          project_id: projectRow.id,
+          phase_definition_id: firstPhaseDef.id,
+          deadline: deadline ?? null,
+          is_current: true,
+        })
+        .select('id, phase_definition_id')
+        .single();
+      if (manualError) throw manualError;
+      firstPhase = manualP1 as { id: string; phase_definition_id: string };
     }
 
     // ---- Insert additional phases (everything except P1) ------------------
