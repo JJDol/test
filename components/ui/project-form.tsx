@@ -487,7 +487,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
         <DialogTrigger asChild>
           <Button variant="default">+ New Project</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Create New Project</DialogTitle>
             <DialogDescription>Please fill out the form below to create a new project.</DialogDescription>
