@@ -273,14 +273,10 @@ function ChevronColumn({
         {deadlineLabel ?? "—"}
       </div>
 
-      {/* Active-but-not-current indicator: subtle underline below the
-          deadline to show "you are viewing this phase" without stealing
-          attention from the CURRENT PHASE callout. */}
+      {/* Active-but-not-current indicator: rendered as an SVG outline
+          around the chevron shape so it's clearly highlighted. */}
       {isActive && !isCurrent && (
-        <div
-          className="mx-auto mt-0.5 h-0.5 w-8 rounded-full bg-primary"
-          style={{ marginLeft: isFirst ? undefined : -NOTCH / 2 }}
-        />
+        <ActiveChevronOutline isFirst={isFirst} />
       )}
 
       {tooltip}
@@ -308,6 +304,61 @@ function ChevronColumn({
   }
 
   return column;
+}
+
+// ---------------------------------------------------------------------------
+// Active (selected) chevron outline — SVG border matching the chevron shape
+// ---------------------------------------------------------------------------
+
+function ActiveChevronOutline({ isFirst }: { isFirst: boolean }) {
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const [width, setWidth] = React.useState(0);
+
+  React.useLayoutEffect(() => {
+    const el = wrapperRef.current?.parentElement;
+    if (!el) return;
+    const update = () => setWidth(el.getBoundingClientRect().width);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const h = CHEVRON_HEIGHT;
+  const points = React.useMemo(() => {
+    if (width <= 0) return "";
+    const tipX = width - GAP;
+    const baseX = width - NOTCH - GAP;
+    if (isFirst) {
+      return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h}`;
+    }
+    return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h} ${NOTCH},${h / 2}`;
+  }, [width, isFirst, h]);
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="pointer-events-none absolute inset-0"
+      style={{ marginLeft: isFirst ? 0 : -NOTCH }}
+    >
+      {width > 0 && (
+        <svg
+          aria-hidden="true"
+          width={width}
+          height={h}
+          className="absolute left-0 top-0"
+        >
+          <polygon
+            points={points}
+            fill="transparent"
+            stroke="hsl(var(--primary))"
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------

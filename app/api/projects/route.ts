@@ -297,6 +297,15 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       assignedTo,
       selectedTemplates,
       phases: phasesPayload,
+      // Additional detail fields from AI contract extraction
+      clientName,
+      documentReceiver,
+      caseNumber,
+      constructionAddress,
+      cadastralNumber,
+      cadastralDistrict,
+      subject,
+      regarding,
     } = body as {
       name: string;
       location: string;
@@ -307,11 +316,17 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         phase_definition_id: string;
         deadline?: string | null;
         is_current?: boolean;
-        // Either (a) legacy category-keyed map or (b) flat list; both normalized
-        // below. The flat list is what the new wizard sends.
         selected_templates?: Record<string, string>;
         templates?: Array<{ category?: string; template_name: string }>;
       }>;
+      clientName?: string;
+      documentReceiver?: string;
+      caseNumber?: string;
+      constructionAddress?: string;
+      cadastralNumber?: string;
+      cadastralDistrict?: string;
+      subject?: string;
+      regarding?: string;
     };
 
     // Resolve leader.
@@ -480,6 +495,41 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     const { global_variables, category_variables } =
       buildProjectVariableBuckets(decisions);
 
+    // Prefill global_variables with values from AI contract extraction.
+    // The mapping connects frontend field keys to the Danish variable names
+    // used in templates (mirroring contract-extractor.ts mapToProjectVariables).
+    const contractFieldMapping: Record<string, string[]> = {
+      clientName: ['Bygherres navn', 'Bygherre navn', 'Bygherrenavn', 'Kunde navn'],
+      documentReceiver: ['Modtager', 'Dokumentmodtager'],
+      caseNumber: ['Sagsnummer', 'Sagsnr', 'Sag nr'],
+      constructionAddress: ['Byggeadresse', 'Byggepladsens adresse'],
+      cadastralNumber: ['Matrikelnummer', 'Matrikel'],
+      cadastralDistrict: ['Ejerlav'],
+      subject: ['Emne'],
+      regarding: ['Vedrørende', 'Vedr', 'Vedr.'],
+    };
+    const contractValues: Record<string, string | undefined> = {
+      clientName, documentReceiver, caseNumber,
+      constructionAddress, cadastralNumber, cadastralDistrict,
+      subject, regarding,
+    };
+    for (const [fieldKey, variableNames] of Object.entries(contractFieldMapping)) {
+      const value = contractValues[fieldKey];
+      if (!value) continue;
+      for (const gv of global_variables.variables) {
+        if (variableNames.includes(gv.name) && !gv.value) {
+          (gv as any).value = value;
+        }
+      }
+      for (const catBucket of Object.values(category_variables)) {
+        for (const cv of catBucket.variables) {
+          if (variableNames.includes(cv.name) && !cv.value) {
+            (cv as any).value = value;
+          }
+        }
+      }
+    }
+
     // Quick lookup: for a given (templateName, category), return the matching
     // decision so we can seed phase documents consistently.
     const decisionIndex = new Map<string, (typeof decisions)[number]>();
@@ -585,7 +635,15 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         const dec = decisionIndex.get(`${pick.category}::${pick.templateName}`);
         if (!dec) continue;
         const blankVariables: DocumentVariable[] = dec.variables.map(
-          (v) => ({ ...v, value: '' } as DocumentVariable)
+          (v) => {
+            for (const [fieldKey, variableNames] of Object.entries(contractFieldMapping)) {
+              const value = contractValues[fieldKey];
+              if (value && variableNames.includes(v.name)) {
+                return { ...v, value } as DocumentVariable;
+              }
+            }
+            return { ...v, value: '' } as DocumentVariable;
+          }
         );
         const propagation: Record<
           string,

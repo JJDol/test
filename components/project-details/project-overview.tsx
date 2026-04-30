@@ -1,7 +1,3 @@
-/**
- * 🏢 ProjectOverview - Project header, team, stats, and actions
- */
-
 "use client";
 
 import { useState } from "react";
@@ -27,22 +23,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Download,
-  Archive,
-  Loader2,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  PauseCircle,
-} from "lucide-react";
+import { Download, Archive, Loader2, MoreHorizontal, Edit, Trash2, PauseCircle } from "lucide-react";
 import { formatDate, getDeadlineColor } from "@/utils/project-utils";
 import { User, Project } from "@/lib/types/types";
-import {
-  UserAvatar,
-  UserAvatarStack,
-  type UserLike,
-} from "@/components/ui/user-avatar";
 
 export interface ProjectHoldState {
   is_on_hold: boolean;
@@ -57,7 +40,6 @@ interface ProjectOverviewProps {
   loadingAction: string;
   checkedProgress: number;
   overallProgress: number;
-  /** % of assigned templates marked ready for control (phase-scoped when applicable) */
   controlProgress?: number;
   canManageProject: boolean;
   canArchiveProject: boolean;
@@ -69,8 +51,7 @@ interface ProjectOverviewProps {
   onDownloadProject: () => Promise<void>;
   onArchiveProject: () => Promise<void>;
   onProjectDeleted: () => void;
-  onProjectUpdated: () => void;
-  /** When phases are loaded, hold can be toggled from the ⋯ menu */
+  onProjectUpdated: () => Promise<void>;
   hold?: ProjectHoldState;
   onSetHold?: (input: { is_on_hold: boolean; note?: string }) => Promise<void>;
   showPhaseHoldControls?: boolean;
@@ -89,7 +70,7 @@ export function ProjectOverview({
   canUpdateProject,
   canAssignWorkers,
   canDownloadProject,
-  onBackToDashboard,
+  onBackToDashboard: _onBackToDashboard,
   onDownloadProject,
   onArchiveProject,
   onProjectDeleted,
@@ -108,20 +89,13 @@ export function ProjectOverview({
     return null;
   }
 
-  const canUseHold =
-    !!showPhaseHoldControls &&
-    !!hold &&
-    !!onSetHold &&
-    canManageProject;
+  const canUseHold = !!showPhaseHoldControls && !!hold && !!onSetHold && canManageProject;
 
   const confirmPutOnHold = async () => {
     if (!onSetHold) return;
     setHoldSubmitting(true);
     try {
-      await onSetHold({
-        is_on_hold: true,
-        note: holdNote.trim() || undefined,
-      });
+      await onSetHold({ is_on_hold: true, note: holdNote.trim() || undefined });
       setHoldDialogOpen(false);
       setHoldNote("");
     } finally {
@@ -129,218 +103,172 @@ export function ProjectOverview({
     }
   };
 
+  const deadlineRelativeText = (() => {
+    if (!project.deadline) return null;
+    const now = new Date();
+    const deadline = new Date(project.deadline);
+    const diffTime = deadline.getTime() - now.getTime();
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (totalDays < 0) {
+      const absDays = Math.abs(totalDays);
+      const weeks = Math.floor(absDays / 7);
+      const days = absDays % 7;
+      if (weeks === 0) return `${days} ${days === 1 ? "day" : "days"} overdue`;
+      if (days === 0) return `${weeks} ${weeks === 1 ? "week" : "weeks"} overdue`;
+      return `${weeks}w ${days}d overdue`;
+    }
+    if (totalDays === 0) return "Due today";
+    const weeks = Math.floor(totalDays / 7);
+    const days = totalDays % 7;
+    if (weeks === 0) return `${days} ${days === 1 ? "day" : "days"} left`;
+    if (days === 0) return `${weeks} ${weeks === 1 ? "week" : "weeks"} left`;
+    return `${weeks}w ${days}d left`;
+  })();
+
   return (
-    <div className="bg-muted p-6 rounded-lg w-full">
-      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start mb-6">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-bold mb-2 break-words">{project.name}</h1>
-          {(() => {
-            const leaderId = project.leader_id || project.leader?.id;
-            const leaderUser: UserLike | null = leaderId
-              ? {
-                  id: leaderId,
-                  name:
-                    project.leader?.name ||
-                    project.leaderName ||
-                    project.leader?.email ||
-                    "",
-                  email: project.leader?.email,
-                }
-              : null;
-            const workerIds = project.workers || [];
-            const workerNames = project.workers_names || [];
-            const workers: UserLike[] = [];
-            for (let i = 0; i < workerIds.length; i++) {
-              const wid = workerIds[i];
-              if (!wid || wid === leaderId) continue;
-              workers.push({
-                id: wid,
-                name: workerNames[i] || "",
-              });
-            }
-            return (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Project Leader:</span>
-                  {leaderUser ? (
-                    <>
-                      <UserAvatar user={leaderUser} size="sm" />
-                      <span className="text-sm font-medium text-gray-800">
-                        {leaderUser.name || leaderUser.email}
-                      </span>
-                    </>
+    <div className="bg-muted p-4 rounded-lg w-full h-fit sticky top-4">
+      {/* Three Dots Menu - Top Right */}
+      {!project.is_archived && (
+        <div className="absolute top-2 right-2">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              {canAssignWorkers && (
+                <ProjectWorkersDialog
+                  projectId={Number(project.id)}
+                  currentWorkers={project?.workers || []}
+                  onWorkersUpdated={onProjectUpdated}
+                  leaderId={project?.leader_id}
+                />
+              )}
+
+              {canDownloadProject && (
+                <DropdownMenuItem
+                  onClick={onDownloadProject}
+                  disabled={loadingAction !== "none"}
+                >
+                  {loadingAction === "download" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <span className="text-sm text-gray-500">—</span>
+                    <Download className="mr-2 h-4 w-4" />
                   )}
-                </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-gray-600">Team:</span>
-                  <UserAvatarStack
-                    users={workers}
-                    size="sm"
-                    max={8}
-                    emptyLabel="No team members"
-                  />
-                </div>
-              </div>
-            );
-          })()}
+                  Download Project
+                </DropdownMenuItem>
+              )}
+
+              {canUpdateProject && (
+                <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Project
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              {canUseHold && !hold!.is_on_hold && (
+                <DropdownMenuItem
+                  className="text-[#1ABE6C] focus:text-[#1ABE6C] cursor-pointer"
+                  onSelect={(e) => e.preventDefault()}
+                  onClick={() => setHoldDialogOpen(true)}
+                >
+                  <PauseCircle className="mr-2 h-4 w-4" />
+                  Put on Hold
+                </DropdownMenuItem>
+              )}
+
+              {canArchiveProject && (
+                <DropdownMenuItem
+                  onClick={onArchiveProject}
+                  className="text-orange-600 focus:text-orange-600"
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archive Project
+                </DropdownMenuItem>
+              )}
+
+              {canDeleteProject && (
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Project
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      )}
 
-        <div className="flex gap-2 justify-end shrink-0">
-          <Button
-            variant="outline"
-            onClick={onBackToDashboard}
-            disabled={loadingAction !== "none"}
-          >
-            Back to Dashboard
-          </Button>
-
-          {!project.is_archived && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Project actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-
-                {canAssignWorkers && (
-                  <ProjectWorkersDialog
-                    projectId={Number(project.id)}
-                    currentWorkers={project?.workers || []}
-                    onWorkersUpdated={onProjectUpdated}
-                    leaderId={project?.leader_id}
-                  />
-                )}
-
-                {canDownloadProject && (
-                  <DropdownMenuItem
-                    onClick={onDownloadProject}
-                    disabled={loadingAction !== "none"}
-                  >
-                    {loadingAction === "download" ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 h-4 w-4" />
-                    )}
-                    Download Project
-                  </DropdownMenuItem>
-                )}
-
-                {canUpdateProject && (
-                  <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Update Project
-                  </DropdownMenuItem>
-                )}
-
-                <DropdownMenuSeparator />
-
-                {canUseHold && !hold.is_on_hold && (
-                  <DropdownMenuItem
-                    className="text-[#1ABE6C] focus:text-[#1ABE6C] cursor-pointer"
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={() => setHoldDialogOpen(true)}
-                  >
-                    <PauseCircle className="mr-2 h-4 w-4" />
-                    Put project on hold
-                  </DropdownMenuItem>
-                )}
-
-                {canArchiveProject && (
-                  <DropdownMenuItem
-                    onClick={onArchiveProject}
-                    className="text-orange-600 focus:text-orange-600"
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archive Project
-                  </DropdownMenuItem>
-                )}
-
-                {canDeleteProject && (
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Project
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+      {/* Project Info Section */}
+      <div className="mb-4 pr-8">
+        <div className="space-y-2 text-sm">
+          <div>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
+            <p className="text-gray-700">{project.leaderName || 'Unassigned'}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">Workers</p>
+            <p className="text-gray-700">
+              {project.workers_names && project.workers_names.length > 0
+                ? (() => {
+                    const maxDisplay = 3;
+                    const displayNames = project.workers_names.slice(0, maxDisplay);
+                    const remainingCount = project.workers_names.length - maxDisplay;
+                    return (
+                      <>
+                        {displayNames.join(', ')}
+                        {remainingCount > 0 && (
+                          <span className="text-gray-500"> +{remainingCount} more</span>
+                        )}
+                      </>
+                    );
+                  })()
+                : 'No workers assigned'}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Variables Progress</h2>
-          <Progress value={overallProgress} className="mb-2" />
-          <p className="text-gray-600 text-sm">{overallProgress}% Complete</p>
+      {/* Stats Cards - Vertical Stack */}
+      <div className="space-y-3">
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Variables Progress</h2>
+          <Progress value={overallProgress} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">{overallProgress}% Complete</p>
         </Card>
 
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Supervisor Checks</h2>
-          <Progress value={checkedProgress} className="mb-2" />
-          <p className="text-gray-600 text-sm">{checkedProgress}% Checked</p>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Supervisor Checks</h2>
+          <Progress value={checkedProgress} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">{checkedProgress}% Checked</p>
         </Card>
 
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Control Progress</h2>
-          <Progress value={controlProgress} className="mb-2" />
-          <p className="text-gray-600 text-sm">{controlProgress}% Complete</p>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Control Progress</h2>
+          <Progress value={controlProgress} className="mb-1 h-2" />
+          <p className="text-xs text-gray-600">{controlProgress}% Complete</p>
         </Card>
 
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Deadline</h2>
-          <p className={`text-lg ${getDeadlineColor(project.deadline)}`}>
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Deadline</h2>
+          <p className={`text-sm font-medium ${getDeadlineColor(project.deadline)}`}>
             {formatDate(project.deadline)}
           </p>
-          <p className="text-sm text-gray-600 mt-1">
-            {(() => {
-              const now = new Date();
-              const deadline = new Date(project.deadline);
-              const diffTime = deadline.getTime() - now.getTime();
-              const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-              if (totalDays < 0) {
-                const absDays = Math.abs(totalDays);
-                const weeks = Math.floor(absDays / 7);
-                const days = absDays % 7;
-
-                if (weeks === 0) {
-                  return `${days} ${days === 1 ? "day" : "days"} overdue`;
-                }
-                if (days === 0) {
-                  return `${weeks} ${weeks === 1 ? "week" : "weeks"} overdue`;
-                }
-                return `${weeks} ${weeks === 1 ? "week" : "weeks"} and ${days} ${
-                  days === 1 ? "day" : "days"
-                } overdue`;
-              }
-              if (totalDays === 0) {
-                return "Due today";
-              }
-              const weeks = Math.floor(totalDays / 7);
-              const days = totalDays % 7;
-
-              if (weeks === 0) {
-                return `${days} ${days === 1 ? "day" : "days"} left`;
-              }
-              if (days === 0) {
-                return `${weeks} ${weeks === 1 ? "week" : "weeks"} left`;
-              }
-              return `${weeks} ${weeks === 1 ? "week" : "weeks"} and ${days} ${
-                days === 1 ? "day" : "days"
-              } left`;
-            })()}
-          </p>
+          {deadlineRelativeText && (
+            <p className="text-xs text-gray-500 mt-0.5">{deadlineRelativeText}</p>
+          )}
         </Card>
       </div>
 
+      {/* Hold Dialog */}
       <Dialog open={holdDialogOpen} onOpenChange={setHoldDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -359,17 +287,13 @@ export function ProjectOverview({
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setHoldDialogOpen(false);
-                setHoldNote("");
-              }}
+              onClick={() => { setHoldDialogOpen(false); setHoldNote(""); }}
               disabled={holdSubmitting}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              className="bg-[#1ABE6C] hover:bg-[#159e5b] text-white"
               onClick={confirmPutOnHold}
               disabled={holdSubmitting}
             >
@@ -379,6 +303,7 @@ export function ProjectOverview({
         </DialogContent>
       </Dialog>
 
+      {/* Dialogs */}
       {showUpdateDialog && (
         <UpdateProjectForm
           project={project}

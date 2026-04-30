@@ -3,16 +3,11 @@
 /**
  * ProjectForm - Modal dialog for creating new projects with template selection
  *
- * Features:
- * - Basic project information (name, location, deadline, assigned user)
- * - Project template selection by document category (ARCHITECTURE, STRUCTURAL, etc.)
- * - Subscription limit validation with user-friendly error handling
- * - Background data loading with non-blocking UI
- * - Form state management with automatic reset on close/success
- * - AI-powered contract upload: drag-and-drop or click to upload a contract,
- *   AI extracts fields, user reviews a diff and applies selected values into the form
- *
- * @param onProjectCreated - Callback fired when project is successfully created
+ * Single scrollable form with:
+ * - AI contract upload for auto-filling fields
+ * - Basic project information
+ * - Additional detail fields
+ * - Phase-based template planning
  */
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -47,8 +41,6 @@ import {
   AlertCircle,
   Upload,
   CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
 } from "lucide-react";
 import { CategoryTabsList } from "./category-tabs-list";
 import { ProjectTemplateDropdown } from "./project-template-dropdown";
@@ -103,17 +95,10 @@ interface ExtractionResult {
 }
 
 type MappableField =
-  | "name"
-  | "location"
-  | "deadline"
-  | "clientName"
-  | "documentReceiver"
-  | "caseNumber"
-  | "constructionAddress"
-  | "cadastralNumber"
-  | "cadastralDistrict"
-  | "subject"
-  | "regarding";
+  | "name" | "location" | "deadline"
+  | "clientName" | "documentReceiver" | "caseNumber"
+  | "constructionAddress" | "cadastralNumber" | "cadastralDistrict"
+  | "subject" | "regarding";
 
 type ExtendedField = Exclude<MappableField, "name" | "location" | "deadline">;
 
@@ -172,10 +157,8 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
 
-  const [step, setStep] = useState<"details" | "phases">("details");
-  const [slideDirection, setSlideDirection] = useState<"forward" | "backward">("forward");
-  const [useTemplates, setUseTemplates] = useState(false);
   const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [phaseDefinitions, setPhaseDefinitions] = useState<PhaseDefinition[]>([]);
   const [phaseConfig, setPhaseConfig] = useState<Record<string, PhaseConfig>>({});
@@ -197,7 +180,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [appliedSummary, setAppliedSummary] = useState<{ count: number; fileName: string } | null>(null);
   const [diffSelection, setDiffSelection] = useState<Record<MappableField, boolean>>({ ...INITIAL_DIFF_SELECTION });
-  const [showExtractionDetails, setShowExtractionDetails] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showLimitDialog, setShowLimitDialog] = useState(false);
@@ -231,29 +213,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     ).length;
   };
 
-  const totalSelectedTemplates = phaseDefinitions.reduce((acc, def) => {
-    const cfg = phaseConfig[def.id];
-    if (!cfg?.included) return acc;
-    return acc + countTemplates(cfg);
-  }, 0);
-
-  const detailsStepValid =
-    projectName.trim().length > 0 &&
-    location.trim().length > 0 &&
-    deadline.trim().length > 0 &&
-    selectedUserId.trim().length > 0;
-
-  const goToPhasesStep = () => {
-    if (!detailsStepValid) return;
-    setSlideDirection("forward");
-    setStep("phases");
-  };
-
-  const goToDetailsStep = () => {
-    setSlideDirection("backward");
-    setStep("details");
-  };
-
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
@@ -268,7 +227,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       setProjectTemplates(data.templates || []);
       const defs: PhaseDefinition[] = data.phaseDefinitions || [];
       setPhaseDefinitions(defs);
-
       const firstId = defs.find((d) => d.display_order === 1 && d.is_enabled)?.id ?? defs[0]?.id ?? "";
       const config: Record<string, PhaseConfig> = {};
       for (const def of defs) {
@@ -287,18 +245,13 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const fetchSubscriptionUsage = async () => {
     try {
       const response = await fetch("/api/subscription/usage");
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionUsage(data);
-      }
+      if (response.ok) setSubscriptionUsage(await response.json());
     } catch (err) {
       console.error("Error fetching subscription usage:", err);
     }
   };
 
-  useEffect(() => {
-    if (open) fetchData();
-  }, [open]);
+  useEffect(() => { if (open) fetchData(); }, [open]);
 
   const resetContractUpload = () => {
     setContractFile(null);
@@ -308,19 +261,15 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setExtractionError(null);
     setAppliedSummary(null);
     setDiffSelection({ ...INITIAL_DIFF_SELECTION });
-    setShowExtractionDetails(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetForm = () => {
     setError(null);
     setSelectedUserId("");
-    setUseTemplates(false);
     setPhaseDefinitions([]);
     setPhaseConfig({});
     setActivePhaseId("");
-    setStep("details");
-    setSlideDirection("forward");
     setIsLoading(false);
     setIsSubmitting(false);
     setProjectName("");
@@ -329,14 +278,13 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setExtendedValues({ ...EMPTY_EXTENDED_VALUES });
     setAiFilledFields(new Set());
     resetContractUpload();
+    setStep(1);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) resetForm();
   };
-
-  // --- Controlled field helpers ---
 
   const getFieldValue = (field: MappableField): string => {
     if (field === "name") return projectName;
@@ -355,15 +303,9 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const handleFieldChange = (field: MappableField, value: string) => {
     setFieldValue(field, value);
     if (aiFilledFields.has(field)) {
-      setAiFilledFields((prev) => {
-        const next = new Set(prev);
-        next.delete(field);
-        return next;
-      });
+      setAiFilledFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
     }
   };
-
-  // --- Contract file validation ---
 
   const validateAndSetFile = (file: File) => {
     const ext = getFileExtension(file.name);
@@ -385,7 +327,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     const file = e.target.files?.[0];
     if (file) validateAndSetFile(file);
   };
-
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); if (!isDragging) setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -398,49 +339,16 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- Extraction ---
-
-  const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB — Vercel body limit is 4.5MB
-
   const handleExtract = async () => {
     if (!contractFile) return;
     setExtractionStep("extracting");
     setExtractionError(null);
     try {
-      let response: Response;
-
-      if (contractFile.size > FILE_SIZE_THRESHOLD) {
-        const { upload } = await import("@vercel/blob/client");
-        const blob = await upload(
-          `contract-uploads/${Date.now()}-${contractFile.name}`,
-          contractFile,
-          { access: "public", handleUploadUrl: "/api/ai/extract-contract-blob" }
-        );
-        response = await fetch(
-          `/api/ai/extract-contract?blobUrl=${encodeURIComponent(blob.url)}`,
-          { method: "POST" }
-        );
-      } else {
-        const formData = new FormData();
-        formData.append("file", contractFile);
-        response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
-      }
-
-      let result: Record<string, any>;
-      const text = await response.text();
-      try {
-        result = JSON.parse(text);
-      } catch {
-        throw new Error(
-          text.includes("Request Entity")
-            ? "File too large for server. Please try a smaller file."
-            : `Server error: ${text.slice(0, 100)}`
-        );
-      }
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.details || result.error || "Failed to extract contract information");
-      }
+      const formData = new FormData();
+      formData.append("file", contractFile);
+      const response = await fetch("/api/ai/extract-contract", { method: "POST", body: formData });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.details || result.error || "Failed to extract contract information");
       setExtractionResult(result.extraction);
       setDiffSelection({ ...INITIAL_DIFF_SELECTION });
       setExtractionStep("review");
@@ -479,15 +387,12 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setExtractionStep("applied");
   };
 
-  // --- Submit ---
-
-  const handleSubmit = async (e?: React.SyntheticEvent) => {
-    e?.preventDefault?.();
-    if (step !== "phases") return;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const phasesPayload = useTemplates
+    const phasesPayload = phaseDefinitions.length > 0
       ? phaseDefinitions
           .filter((def) => {
             const cfg = phaseConfig[def.id];
@@ -536,22 +441,18 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       onProjectCreated();
     } catch (err) {
       console.error("Error creating project:", err);
-      const msg = err instanceof Error && err.message ? err.message : "Failed to create project";
-      alert(`Failed to create project:\n\n${msg}`);
+      alert("Failed to create project. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // --- Render helpers ---
 
   const renderFieldLabel = (htmlFor: string, label: string, field?: MappableField) => (
     <div className="flex items-center justify-between">
       <Label htmlFor={htmlFor}>{label}</Label>
       {field && aiFilledFields.has(field) && (
         <span className="inline-flex items-center gap-1 text-xs text-primary font-medium">
-          <Sparkles className="h-3 w-3" />
-          AI-filled
+          <Sparkles className="h-3 w-3" />AI-filled
         </span>
       )}
     </div>
@@ -562,16 +463,11 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     const id = `diff-${field}`;
     return (
       <div key={field} className="flex items-start gap-3 py-2">
-        <Checkbox
-          id={id}
-          checked={diffSelection[field]}
-          onCheckedChange={(checked) => setDiffSelection((prev) => ({ ...prev, [field]: !!checked }))}
-          className="mt-0.5"
-        />
+        <Checkbox id={id} checked={diffSelection[field]} onCheckedChange={(checked) => setDiffSelection((prev) => ({ ...prev, [field]: !!checked }))} className="mt-0.5" />
         <div className="flex-1 min-w-0 space-y-1">
           <Label htmlFor={id} className="text-sm font-medium cursor-pointer">{label}</Label>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground line-through decoration-muted-foreground/40 truncate max-w-[40%]">{currentValue || "(empty)"}</span>
+            <span className="text-muted-foreground line-through truncate max-w-[40%]">{currentValue || "(empty)"}</span>
             <span className="text-muted-foreground shrink-0">→</span>
             <span className="font-medium text-foreground truncate">{proposedValue}</span>
           </div>
@@ -580,460 +476,312 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     );
   };
 
-  const extractedExtraInfo = (() => {
-    if (!extractionResult) return [];
-    const cd = extractionResult.contractData;
-    const items: Array<{ label: string; value: string }> = [];
-    if (cd.clientCVR) items.push({ label: "CVR", value: cd.clientCVR });
-    if (cd.totalArea) items.push({ label: "Total area", value: cd.totalArea });
-    if (cd.contractValue) items.push({ label: "Contract value", value: cd.contractValue });
-    if (cd.startDate) items.push({ label: "Start date", value: cd.startDate });
-    if (cd.architectFirm) items.push({ label: "Architect", value: cd.architectFirm });
-    if (cd.contractorName) items.push({ label: "Contractor", value: cd.contractorName });
-    if (cd.municipalityName) items.push({ label: "Municipality", value: cd.municipalityName });
-    return items;
-  })();
-
   const hasAnyProposed = !!extractionResult && ALL_FIELD_DEFS.some((def) => !!extractionResult.contractData[def.extractKey]);
-
   const selectedCount = extractionResult
-    ? ALL_FIELD_DEFS.filter((def) => {
-        const proposed = extractionResult.contractData[def.extractKey] as string | undefined;
-        return !!proposed && !!diffSelection[def.field];
-      }).length
+    ? ALL_FIELD_DEFS.filter((def) => { const proposed = extractionResult.contractData[def.extractKey] as string | undefined; return !!proposed && !!diffSelection[def.field]; }).length
     : 0;
-
-  // --- AI Upload Section ---
-
-  const renderAiUploadSection = () => (
-    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3 shadow-sm ring-1 ring-primary/10">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2">
-          <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-semibold leading-tight">Auto-fill from contract</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Upload a contract and AI will extract project details for you.</p>
-          </div>
-        </div>
-        {extractionStep === "applied" && (
-          <Button type="button" variant="ghost" size="sm" onClick={resetContractUpload} className="text-xs h-7">Upload another</Button>
-        )}
-      </div>
-
-      {extractionError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">{extractionError}</AlertDescription>
-        </Alert>
-      )}
-
-      {(extractionStep === "idle" || extractionStep === "error") && (
-        <>
-          {!contractFile ? (
-            <div
-              onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()} role="button" tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
-              className={`relative rounded-md border-2 border-dashed bg-background p-6 text-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"}`}
-            >
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm font-medium">{isDragging ? "Drop the file here" : "Drag & drop a contract"}</p>
-              <p className="text-xs text-muted-foreground mt-1">or click to browse · PDF, DOCX, TXT · max 10 MB</p>
-              <Input ref={fileInputRef} type="file" accept={ALLOWED_CONTRACT_EXTENSIONS.join(",")} onChange={handleFileInputChange} className="hidden" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{contractFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatBytes(contractFile.size)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button type="button" size="sm" onClick={handleExtract} className="gap-1.5 h-8">
-                  <Sparkles className="h-3.5 w-3.5" />Extract with AI
-                </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={handleClearFile} className="h-8 w-8" aria-label="Remove file"><X className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {extractionStep === "extracting" && (
-        <div className="flex items-center gap-3 rounded-md border bg-muted/30 px-4 py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Analyzing contract...</p>
-            <p className="text-xs text-muted-foreground truncate">Reading {contractFile?.name} — this usually takes a few seconds.</p>
-          </div>
-        </div>
-      )}
-
-      {extractionStep === "review" && extractionResult && (
-        <div className="space-y-3 rounded-md border bg-background p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium">Extraction complete</span>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                extractionResult.confidence === "high" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : extractionResult.confidence === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-              }`}>{extractionResult.confidence.toUpperCase()} confidence</span>
-            </div>
-          </div>
-          {hasAnyProposed ? (
-            <>
-              <p className="text-xs text-muted-foreground">Review what AI extracted and pick which values to apply. You&apos;ll be able to edit them afterwards.</p>
-              <div className="divide-y">{ALL_FIELD_DEFS.map((def) => renderDiffRow(def.field, def.label, getFieldValue(def.field), extractionResult.contractData[def.extractKey] as string | undefined))}</div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">AI couldn&apos;t find project name, location, or deadline in this contract. You can still fill the form manually below.</p>
-          )}
-          {extractedExtraInfo.length > 0 && (
-            <div className="rounded-md bg-muted/50 p-2.5 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Also extracted</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {extractedExtraInfo.map((item) => (<span key={item.label} className="text-xs"><span className="text-muted-foreground">{item.label}:</span>{" "}<span className="font-medium">{item.value}</span></span>))}
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={handleSkipDiff}>Skip</Button>
-            <Button type="button" size="sm" onClick={handleApplyDiff} disabled={selectedCount === 0} className="gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />{selectedCount > 0 ? `Apply ${selectedCount} field${selectedCount > 1 ? "s" : ""}` : "Apply"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {extractionStep === "applied" && appliedSummary && extractionResult && (
-        <div className="rounded-md border border-primary/30 bg-primary/5">
-          <div className="flex items-start justify-between gap-2 p-3">
-            <div className="flex items-start gap-2 min-w-0">
-              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <div className="text-sm min-w-0">
-                {appliedSummary.count > 0 ? (<>Applied <span className="font-medium">{appliedSummary.count}</span> field{appliedSummary.count > 1 ? "s" : ""} from <span className="font-medium break-all">{appliedSummary.fileName}</span>.</>) : (<>Skipped auto-fill from <span className="font-medium break-all">{appliedSummary.fileName}</span>.</>)}
-              </div>
-            </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowExtractionDetails((v) => !v)} className="h-7 text-xs shrink-0">
-              {showExtractionDetails ? "Hide details" : "View details"}
-            </Button>
-          </div>
-          {showExtractionDetails && (
-            <div className="border-t border-primary/20 p-3 space-y-3">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">AI confidence:</span>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
-                  extractionResult.confidence === "high" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : extractionResult.confidence === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                  : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                }`}>{extractionResult.confidence.toUpperCase()}</span>
-              </div>
-              <div className="space-y-1.5">
-                {ALL_FIELD_DEFS.map((def) => {
-                  const value = extractionResult.contractData[def.extractKey] as string | undefined;
-                  if (!value) return null;
-                  const applied = diffSelection[def.field];
-                  return (
-                    <div key={def.field} className="flex items-start gap-2 text-sm">
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 mt-0.5 ${applied ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{applied ? "Applied" : "Skipped"}</span>
-                      <div className="min-w-0"><div className="text-xs text-muted-foreground">{def.label}</div><div className="font-medium truncate">{value}</div></div>
-                    </div>
-                  );
-                })}
-              </div>
-              {extractedExtraInfo.length > 0 && (
-                <div className="rounded-md bg-background/60 p-2.5 space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Also extracted</p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {extractedExtraInfo.map((item) => (<span key={item.label} className="text-xs"><span className="text-muted-foreground">{item.label}:</span>{" "}<span className="font-medium">{item.value}</span></span>))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
-          <Button className="default" size="lg">+ New Project</Button>
+          <Button variant="default">+ New Project</Button>
         </DialogTrigger>
-        <DialogContent
-          className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
-          lang="en"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Project</DialogTitle>
             <DialogDescription>Please fill out the form below to create a new project.</DialogDescription>
           </DialogHeader>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
           ) : error ? (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-              <strong className="font-bold">Error: </strong><span className="block sm:inline">{error}</span>
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
               <Button onClick={fetchData} variant="outline" size="sm" className="mt-2">Try Again</Button>
             </div>
           ) : (
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              onKeyDown={(e) => { const target = e.target as HTMLElement; if (e.key === "Enter" && target.tagName !== "TEXTAREA") e.preventDefault(); }}
-              className="space-y-5"
-            >
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Step indicator */}
-              <div className="flex items-center gap-2 text-xs">
-                <button type="button" onClick={() => step === "phases" && goToDetailsStep()} className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors ${step === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80 cursor-pointer"}`}>
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/30 text-[10px] font-bold">1</span>
-                  <span className="font-medium">Project details</span>
-                </button>
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${step === 1 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${step === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span>
+                  <span className="text-sm">Project Info</span>
+                </div>
                 <div className="h-px flex-1 bg-border" />
-                <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors ${step === "phases" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/30 text-[10px] font-bold">2</span>
-                  <span className="font-medium">Phase planning</span>
+                <div className={`flex items-center gap-2 ${step === 2 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${step === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span>
+                  <span className="text-sm">Phases & Templates</span>
                 </div>
               </div>
 
-              {/* Sliding step container */}
-              <div className="overflow-hidden">
-                <div key={step} className={`space-y-6 animate-in fade-in-0 duration-200 ${slideDirection === "forward" ? "slide-in-from-right-8" : "slide-in-from-left-8"}`}>
-                  {step === "details" && (
-                    <>
-                      {renderAiUploadSection()}
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid w-full items-center gap-2">
-                          {renderFieldLabel("name", "Project Name", "name")}
-                          <Input id="name" name="name" placeholder="Enter project name" value={projectName} onChange={(e) => handleFieldChange("name", e.target.value)} required />
-                        </div>
-                        <div className="grid w-full items-center gap-2">
-                          {renderFieldLabel("location", "Location", "location")}
-                          <Input id="location" name="location" placeholder="Enter project location" value={location} onChange={(e) => handleFieldChange("location", e.target.value)} required />
-                        </div>
-                        <div className="grid w-full items-center gap-2">
-                          {renderFieldLabel("deadline", "Deadline", "deadline")}
-                          <Input id="deadline" name="deadline" type="date" value={deadline} onChange={(e) => handleFieldChange("deadline", e.target.value)} required lang="en" />
-                        </div>
-                        <div className="grid w-full items-center gap-2">
-                          <Label htmlFor="assignedTo">Project Leader</Label>
-                          <Select value={selectedUserId} onValueChange={setSelectedUserId} required>
-                            <SelectTrigger className="flex items-center justify-between">
-                              <SelectValue placeholder="Select a user" />
-                              <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>{user.name || user.email}</span>
-                                    <span className="text-xs text-muted-foreground ml-2">{user.role.replace("_", " ")}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+              {/* ===== STEP 1: Project Info ===== */}
+              {step === 1 && (
+                <div className="space-y-6">
+                  {/* AI Contract Upload Section */}
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-sm font-semibold leading-tight">Auto-fill from contract</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Upload a contract and AI will extract project details for you.</p>
                       </div>
+                    </div>
 
-                      {/* Additional Details */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-px flex-1 bg-border" />
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Additional details</span>
-                          <div className="h-px flex-1 bg-border" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          {EXTENDED_FIELD_DEFS.map((def) => (
-                            <div key={def.field} className="grid w-full items-center gap-2">
-                              {renderFieldLabel(def.field, def.label, def.field)}
-                              <Input id={def.field} name={def.field} type={def.inputType ?? "text"} placeholder={def.placeholder} value={getFieldValue(def.field)} onChange={(e) => handleFieldChange(def.field, e.target.value)} />
+                    {extractionError && (
+                      <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription className="text-sm">{extractionError}</AlertDescription></Alert>
+                    )}
+
+                    {(extractionStep === "idle" || extractionStep === "error") && (
+                      <>
+                        {!contractFile ? (
+                          <div
+                            onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                            onClick={() => fileInputRef.current?.click()} role="button" tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+                            className={`relative rounded-md border-2 border-dashed bg-background p-6 text-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"}`}
+                          >
+                            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm font-medium">{isDragging ? "Drop the file here" : "Drag & drop a contract"}</p>
+                            <p className="text-xs text-muted-foreground mt-1">or click to browse · PDF, DOCX, TXT · max 10 MB</p>
+                            <Input ref={fileInputRef} type="file" accept={ALLOWED_CONTRACT_EXTENSIONS.join(",")} onChange={handleFileInputChange} className="hidden" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{contractFile.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(contractFile.size)}</p>
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {step === "phases" && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="use-templates" className="text-lg font-semibold">Project Templates</Label>
-                          <p className="text-xs text-muted-foreground mt-0.5">Configure templates per phase. Each enabled phase will be created automatically with its chosen documents.</p>
-                        </div>
-                        <Switch id="use-templates" checked={useTemplates} onCheckedChange={setUseTemplates} />
-                      </div>
-
-                      {useTemplates && phaseDefinitions.length === 0 && (
-                        <Alert><AlertCircle className="h-4 w-4" /><AlertDescription className="text-sm">No phases are configured for your company yet. Ask your admin to set up phase definitions before assigning templates.</AlertDescription></Alert>
-                      )}
-
-                      {!useTemplates && (
-                        <Alert><AlertCircle className="h-4 w-4" /><AlertDescription className="text-sm">Templates are disabled — the project will be created with the first phase empty. You can add templates later from the project&apos;s phase control panel.</AlertDescription></Alert>
-                      )}
-
-                      {useTemplates && phaseDefinitions.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                          <Tabs value={activePhaseId} onValueChange={setActivePhaseId} className="w-full">
-                            <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-lg bg-muted p-1">
-                              {phaseDefinitions.map((def) => {
-                                const cfg = phaseConfig[def.id];
-                                const isFirst = def.id === firstPhaseDefId;
-                                const included = !!cfg?.included;
-                                const count = countTemplates(cfg);
-                                return (
-                                  <TabsTrigger key={def.id} value={def.id} className="group relative gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                    <span
-                                      role="checkbox"
-                                      aria-checked={included}
-                                      aria-disabled={isFirst}
-                                      aria-label={`Include phase ${def.short_label}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isFirst) return;
-                                        updatePhaseConfig(def.id, (prev) => ({ ...prev, included: !prev.included }));
-                                      }}
-                                      className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ring-offset-background ${included ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"} ${isFirst ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                                    >
-                                      {included && (
-                                        <svg width="10" height="10" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                          <path d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3354 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.5553 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                                        </svg>
-                                      )}
-                                    </span>
-                                    <span className="text-xs font-medium">{def.short_label}</span>
-                                    {count > 0 && (<span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">{count}</span>)}
-                                    {isFirst && (<span className="text-[10px] uppercase tracking-wide text-muted-foreground">required</span>)}
-                                  </TabsTrigger>
-                                );
-                              })}
-                            </TabsList>
-
-                            {phaseDefinitions.map((def) => {
-                              const cfg = phaseConfig[def.id];
-                              if (!cfg) return null;
-                              const isFirst = def.id === firstPhaseDefId;
-                              const isActive = def.id === activePhaseId;
-                              if (!isActive) return null;
-
-                              return (
-                                <TabsContent key={def.id} value={def.id} className="mt-4 space-y-4">
-                                  <div className="rounded-md border bg-muted/20 p-3 space-y-2">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold leading-tight">{def.name}</p>
-                                        <p className="text-xs text-muted-foreground">{isFirst ? "First phase — always created with the project." : cfg.included ? "This phase will be created with the templates below." : "Toggle the checkbox to include this phase in the new project."}</p>
-                                      </div>
-                                      {!isFirst && (
-                                        <div className="flex items-center gap-2">
-                                          <Label htmlFor={`include-${def.id}`} className="text-xs text-muted-foreground">Include</Label>
-                                          <Switch id={`include-${def.id}`} checked={cfg.included} onCheckedChange={(checked) => updatePhaseConfig(def.id, (prev) => ({ ...prev, included: checked }))} />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div className="grid gap-1">
-                                        <Label htmlFor={`deadline-${def.id}`} className="text-xs text-muted-foreground">Phase deadline (optional)</Label>
-                                        <Input id={`deadline-${def.id}`} type="date" value={cfg.deadline} onChange={(e) => updatePhaseConfig(def.id, (prev) => ({ ...prev, deadline: e.target.value }))} disabled={!cfg.included} className="h-9" lang="en" />
-                                      </div>
-                                      <div className="grid gap-1">
-                                        <Label className="text-xs text-muted-foreground">Templates selected</Label>
-                                        <div className="flex h-9 items-center rounded-md border bg-background px-3 text-sm">
-                                          <span className={countTemplates(cfg) > 0 ? "font-semibold" : "text-muted-foreground"}>{countTemplates(cfg)}</span>
-                                          <span className="ml-1 text-muted-foreground">/ {projectTemplates.length} available</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className={cfg.included ? "" : "opacity-50 pointer-events-none"}>
-                                    <Tabs defaultValue={Object.values(DocumentCategory)[0] as string} className="w-full">
-                                      <div className="flex flex-col space-y-2">
-                                        <CategoryTabsList categories={Object.values(DocumentCategory).slice(0, 4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={4} />
-                                        <CategoryTabsList categories={Object.values(DocumentCategory).slice(4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={3} />
-                                      </div>
-                                      {Object.values(DocumentCategory).map((category) => (
-                                        <TabsContent key={category} value={category} className="mt-4">
-                                          <div className="grid gap-2">
-                                            <ProjectTemplateDropdown
-                                              category={category}
-                                              selectedTemplate={cfg.selectedTemplates[category]}
-                                              projectTemplates={projectTemplates}
-                                              onTemplateSelect={(templateName) => updatePhaseConfig(def.id, (prev) => ({ ...prev, selectedTemplates: { ...prev.selectedTemplates, [category]: templateName } }))}
-                                              onTemplateClear={() => updatePhaseConfig(def.id, (prev) => { const next = { ...prev.selectedTemplates }; delete next[category]; return { ...prev, selectedTemplates: next }; })}
-                                            />
-                                            {cfg.selectedTemplates[category] && (<p className="text-xs text-muted-foreground">Selected: <span className="font-medium">{cfg.selectedTemplates[category]}</span></p>)}
-                                          </div>
-                                        </TabsContent>
-                                      ))}
-                                    </Tabs>
-                                  </div>
-                                </TabsContent>
-                              );
-                            })}
-                          </Tabs>
-
-                          {/* Cross-phase summary */}
-                          <div className="rounded-md border bg-background p-3 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-primary" />
-                              <h3 className="text-sm font-medium">Creation plan summary</h3>
-                              <span className="text-xs text-muted-foreground">
-                                ({totalSelectedTemplates} template{totalSelectedTemplates === 1 ? "" : "s"} across {phaseDefinitions.filter((def) => phaseConfig[def.id]?.included).length} phase{phaseDefinitions.filter((def) => phaseConfig[def.id]?.included).length === 1 ? "" : "s"})
-                              </span>
-                            </div>
-                            <div className="space-y-2">
-                              {phaseDefinitions.filter((def) => phaseConfig[def.id]?.included).map((def) => {
-                                const cfg = phaseConfig[def.id]!;
-                                const entries = Object.entries(cfg.selectedTemplates).filter(([, v]) => typeof v === "string" && v.length > 0 && v !== "none");
-                                return (
-                                  <div key={def.id} className="rounded-md bg-muted/40 p-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="text-sm font-medium">{def.short_label} · {def.name}</p>
-                                      <span className="text-xs text-muted-foreground">{entries.length} template{entries.length === 1 ? "" : "s"}</span>
-                                    </div>
-                                    {entries.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground mt-1">No templates yet — phase will be created empty.</p>
-                                    ) : (
-                                      <ul className="mt-1 grid grid-cols-2 gap-1">
-                                        {entries.map(([category, name]) => (<li key={category} className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{category.replace(/_/g, " ")}</span>: {name}</li>))}
-                                      </ul>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                              {phaseDefinitions.every((def) => !phaseConfig[def.id]?.included) && (<p className="text-xs text-muted-foreground">No phases enabled yet.</p>)}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button type="button" size="sm" onClick={handleExtract} className="gap-1.5 h-8"><Sparkles className="h-3.5 w-3.5" />Extract with AI</Button>
+                              <Button type="button" variant="ghost" size="icon" onClick={handleClearFile} className="h-8 w-8"><X className="h-4 w-4" /></Button>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+                        )}
+                      </>
+                    )}
 
-              {/* Footer */}
-              <div className="flex items-center justify-between gap-2 pt-4 border-t">
-                {step === "details" ? (
-                  <>
-                    <div className="text-xs text-muted-foreground">{detailsStepValid ? "All required fields look good." : "Fill name, location, deadline, and project leader to continue."}</div>
-                    <Button type="button" onClick={goToPhasesStep} disabled={!detailsStepValid} className="gap-1.5">Continue to phase planning<ArrowRight className="h-4 w-4" /></Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="ghost" onClick={goToDetailsStep} className="gap-1.5"><ArrowLeft className="h-4 w-4" />Back to details</Button>
-                    <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? "Creating..." : "Create Project"}</Button>
-                  </>
-                )}
-              </div>
+                    {extractionStep === "extracting" && (
+                      <div className="flex items-center gap-3 rounded-md border bg-muted/30 px-4 py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">Analyzing contract...</p>
+                          <p className="text-xs text-muted-foreground truncate">Reading {contractFile?.name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {extractionStep === "review" && extractionResult && (
+                      <div className="space-y-3 rounded-md border bg-background p-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">Extraction complete</span>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            extractionResult.confidence === "high" ? "bg-green-100 text-green-700"
+                            : extractionResult.confidence === "medium" ? "bg-yellow-100 text-yellow-700"
+                            : "bg-orange-100 text-orange-700"
+                          }`}>{extractionResult.confidence.toUpperCase()}</span>
+                        </div>
+                        {hasAnyProposed ? (
+                          <>
+                            <p className="text-xs text-muted-foreground">Review extracted values and pick which to apply.</p>
+                            <div className="divide-y">{ALL_FIELD_DEFS.map((def) => renderDiffRow(def.field, def.label, getFieldValue(def.field), extractionResult.contractData[def.extractKey] as string | undefined))}</div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">AI couldn&apos;t find relevant fields. Fill the form manually below.</p>
+                        )}
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button type="button" variant="ghost" size="sm" onClick={handleSkipDiff}>Skip</Button>
+                          <Button type="button" size="sm" onClick={handleApplyDiff} disabled={selectedCount === 0} className="gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5" />Apply {selectedCount} field{selectedCount !== 1 ? "s" : ""}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {extractionStep === "applied" && appliedSummary && (
+                      <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        <p className="text-sm text-green-700">
+                          {appliedSummary.count > 0
+                            ? `Applied ${appliedSummary.count} field${appliedSummary.count > 1 ? "s" : ""} from ${appliedSummary.fileName}`
+                            : `Skipped extraction from ${appliedSummary.fileName}`}
+                        </p>
+                        <Button type="button" variant="ghost" size="sm" onClick={resetContractUpload} className="ml-auto text-xs h-7">Upload another</Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Basic Project Information */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid w-full items-center gap-2">
+                      {renderFieldLabel("name", "Project Name", "name")}
+                      <Input id="name" value={projectName} onChange={(e) => handleFieldChange("name", e.target.value)} placeholder="Enter project name" required />
+                    </div>
+                    <div className="grid w-full items-center gap-2">
+                      {renderFieldLabel("location", "Location", "location")}
+                      <Input id="location" value={location} onChange={(e) => handleFieldChange("location", e.target.value)} placeholder="Enter project location" required />
+                    </div>
+                    <div className="grid w-full items-center gap-2">
+                      {renderFieldLabel("deadline", "Deadline", "deadline")}
+                      <Input id="deadline" type="date" value={deadline} onChange={(e) => handleFieldChange("deadline", e.target.value)} required />
+                    </div>
+                    <div className="grid w-full items-center gap-2">
+                      <Label htmlFor="assignedTo">Project Leader</Label>
+                      <Select value={selectedUserId} onValueChange={setSelectedUserId} required>
+                        <SelectTrigger className="flex items-center justify-between">
+                          <SelectValue placeholder="Select a user" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{user.name || user.email}</span>
+                                <span className="text-xs text-muted-foreground ml-2">{user.role.replace('_', ' ')}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Additional Details */}
+                  <div className="space-y-3 border-t pt-4">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Additional Details</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      {EXTENDED_FIELD_DEFS.map((def) => (
+                        <div key={def.field} className="grid w-full items-center gap-2">
+                          {renderFieldLabel(def.field, def.label, def.field)}
+                          <Input
+                            id={def.field}
+                            value={extendedValues[def.field as ExtendedField]}
+                            onChange={(e) => handleFieldChange(def.field, e.target.value)}
+                            placeholder={def.placeholder}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Step 1 navigation */}
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button type="button" onClick={() => setStep(2)}>
+                      Next: Phases & Templates
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ===== STEP 2: Phases & Templates ===== */}
+              {step === 2 && (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    {phaseDefinitions.length === 0 ? (
+                      <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>No phase definitions found. Ask an admin to set up phases for your company.</AlertDescription></Alert>
+                    ) : (
+                      <Tabs value={activePhaseId} onValueChange={setActivePhaseId} className="w-full">
+                        <TabsList className="w-full justify-start overflow-x-auto">
+                          {phaseDefinitions.map((def) => {
+                            const cfg = phaseConfig[def.id];
+                            const isFirst = def.id === firstPhaseDefId;
+                            return (
+                              <TabsTrigger key={def.id} value={def.id} className="relative gap-1.5 text-xs" onClick={(e) => {
+                                if ((e.target as HTMLElement).closest('[data-phase-check]')) {
+                                  e.preventDefault();
+                                  if (!isFirst) updatePhaseConfig(def.id, (prev) => ({ ...prev, included: !(prev?.included ?? false) }));
+                                }
+                              }}>
+                                <span
+                                  data-phase-check
+                                  className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
+                                    cfg?.included ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                                  } ${isFirst ? "opacity-50" : "cursor-pointer"}`}
+                                  aria-hidden
+                                >
+                                  {(cfg?.included ?? false) && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                  )}
+                                </span>
+                                <span>{def.short_label}</span>
+                                {countTemplates(cfg) > 0 && (
+                                  <span className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-primary px-1 py-0 text-[9px] font-medium text-primary-foreground">{countTemplates(cfg)}</span>
+                                )}
+                              </TabsTrigger>
+                            );
+                          })}
+                        </TabsList>
+
+                        {phaseDefinitions.map((def) => {
+                          const cfg = phaseConfig[def.id];
+                          if (!cfg) return null;
+                          const isFirst = def.id === firstPhaseDefId;
+                          return (
+                            <TabsContent key={def.id} value={def.id} className="mt-4 space-y-4">
+                              <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold">{def.name}</p>
+                                    <p className="text-xs text-muted-foreground">{isFirst ? "First phase — always created." : cfg.included ? "Phase will be created with templates below." : "Enable this phase to configure templates."}</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="grid gap-1">
+                                    <Label htmlFor={`deadline-${def.id}`} className="text-xs text-muted-foreground">Phase deadline (optional)</Label>
+                                    <Input id={`deadline-${def.id}`} type="date" value={cfg.deadline} onChange={(e) => updatePhaseConfig(def.id, (prev) => ({ ...prev, deadline: e.target.value }))} disabled={!cfg.included} className="h-9" />
+                                  </div>
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs text-muted-foreground">Templates selected</Label>
+                                    <div className="flex h-9 items-center rounded-md border bg-background px-3 text-sm">
+                                      <span className={countTemplates(cfg) > 0 ? "font-semibold" : "text-muted-foreground"}>{countTemplates(cfg)}</span>
+                                      <span className="ml-1 text-muted-foreground">/ {projectTemplates.length}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className={cfg.included ? "" : "opacity-50 pointer-events-none"}>
+                                <Tabs defaultValue={Object.values(DocumentCategory)[0] as string} className="w-full">
+                                  <div className="flex flex-col space-y-2">
+                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(0, 4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={4} />
+                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={3} />
+                                  </div>
+                                  {Object.values(DocumentCategory).map((category) => (
+                                    <TabsContent key={category} value={category} className="mt-4">
+                                      <ProjectTemplateDropdown
+                                        category={category}
+                                        selectedTemplate={cfg.selectedTemplates[category]}
+                                        projectTemplates={projectTemplates}
+                                        onTemplateSelect={(templateName) => updatePhaseConfig(def.id, (prev) => ({ ...prev, selectedTemplates: { ...prev.selectedTemplates, [category]: templateName } }))}
+                                        onTemplateClear={() => updatePhaseConfig(def.id, (prev) => { const next = { ...prev.selectedTemplates }; delete next[category]; return { ...prev, selectedTemplates: next }; })}
+                                      />
+                                    </TabsContent>
+                                  ))}
+                                </Tabs>
+                              </div>
+                            </TabsContent>
+                          );
+                        })}
+                      </Tabs>
+                    )}
+                  </div>
+
+                  {/* Step 2 navigation */}
+                  <div className="flex justify-between pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                      Back
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Creating..." : "Create Project"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </form>
           )}
         </DialogContent>
