@@ -313,7 +313,7 @@ export function ProjectDocumentsSection({
                             onAssignmentUpdate={onAssignmentUpdate}
                             onUpgradeVersion={onUpgradeVersion}
                             onRefresh={onRefresh}
-                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.id === project.leader_id ||
+                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id ||
                               currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
                             canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
                             onDropdownOptionsChange={onDropdownOptionsChange}
