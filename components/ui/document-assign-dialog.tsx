@@ -220,7 +220,7 @@ export function DocumentAssignDialog({
           onClick={() => setOpen(true)}
         >
           <Check className="h-4 w-4 mr-2" />
-          Assignment
+          Assign to
         </DropdownMenuItem>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
