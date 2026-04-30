@@ -63,6 +63,8 @@ interface DocumentTemplateCardProps {
   onRefresh?: () => void | Promise<void>;
   canAssignDocuments: boolean;
   canManageProject: boolean;
+  /** When true, all interactive elements are disabled except Generate Document. */
+  isLocked?: boolean;
   onDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
 }
 
@@ -91,6 +93,7 @@ export function DocumentTemplateCard({
   onRefresh,
   canAssignDocuments,
   canManageProject,
+  isLocked = false,
   onDropdownOptionsChange,
 }: DocumentTemplateCardProps) {
   const { toast } = useToast();
@@ -151,7 +154,7 @@ export function DocumentTemplateCard({
   const progressValue = calculateProgress(template.name, template);
 
   return (
-    <Card className="p-4 flex flex-col h-full">
+    <Card className={`p-4 flex flex-col h-full ${isLocked ? "opacity-75" : ""}`}>
       {/* Card Header - Collapse toggle and menu */}
       <div className="flex items-center justify-between mb-2">
         <Button
@@ -177,7 +180,7 @@ export function DocumentTemplateCard({
                 Generate document
               </DropdownMenuItem>
             )}
-            {!project.is_archived && hasNewerVersion && onUpgradeVersion && (
+            {!project.is_archived && !isLocked && hasNewerVersion && onUpgradeVersion && (
               <DropdownMenuItem
                 onClick={() => onUpgradeVersion(template.name)}
                 className="text-amber-600"
@@ -186,7 +189,7 @@ export function DocumentTemplateCard({
                 Upgrade to v{latestVersion}
               </DropdownMenuItem>
             )}
-            {!project.is_archived && canManageProject && (
+            {!project.is_archived && !isLocked && canManageProject && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
@@ -205,7 +208,7 @@ export function DocumentTemplateCard({
                 <DropdownMenuSeparator />
               </>
             )}
-            {canAssignDocuments && (
+            {!isLocked && canAssignDocuments && (
               <DocumentAssignDialog
                 projectId={Number(project.id)}
                 templateName={template.name}
@@ -214,7 +217,7 @@ export function DocumentTemplateCard({
                 currentAssignments={currentAssignments}
               />
             )}
-            {canManageProject && (
+            {!isLocked && canManageProject && (
               <DropdownMenuItem
                 onClick={() => setShowDeleteConfirm(true)}
                 className="text-red-600"
@@ -279,6 +282,7 @@ export function DocumentTemplateCard({
             <Checkbox
               id={`check-${template.name}`}
               checked={project.document_assignments?.[template.name]?.supervisor_checked || false}
+              disabled={isLocked}
               onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
             />
             <Label htmlFor={`check-${template.name}`} className="text-xs text-muted-foreground">
@@ -291,7 +295,7 @@ export function DocumentTemplateCard({
           <Checkbox
             id={`ready-${template.name}`}
             checked={project.document_assignments?.[template.name]?.ready_for_control || false}
-            disabled={project.is_archived || !project.document_assignments?.[template.name]?.supervisor_checked}
+            disabled={isLocked || project.is_archived || !project.document_assignments?.[template.name]?.supervisor_checked}
             onCheckedChange={(checked) => onReadyForControl(template.name, checked as boolean)}
           />
           <Label htmlFor={`ready-${template.name}`} className="text-xs text-muted-foreground">

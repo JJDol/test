@@ -202,6 +202,7 @@ function ChevronColumn({
       }}
     >
       {displayLabel}
+      {isLocked && <Lock className="ml-1 h-3 w-3 opacity-70" />}
     </button>
   );
 
@@ -217,18 +218,7 @@ function ChevronColumn({
     </div>
   ) : null;
 
-  // Lock badge: small circle in the chevron's top-right corner. Positioned
-  // relative to the column so the badge doesn't get clipped by the chevron's
-  // clip-path.
-  const lockBadge = isLocked ? (
-    <span
-      title="Locked"
-      className="absolute right-1 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border"
-      style={{ zIndex: 2 }}
-    >
-      <Lock className="h-2.5 w-2.5" />
-    </span>
-  ) : null;
+  const lockBadge = null; // Lock icon now rendered inside the chevron button
 
   // Hover tooltip with the full name. Lives on the column (not the chevron)
   // so it isn't clipped away by `clip-path`. Floats above the chevron — for
