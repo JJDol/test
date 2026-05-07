@@ -171,7 +171,7 @@ interface ProjectDetailsContentProps {
     toggleGlobalSectionCollapse: () => void;
     toggleCategorySectionCollapse: (category: DocumentCategory) => void;
     setTemplateVariables: (variables: any) => void;
-    handleDownloadProject: () => Promise<void>;
+    handleDownloadProject: (phaseIds?: string[]) => Promise<void>;
     handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
     handleTemplateSelected: (template: DocumentTemplate) => void;
     handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
@@ -284,6 +284,7 @@ export function ProjectDetailsContent({
     return {
       ...project,
       ...templateArrays,
+      deadline: activePhase.deadline ?? project.deadline,
       template_variables: templateVariablesMap as Project["template_variables"],
       variable_propagation_settings: propagationSettings as Project["variable_propagation_settings"],
       document_assignments: assignments as Project["document_assignments"],
@@ -646,7 +647,7 @@ export function ProjectDetailsContent({
 
         {/* Phase Milestone Bar + Control Panel */}
         {projectId && !phasesState.loading && !phasesState.error && (
-          <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+          <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: "#F0E6E6" }}>
             <MilestoneBar
               slots={phasesState.slots}
               activePhaseId={activePhase?.id ?? null}
@@ -687,6 +688,7 @@ export function ProjectDetailsContent({
               canUpdateProject={permissions.canUpdateProject()}
               canAssignWorkers={permissions.canAssignWorkers()}
               canDownloadProject={permissions.canDownloadProject()}
+              phases={phasesState.phases}
               onBackToDashboard={actions.handleBackToDashboard}
               onDownloadProject={actions.handleDownloadProject}
               onArchiveProject={actions.handleArchiveProject}

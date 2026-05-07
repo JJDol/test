@@ -235,11 +235,11 @@ export function ProjectDocumentsSection({
                         <CategoryVariablesSection
                           category={category}
                           categoryVariables={project.category_variables?.[category]?.variables || []}
-                          categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
+                          categoryTemplates={categoryTemplates.filter(t => templateNames.includes(t.name))}
                           templateVariables={project.template_variables || {}}
                           propagationSettings={project.variable_propagation_settings || {}}
                           globalVariables={project.global_variables?.variables || []}
-                          collapsed={collapsedCategorySections[category] || false}
+                          collapsed={collapsedCategorySections[category] ?? true}
                           canEdit={isLocked ? false : canEditGeneralVariables()}
                           projectId={project.id}
                           onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
@@ -267,15 +267,15 @@ export function ProjectDocumentsSection({
                             />
                           </div>
                         )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div className="flex flex-wrap gap-4">
                         {categoryTemplates
                           .filter(t => templateNames.includes(t.name))
                           .map((template) => {
-                            const isExpanded = !collapsedTemplates[template.name];
+                            const isExpanded = !(collapsedTemplates[template.name] ?? true);
                             return (
                         <div 
                           key={template.name}
-                          className={isExpanded ? "col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5" : ""}
+                          className={isExpanded ? "w-full" : "w-[200px]"}
                         >
                           <ErrorBoundary
                             fallback={
@@ -294,7 +294,7 @@ export function ProjectDocumentsSection({
                             project={project}
                             currentUser={currentUser}
                             templateVariables={templateVariables[template.category]?.[template.name]?.variables || []}
-                            collapsed={collapsedTemplates[template.name]}
+                            collapsed={collapsedTemplates[template.name] ?? true}
                             categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
                             globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
                             canEditVariables={isLocked ? false : canEditVariables(template.name)}

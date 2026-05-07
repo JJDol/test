@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ProjectPhaseFull } from "@/lib/phases/types";
+import { formatDate } from "@/utils/project-utils";
 
 export interface PhaseControlPanelProps {
   activePhase: ProjectPhaseFull | null;
@@ -261,7 +262,7 @@ function DeadlineField({
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <CalendarClock className="h-3.5 w-3.5" />
         {value ? (
-          <span>Due {new Date(value).toLocaleDateString()}</span>
+          <span>Due {formatDate(value)}</span>
         ) : (
           <span>No deadline</span>
         )}
@@ -278,7 +279,7 @@ function DeadlineField({
       >
         <CalendarClock className="h-3.5 w-3.5" />
         {value ? (
-          <span>Due {new Date(value).toLocaleDateString()}</span>
+          <span>Due {formatDate(value)}</span>
         ) : (
           <span>Add deadline</span>
         )}
