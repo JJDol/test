@@ -17,14 +17,16 @@
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw, Plus, LayoutGrid, List } from "lucide-react";
 import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } from "@/lib/types/types";
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
 import { DocumentTemplateCard } from './document-template-card';
+import { DocumentListView } from './document-list-view';
 import { Project, DocumentTemplate, User, ProjectTemplate } from "@/lib/types/types";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DocumentVariable } from "@/lib/types/variable-types";
@@ -131,6 +133,8 @@ export function ProjectDocumentsSection({
   isLocked = false,
   onDropdownOptionsChange,
 }: ProjectDocumentsSectionProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
   if (!project) {
     return null;
   }
@@ -248,11 +252,33 @@ export function ProjectDocumentsSection({
                         />
                       </div>
 
-                      {/* Document Template Cards - Grid Layout */}
+                      {/* Document Template Cards */}
                       <div className="border rounded-lg p-4">
-                        {/* Add Document Button - Top Right */}
-                        {!project.is_archived && (
-                          <div className="flex justify-end mb-4">
+                        {/* Top Bar: View Toggle + Add Document Button */}
+                        <div className="flex items-center justify-between mb-4">
+                          {/* View Toggle */}
+                          <div className="flex items-center border rounded-md">
+                            <Button
+                              variant={viewMode === "grid" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-r-none"
+                              onClick={() => setViewMode("grid")}
+                              title="Card View"
+                            >
+                              <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant={viewMode === "list" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-l-none"
+                              onClick={() => setViewMode("list")}
+                              title="List View"
+                            >
+                              <List className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {!project.is_archived && (
                             <TemplateSelectorDialog
                               category={category}
                               onTemplateSelected={onTemplateSelected}
@@ -265,64 +291,89 @@ export function ProjectDocumentsSection({
                                 </Button>
                               }
                             />
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-4">
-                        {categoryTemplates
-                          .filter(t => templateNames.includes(t.name))
-                          .map((template) => {
-                            const isExpanded = !(collapsedTemplates[template.name] ?? true);
-                            return (
-                        <div 
-                          key={template.name}
-                          className={isExpanded ? "w-full" : "w-[200px]"}
-                        >
-                          <ErrorBoundary
-                            fallback={
-                              <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
-                                <p className="text-destructive text-sm">
-                                  Error loading template: {template.name}
-                                </p>
-                              </div>
-                            }
-                            onError={(error) => {
-                              console.error(`Error in template ${template.name}:`, error);
-                            }}
-                          >
-                            <DocumentTemplateCard
-                            template={template}
+                          )}
+                        </div>
+
+                        {/* List View */}
+                        {viewMode === "list" ? (
+                          <DocumentListView
+                            templates={categoryTemplates.filter(t => templateNames.includes(t.name))}
                             project={project}
                             currentUser={currentUser}
-                            templateVariables={templateVariables[template.category]?.[template.name]?.variables || []}
-                            collapsed={collapsedTemplates[template.name] ?? true}
-                            categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
-                            globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
-                            canEditVariables={isLocked ? false : canEditVariables(template.name)}
-                            canCheckVariables={isLocked ? false : canCheckVariables(template.name)}
-                            canEditGeneralVariables={isLocked ? false : canEditGeneralVariables()}
+                            templateVariables={templateVariables}
                             isLocked={isLocked}
-                            calculateProgress={calculateTemplateProgress}
+                            calculateTemplateProgress={calculateTemplateProgress}
                             getVariableType={getVariableType}
-                            onToggleCollapse={() => onToggleTemplateCollapse(template.name)}
+                            canEditVariables={canEditVariables}
+                            canCheckVariables={canCheckVariables}
+                            canEditGeneralVariables={canEditGeneralVariables}
                             onVariableChange={onVariableChange}
                             onPropagationChange={onPropagationChange}
                             onSupervisorCheck={onSupervisorCheck}
                             onReadyForControl={onReadyForControl}
                             onGenerateDocument={onGenerateDocument}
                             onTemplateRemove={onTemplateRemove}
-                            onAssignmentUpdate={onAssignmentUpdate}
-                            onUpgradeVersion={onUpgradeVersion}
-                            onRefresh={onRefresh}
-                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id ||
-                              currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
-                            canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
                             onDropdownOptionsChange={onDropdownOptionsChange}
                           />
-                          </ErrorBoundary>
-                        </div>
-                            );
-                          })}
-                      </div>
+                        ) : (
+                          /* Card View (Grid) */
+                          <div className="flex flex-wrap gap-4">
+                            {categoryTemplates
+                              .filter(t => templateNames.includes(t.name))
+                              .map((template) => {
+                                const isExpanded = !(collapsedTemplates[template.name] ?? true);
+                                return (
+                                  <div 
+                                    key={template.name}
+                                    className={isExpanded ? "w-full" : "w-[200px]"}
+                                  >
+                                    <ErrorBoundary
+                                      fallback={
+                                        <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+                                          <p className="text-destructive text-sm">
+                                            Error loading template: {template.name}
+                                          </p>
+                                        </div>
+                                      }
+                                      onError={(error) => {
+                                        console.error(`Error in template ${template.name}:`, error);
+                                      }}
+                                    >
+                                      <DocumentTemplateCard
+                                        template={template}
+                                        project={project}
+                                        currentUser={currentUser}
+                                        templateVariables={templateVariables[template.category]?.[template.name]?.variables || []}
+                                        collapsed={collapsedTemplates[template.name] ?? true}
+                                        categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
+                                        globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
+                                        canEditVariables={isLocked ? false : canEditVariables(template.name)}
+                                        canCheckVariables={isLocked ? false : canCheckVariables(template.name)}
+                                        canEditGeneralVariables={isLocked ? false : canEditGeneralVariables()}
+                                        isLocked={isLocked}
+                                        calculateProgress={calculateTemplateProgress}
+                                        getVariableType={getVariableType}
+                                        onToggleCollapse={() => onToggleTemplateCollapse(template.name)}
+                                        onVariableChange={onVariableChange}
+                                        onPropagationChange={onPropagationChange}
+                                        onSupervisorCheck={onSupervisorCheck}
+                                        onReadyForControl={onReadyForControl}
+                                        onGenerateDocument={onGenerateDocument}
+                                        onTemplateRemove={onTemplateRemove}
+                                        onAssignmentUpdate={onAssignmentUpdate}
+                                        onUpgradeVersion={onUpgradeVersion}
+                                        onRefresh={onRefresh}
+                                        canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id ||
+                                          currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
+                                        canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
+                                        onDropdownOptionsChange={onDropdownOptionsChange}
+                                      />
+                                    </ErrorBoundary>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
                       </div>
                       
                       {/* Empty State */}
