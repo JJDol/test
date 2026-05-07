@@ -30,13 +30,10 @@ downloadProjectHandler(
   request: AuthenticatedRequest,
   { params }: RouteContext<{ id: string }>
 ) {
-  // Set a timeout for this operation (60 seconds for Hobby plan)
-  // TODO: Change this when upgrading to a paid plan
   const timeout = setTimeout(() => {
     console.error('Download operation timed out');
-  }, 55000); // 55 seconds timeout (just under the 60s limit)
+  }, 55000);
 
-  // Log the configured timeout
   console.log(`⏱️  Function configured with maxDuration: ${maxDuration} seconds`);
 
   const monitor = createPerformanceMonitor();
@@ -48,7 +45,17 @@ downloadProjectHandler(
       return NextResponse.json({ message: 'Invalid project ID' }, { status: 400 });
     }
 
-    // Get current user profile (auth middleware already verified user exists)
+    // Parse optional phase_ids from request body
+    let phaseIds: string[] | null = null;
+    try {
+      const body = await request.json();
+      if (body.phase_ids && Array.isArray(body.phase_ids) && body.phase_ids.length > 0) {
+        phaseIds = body.phase_ids;
+      }
+    } catch {
+      // No body or invalid JSON — download all templates (legacy fallback)
+    }
+
     const supabase = await createClient();
     const { data: currentUserProfile, error: currentUserError } = await supabase
       .from('users')
@@ -58,17 +65,14 @@ downloadProjectHandler(
 
     if (currentUserError) throw currentUserError;
 
-    // Ensure user has a company_id (multi-tenancy requirement) unless they're ADMIN
     if (!currentUserProfile.company_id && currentUserProfile.role !== 'ADMIN') {
       return NextResponse.json({ error: "User not assigned to a company" }, { status: 403 });
     }
 
-    // Get project with all its data and apply company filter only for non-ADMIN users
     let projectQuery = supabase
       .from('projects')
       .select(`
         *,
-        template_variables,
         leader:leader_id (
           id,
           email,
@@ -93,18 +97,65 @@ downloadProjectHandler(
       }, { status: 404 });
     }
 
-    // Get all templates used in the project
-    const allTemplateNames = [
-      ...project.architecture_templates || [],
-      ...project.constructions_templates || [],
-      ...project.fire_templates || [],
-      ...project.authority_processing_templates || [],
-      ...project.energy_templates || [],
-      ...project.hvac_templates || [],
-      ...project.execution_control_templates || []
-    ];
+    // Collect documents — from selected phases or legacy project fields
+    interface PhaseDocument {
+      template_name: string;
+      category: string;
+      variables: any;
+      phaseName: string;
+    }
+    let phaseDocuments: PhaseDocument[] = [];
+    let allTemplateNames: string[] = [];
 
-    if (allTemplateNames.length === 0) {
+    if (phaseIds && phaseIds.length > 0) {
+      // Fetch documents with phase info for folder naming
+      const { data: phaseDocs, error: phaseDocsError } = await supabase
+        .from('project_phase_documents')
+        .select(`
+          template_name, category, variables,
+          project_phase:project_phase_id (
+            id,
+            phase_definition:phase_definition_id ( short_label, name )
+          )
+        `)
+        .in('project_phase_id', phaseIds);
+
+      if (phaseDocsError) {
+        console.error('Error fetching phase documents:', phaseDocsError);
+        return NextResponse.json({ message: 'Failed to fetch phase documents' }, { status: 500 });
+      }
+
+      if (!phaseDocs || phaseDocs.length === 0) {
+        return NextResponse.json({ message: 'No documents found in selected phases' }, { status: 400 });
+      }
+
+      for (const doc of phaseDocs as any[]) {
+        const phaseDef = doc.project_phase?.phase_definition;
+        const phaseName = phaseDef?.short_label || phaseDef?.name || 'unknown';
+        phaseDocuments.push({
+          template_name: doc.template_name,
+          category: doc.category,
+          variables: doc.variables,
+          phaseName,
+        });
+        if (!allTemplateNames.includes(doc.template_name)) {
+          allTemplateNames.push(doc.template_name);
+        }
+      }
+    } else {
+      // Legacy fallback — gather from project-level template arrays
+      allTemplateNames = [
+        ...project.architecture_templates || [],
+        ...project.constructions_templates || [],
+        ...project.fire_templates || [],
+        ...project.authority_processing_templates || [],
+        ...project.energy_templates || [],
+        ...project.hvac_templates || [],
+        ...project.execution_control_templates || []
+      ];
+    }
+
+    if (allTemplateNames.length === 0 && phaseDocuments.length === 0) {
       return NextResponse.json({ message: 'No templates found in project' }, { status: 400 });
     }
 
@@ -198,171 +249,166 @@ downloadProjectHandler(
     //   }
     // });
 
-    // Process templates aggressively for 60-second limit
-    console.log(`Processing ${templates.length} templates with 60s limit...`);
-    
-    // For 60s limit, process all templates in parallel
-    const batchSize = templates.length; // Process all templates at once
-    for (let i = 0; i < templates.length; i += batchSize) {
-      const batch = templates.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(templates.length / batchSize)}`);
-      
-      // Process batch in parallel
-      const batchPromises = batch.map(async (template) => {
-        try {
-          console.log(`Processing template: ${template.name}`);
+    // Build a lookup from template name → template row for quick access
+    const templateMap = new Map(templates.map(t => [t.name, t]));
 
-          // Check for custom template, version lock, and get the appropriate file
-          // Priority: 1. Custom template, 2. Version lock, 3. Current version
-          let templateFileName = template.file_name;
-          let templateVariables = template.variables;
-          let isCustomTemplate = false;
-
-          // First, check if project has a custom template for this template name
-          if (project.custom_templates && project.custom_templates[template.name]) {
-            const customTemplate = project.custom_templates[template.name];
-            console.log(`[DOWNLOAD] Using custom project template for ${template.name}`);
-            templateFileName = customTemplate.file_name;
-            templateVariables = customTemplate.variables;
-            isCustomTemplate = true;
-          }
-          // If no custom template, check for version lock
-          else if (project.template_version_locks && project.template_version_locks[template.name]) {
-            const lockedVersion = project.template_version_locks[template.name];
-            console.log(`[DOWNLOAD] Using locked version ${lockedVersion} for template ${template.name}`);
-
-            // Fetch version-specific file from template_versions table
-            const { data: versionData, error: versionError } = await supabase
-              .from('template_versions')
-              .select('file_name, variables')
-              .eq('template_name', template.name)
-              .eq('version', lockedVersion)
-              .single();
-
-            if (!versionError && versionData) {
-              templateFileName = versionData.file_name;
-              templateVariables = versionData.variables;
-              console.log(`[DOWNLOAD] Found version ${lockedVersion} file: ${templateFileName}`);
-            } else {
-              console.warn(`[DOWNLOAD] Locked version ${lockedVersion} not found for ${template.name}, using current version`);
-            }
-          } else {
-            console.log(`[DOWNLOAD] No custom template or version lock for ${template.name}, using current version`);
-          }
-
-          // Get template file from storage using the new storage service
-          // Note: Custom templates are always stored as non-public (project-specific)
-          const { data: templateFile, error: templateError } = await storageService.downloadFile(
-            {
-              companyId: template.company_id,
-              isPublic: isCustomTemplate ? false : template.is_public
-            },
-            templateFileName
-          );
-
-          if (templateError || !templateFile) {
-            console.error(`Error downloading template ${template.name}:`, templateError);
-            return { success: false, template: template.name, error: templateError };
-          }
-
-          // Get stored variables for this template (already contains resolved general/local values)
-          const storedVariables = project.template_variables?.[template.category]?.[template.name]?.variables || {};
-
-          // Reduced logging for better performance
-          console.log(`Template ${template.name} - Variables count: ${Object.keys(storedVariables).length}`);
-
-          // Convert Blob to Buffer for processing
-          const arrayBuffer = await templateFile.arrayBuffer();
-          const templateBuffer = Buffer.from(arrayBuffer);
-
-          // Prepare variables for processing - normalize the keys and add common project variables
-          const allVariables: { [key: string]: any } = {};
-
-          // Create a mapping from normalized names to original tag names for content controls
-          const tagNameMapping: { [normalizedKey: string]: string } = {};
-          if (templateVariables && Array.isArray(templateVariables)) {
-            templateVariables.forEach((templateVar: any) => {
-              if (templateVar.originalTag && templateVar.name) {
-                const normalizedName = normalizeVariableName(templateVar.name);
-                tagNameMapping[normalizedName] = templateVar.originalTag;
-              }
-            });
-          }
-          
-          console.log(`Template ${template.name} - Tag name mapping:`, tagNameMapping);
-          
-          // Add all template variables (already resolved with general/local logic)
-          // Handle both text values and image objects - storedVariables is DocumentVariable[]
-          if (Array.isArray(storedVariables)) {
-            storedVariables.forEach((variable: DocumentVariable) => {
-              if (variable && variable.name) {
-                const normalizedKey = normalizeVariableName(variable.name);
-                const val = variable.value as any;
-                const varType = (variable as any).type;
-                const dropdownOptions = (variable as any).dropdownOptions;
-                let processedValue: any;
-
-                // Check if it's an image object
-                if (typeof val === 'object' && val !== null && val.type === 'image') {
-                  // Keep the full image object for the image processor
-                  processedValue = val;
-                } else if (varType === 'dropdown' && dropdownOptions) {
-                  // Keep dropdown options for the content control processor
-                  processedValue = {
-                    type: 'dropdown',
-                    value: val || '',
-                    dropdownOptions: dropdownOptions
-                  };
-                } else {
-                  processedValue = val;
-                }
-
-                // Store with normalized key for content control processor
-                allVariables[normalizedKey] = processedValue;
-
-                // Also store with original tag name if it exists in the mapping
-                if (tagNameMapping[normalizedKey]) {
-                  allVariables[tagNameMapping[normalizedKey]] = processedValue;
-                  console.log(`Mapped variable: ${normalizedKey} → ${tagNameMapping[normalizedKey]}`);
-                }
-              }
-            });
-          }
-
-          console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);
-
-          // Use the shared document processing function
-          const generatedDoc = await processDocumentWithSmartProcessor(
-            templateBuffer, 
-            allVariables, 
-            template, 
-            project.company_id
-          );
-
-          // Add to zip with category subfolder
-          const categoryFolder = template.category.toLowerCase();
-          const fileName = template.original_file_name || `${template.name}.docx`;
-          const folderPath = `${categoryFolder}/${fileName}`;
-          
-          console.log(`Adding to zip: ${folderPath}`);
-          mainZip.file(folderPath, generatedDoc);
-          
-          return { success: true, template: template.name };
-
-        } catch (error) {
-          console.error(`Error processing template ${template.name}:`, error);
-          return { success: false, template: template.name, error };
-        }
-      });
-      
-      // Wait for batch to complete
-      const batchResults = await Promise.all(batchPromises);
-      
-      // Log batch results
-      const successful = batchResults.filter(r => r?.success).length;
-      const failed = batchResults.filter(r => !r?.success).length;
-      console.log(`Batch completed: ${successful} successful, ${failed} failed`);
+    // Determine the list of items to process: phase documents or legacy templates
+    interface ProcessItem {
+      template: (typeof templates)[number];
+      storedVariables: any;
+      folderPrefix: string;
     }
+    const processItems: ProcessItem[] = [];
+
+    if (phaseDocuments.length > 0) {
+      // Phase-based: one entry per phase document (same template in different phases → separate items)
+      const multiPhase = phaseIds && phaseIds.length > 1;
+      for (const doc of phaseDocuments) {
+        const template = templateMap.get(doc.template_name);
+        if (!template) continue;
+        const categoryFolder = (doc.category || template.category).toLowerCase();
+        const prefix = multiPhase ? `${doc.phaseName}/${categoryFolder}` : categoryFolder;
+        processItems.push({
+          template,
+          storedVariables: doc.variables?.variables || [],
+          folderPrefix: prefix,
+        });
+      }
+    } else {
+      // Legacy: one entry per unique template
+      for (const template of templates) {
+        processItems.push({
+          template,
+          storedVariables: project.template_variables?.[template.category]?.[template.name]?.variables || [],
+          folderPrefix: template.category.toLowerCase(),
+        });
+      }
+    }
+
+    console.log(`Processing ${processItems.length} documents with 60s limit...`);
+
+    const batchPromises = processItems.map(async ({ template, storedVariables, folderPrefix }) => {
+      try {
+        console.log(`Processing template: ${template.name} (folder: ${folderPrefix})`);
+
+        let templateFileName = template.file_name;
+        let templateVariables = template.variables;
+        let isCustomTemplate = false;
+
+        if (project.custom_templates && project.custom_templates[template.name]) {
+          const customTemplate = project.custom_templates[template.name];
+          console.log(`[DOWNLOAD] Using custom project template for ${template.name}`);
+          templateFileName = customTemplate.file_name;
+          templateVariables = customTemplate.variables;
+          isCustomTemplate = true;
+        } else if (project.template_version_locks && project.template_version_locks[template.name]) {
+          const lockedVersion = project.template_version_locks[template.name];
+          console.log(`[DOWNLOAD] Using locked version ${lockedVersion} for template ${template.name}`);
+
+          const { data: versionData, error: versionError } = await supabase
+            .from('template_versions')
+            .select('file_name, variables')
+            .eq('template_name', template.name)
+            .eq('version', lockedVersion)
+            .single();
+
+          if (!versionError && versionData) {
+            templateFileName = versionData.file_name;
+            templateVariables = versionData.variables;
+          } else {
+            console.warn(`[DOWNLOAD] Locked version ${lockedVersion} not found for ${template.name}, using current version`);
+          }
+        }
+
+        const { data: templateFile, error: templateError } = await storageService.downloadFile(
+          {
+            companyId: template.company_id,
+            isPublic: isCustomTemplate ? false : template.is_public
+          },
+          templateFileName
+        );
+
+        if (templateError || !templateFile) {
+          console.error(`Error downloading template ${template.name}:`, templateError);
+          return { success: false, template: template.name, error: templateError };
+        }
+
+        console.log(`Template ${template.name} - Variables count: ${Array.isArray(storedVariables) ? storedVariables.length : Object.keys(storedVariables).length}`);
+
+        const arrayBuffer = await templateFile.arrayBuffer();
+        const templateBuffer = Buffer.from(arrayBuffer);
+
+        const allVariables: { [key: string]: any } = {};
+        const tagNameMapping: { [normalizedKey: string]: string } = {};
+        if (templateVariables && Array.isArray(templateVariables)) {
+          templateVariables.forEach((templateVar: any) => {
+            if (templateVar.originalTag && templateVar.name) {
+              const normalizedName = normalizeVariableName(templateVar.name);
+              tagNameMapping[normalizedName] = templateVar.originalTag;
+            }
+          });
+        }
+
+        console.log(`Template ${template.name} - Tag name mapping:`, tagNameMapping);
+
+        if (Array.isArray(storedVariables)) {
+          storedVariables.forEach((variable: DocumentVariable) => {
+            if (variable && variable.name) {
+              const normalizedKey = normalizeVariableName(variable.name);
+              const val = variable.value as any;
+              const varType = (variable as any).type;
+              const dropdownOptions = (variable as any).dropdownOptions;
+              let processedValue: any;
+
+              if (typeof val === 'object' && val !== null && val.type === 'image') {
+                processedValue = val;
+              } else if (varType === 'dropdown' && dropdownOptions) {
+                processedValue = {
+                  type: 'dropdown',
+                  value: val || '',
+                  dropdownOptions: dropdownOptions
+                };
+              } else {
+                processedValue = val;
+              }
+
+              allVariables[normalizedKey] = processedValue;
+
+              if (tagNameMapping[normalizedKey]) {
+                allVariables[tagNameMapping[normalizedKey]] = processedValue;
+                console.log(`Mapped variable: ${normalizedKey} → ${tagNameMapping[normalizedKey]}`);
+              }
+            }
+          });
+        }
+
+        console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);
+
+        const generatedDoc = await processDocumentWithSmartProcessor(
+          templateBuffer,
+          allVariables,
+          template,
+          project.company_id
+        );
+
+        const fileName = template.original_file_name || `${template.name}.docx`;
+        const folderPath = `${folderPrefix}/${fileName}`;
+
+        console.log(`Adding to zip: ${folderPath}`);
+        mainZip.file(folderPath, generatedDoc);
+
+        return { success: true, template: template.name };
+
+      } catch (error) {
+        console.error(`Error processing template ${template.name}:`, error);
+        return { success: false, template: template.name, error };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    const successful = batchResults.filter(r => r?.success).length;
+    const failed = batchResults.filter(r => !r?.success).length;
+    console.log(`Batch completed: ${successful} successful, ${failed} failed`);
     
     monitor.checkpoint('Templates processed');
 

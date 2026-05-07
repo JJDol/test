@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "./button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./dialog"
 import { DocumentTemplate, DocumentCategory, ProjectTemplate } from "@/lib/types/types"
@@ -7,6 +7,7 @@ import { Card } from "./card"
 import { Input } from "./input"
 import { Search, Package, FileText, Plus } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs"
+import { Checkbox } from "./checkbox"
 
 interface TemplateSelectorDialogProps {
   category: DocumentCategory
@@ -32,6 +33,7 @@ export function TemplateSelectorDialog({
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"individual" | "packages">("individual")
+  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,10 +94,26 @@ export function TemplateSelectorDialog({
     }
   }, [searchQuery, templates, projectTemplates])
 
-  const handleTemplateSelect = async (template: DocumentTemplate) => {
-    onTemplateSelected(template)
+  const toggleTemplateSelection = useCallback((templateName: string) => {
+    setSelectedTemplates(prev => {
+      const next = new Set(prev)
+      if (next.has(templateName)) {
+        next.delete(templateName)
+      } else {
+        next.add(templateName)
+      }
+      return next
+    })
+  }, [])
+
+  const handleAddSelected = useCallback(async () => {
+    const templatesToAdd = templates.filter(t => selectedTemplates.has(t.name))
+    for (const template of templatesToAdd) {
+      onTemplateSelected(template)
+    }
+    setSelectedTemplates(new Set())
     setOpen(false)
-  }
+  }, [templates, selectedTemplates, onTemplateSelected])
 
   const handleProjectTemplateSelect = (pkg: ProjectTemplate) => {
     onProjectTemplateSelected?.(pkg)
@@ -105,8 +123,8 @@ export function TemplateSelectorDialog({
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
     if (!newOpen) {
-      // Reset search when dialog closes
       setSearchQuery("")
+      setSelectedTemplates(new Set())
     }
   }
 
@@ -168,18 +186,31 @@ export function TemplateSelectorDialog({
                 </div>
               ) : (
                 <div className="grid gap-3 pb-4">
-                  {filteredTemplates.map((template) => (
-                    <Card
-                      key={template.name}
-                      className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => handleTemplateSelect(template)}
-                    >
-                      <h3 className="font-medium">{template.name}</h3>
-                      {template.description && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
-                      )}
-                    </Card>
-                  ))}
+                  {filteredTemplates.map((template) => {
+                    const isSelected = selectedTemplates.has(template.name)
+                    return (
+                      <Card
+                        key={template.name}
+                        className={`p-4 cursor-pointer transition-colors ${isSelected ? "bg-primary/5 border-primary/50" : "hover:bg-muted/50"}`}
+                        onClick={() => toggleTemplateSelection(template.name)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleTemplateSelection(template.name)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium">{template.name}</h3>
+                            {template.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -235,13 +266,23 @@ export function TemplateSelectorDialog({
           </TabsContent>
         </Tabs>
 
-        {/* Results Count */}
+        {/* Footer: Results Count + Add Selected Button */}
         {!isLoading && !error && (
-          <div className="text-sm text-gray-500 mt-2 text-center border-t pt-2">
-            {activeTab === "individual" 
-              ? `${filteredTemplates.length} templates available`
-              : `${filteredProjectTemplates.length} packages available`
-            }
+          <div className="mt-2 border-t pt-3 space-y-2">
+            {activeTab === "individual" && selectedTemplates.size > 0 && (
+              <Button
+                className="w-full"
+                onClick={handleAddSelected}
+              >
+                Add Selected ({selectedTemplates.size})
+              </Button>
+            )}
+            <div className="text-sm text-gray-500 text-center">
+              {activeTab === "individual" 
+                ? `${filteredTemplates.length} templates available`
+                : `${filteredProjectTemplates.length} packages available`
+              }
+            </div>
           </div>
         )}
       </DialogContent>

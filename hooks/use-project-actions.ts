@@ -45,8 +45,8 @@ export function useProjectActions(
     loadingAction: "none",
   });
 
-  // Handle download project
-  const handleDownloadProject = useCallback(async () => {
+  // Handle download project — accepts optional phase_ids to scope the download
+  const handleDownloadProject = useCallback(async (phaseIds?: string[]) => {
     try {
       setState(prev => ({ ...prev, loadingAction: "download" }));
       
@@ -55,20 +55,25 @@ export function useProjectActions(
         description: "We're generating your project documents...",
       });
 
+      const body: Record<string, unknown> = {};
+      if (phaseIds && phaseIds.length > 0) {
+        body.phase_ids = phaseIds;
+      }
+
       const response = await fetch(`/api/projects/${project?.id}/download`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
         throw new Error('Failed to download project');
       }
 
-      // Get the filename from the content-disposition header
       const contentDisposition = response.headers.get('content-disposition');
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
       const filename = filenameMatch ? filenameMatch[1] : `documents.zip`;
 
-      // Download the file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

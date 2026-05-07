@@ -45,6 +45,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { ProjectTemplate, DocumentCategory, DocumentTemplate } from "@/lib/types/types";
+import type { SortMode } from "./use-templates";
 
 // Types
 interface ProjectTemplateDialogState {
@@ -69,6 +70,7 @@ interface EditProjectTemplateState {
 interface ProjectTemplatesState {
   projectTemplates: ProjectTemplate[];
   selectedProjectCategory: DocumentCategory | 'ALL';
+  sortMode: SortMode;
   newProjectTemplate: NewProjectTemplateState;
   editProjectTemplate: EditProjectTemplateState;
   projectTemplateToEdit: ProjectTemplate | null;
@@ -87,6 +89,7 @@ interface ProjectTemplatesActions {
   
   // UI state management
   setSelectedProjectCategory: (category: DocumentCategory | 'ALL') => void;
+  setSortMode: (mode: SortMode) => void;
   
   // New project template management
   setNewProjectTemplateName: (name: string) => void;
@@ -121,6 +124,7 @@ interface UseProjectTemplatesReturn {
   // State
   projectTemplates: ProjectTemplate[];
   selectedProjectCategory: DocumentCategory | 'ALL';
+  sortMode: SortMode;
   newProjectTemplate: NewProjectTemplateState;
   editProjectTemplate: EditProjectTemplateState;
   projectTemplateToEdit: ProjectTemplate | null;
@@ -166,6 +170,7 @@ export function useProjectTemplates(templates: DocumentTemplate[] = []): UseProj
   const [state, setState] = useState<ProjectTemplatesState>({
     projectTemplates: [],
     selectedProjectCategory: 'ALL',
+    sortMode: 'name-asc',
     newProjectTemplate: {
       name: '',
       templates: [],
@@ -428,6 +433,10 @@ export function useProjectTemplates(templates: DocumentTemplate[] = []): UseProj
     setSelectedProjectCategory: (category: DocumentCategory | 'ALL') => {
       setState(prev => ({ ...prev, selectedProjectCategory: category }));
     },
+
+    setSortMode: (mode: SortMode) => {
+      setState(prev => ({ ...prev, sortMode: mode }));
+    },
     
     // New project template management
     setNewProjectTemplateName: (name: string) => {
@@ -620,12 +629,34 @@ export function useProjectTemplates(templates: DocumentTemplate[] = []): UseProj
     return true;
   });
 
-  const projectTemplatesByCategory = state.projectTemplates.reduce((acc, pt) => {
-    const category = pt.category as DocumentCategory;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(pt);
+  const sortProjectTemplates = (templates: ProjectTemplate[]): ProjectTemplate[] => {
+    return [...templates].sort((a, b) => {
+      switch (state.sortMode) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'modified-newest':
+          return (b.updated_at || '').localeCompare(a.updated_at || '');
+        case 'modified-oldest':
+          return (a.updated_at || '').localeCompare(b.updated_at || '');
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const projectTemplatesByCategory = Object.entries(
+    state.projectTemplates.reduce((acc, pt) => {
+      const category = pt.category as DocumentCategory;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(pt);
+      return acc;
+    }, {} as Record<DocumentCategory, ProjectTemplate[]>)
+  ).reduce((acc, [category, templates]) => {
+    acc[category as DocumentCategory] = sortProjectTemplates(templates);
     return acc;
   }, {} as Record<DocumentCategory, ProjectTemplate[]>);
 
@@ -645,6 +676,7 @@ export function useProjectTemplates(templates: DocumentTemplate[] = []): UseProj
     // State
     projectTemplates: state.projectTemplates,
     selectedProjectCategory: state.selectedProjectCategory,
+    sortMode: state.sortMode,
     newProjectTemplate: state.newProjectTemplate,
     editProjectTemplate: state.editProjectTemplate,
     projectTemplateToEdit: state.projectTemplateToEdit,
