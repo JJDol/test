@@ -125,7 +125,25 @@ async function resendInvitationHandler(
     const companyName = company?.name || 'Your Company';
 
     // Send email via Supabase auth admin
+    // If user already exists in auth.users (from prior invite), delete and re-invite
     try {
+      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingAuthUser = authUsers?.users?.find(u => u.email === invitation.email);
+
+      // Only delete if user has NOT completed registration (no entry in public.users)
+      if (existingAuthUser) {
+        const { data: publicUser } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('id', existingAuthUser.id)
+          .single();
+
+        if (!publicUser) {
+          await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+          console.log('Deleted stale auth user for re-invitation:', invitation.email);
+        }
+      }
+
       const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
         invitation.email,
         {
@@ -147,7 +165,6 @@ async function resendInvitationHandler(
 
       if (inviteError) {
         console.error('Error re-sending invitation email:', inviteError);
-        // Non-fatal: token/expiry were already refreshed; log fallback URL.
         console.log('Invitation refreshed (email failed). Manual URL:', invitationUrl);
       }
     } catch (emailError) {

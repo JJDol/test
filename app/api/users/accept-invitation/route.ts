@@ -92,19 +92,43 @@ async function acceptInvitationHandler(request: NextRequest) {
 
     const existingAuthUser = existingAuthUsers.users.find(user => user.email === invitation.email);
     
-    if (!existingAuthUser) {
-      console.error('No auth user found for invitation email:', invitation.email);
-      return NextResponse.json({ 
-        message: "Invalid invitation state. Please contact your administrator." 
-      }, { status: 500 });
-    }
+    let finalAuthUserId: string;
 
-    console.log('Updating existing auth user with password and metadata...');
+    if (existingAuthUser) {
+      console.log('Updating existing auth user with password and metadata...');
 
-    // Update the existing auth user with password and metadata
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
-      existingAuthUser.id,
-      {
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+        existingAuthUser.id,
+        {
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            name: name,
+            role: invitation.role,
+            company_id: invitation.company_id
+          }
+        }
+      );
+
+      if (authError) {
+        console.error('Error updating auth user:', authError);
+        return NextResponse.json({ 
+          message: "Failed to complete account setup", 
+          error: authError.message 
+        }, { status: 500 });
+      }
+
+      if (!authUser.user) {
+        return NextResponse.json({ message: "Failed to update user" }, { status: 500 });
+      }
+
+      finalAuthUserId = existingAuthUser.id;
+      console.log('Auth user updated successfully, now creating user profile...');
+    } else {
+      console.log('No auth user found, creating new auth user for:', invitation.email);
+
+      const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: invitation.email,
         password: password,
         email_confirm: true,
         user_metadata: {
@@ -112,28 +136,29 @@ async function acceptInvitationHandler(request: NextRequest) {
           role: invitation.role,
           company_id: invitation.company_id
         }
+      });
+
+      if (createError) {
+        console.error('Error creating auth user:', createError);
+        return NextResponse.json({ 
+          message: "Failed to create account", 
+          error: createError.message 
+        }, { status: 500 });
       }
-    );
 
-    if (authError) {
-      console.error('Error updating auth user:', authError);
-      return NextResponse.json({ 
-        message: "Failed to complete account setup", 
-        error: authError.message 
-      }, { status: 500 });
+      if (!newAuthUser.user) {
+        return NextResponse.json({ message: "Failed to create user" }, { status: 500 });
+      }
+
+      finalAuthUserId = newAuthUser.user.id;
+      console.log('Auth user created successfully, now creating user profile...');
     }
 
-    if (!authUser.user) {
-      return NextResponse.json({ message: "Failed to update user" }, { status: 500 });
-    }
-
-    console.log('Auth user updated successfully, now creating user profile...');
-
-    // Create user profile using the existing auth user ID
+    // Create user profile
     const { error: profileError } = await supabaseAdmin
       .from('users')
       .insert({
-        id: existingAuthUser.id, // Use the existing auth user ID
+        id: finalAuthUserId,
         name: name,
         email: invitation.email,
         role: invitation.role,
@@ -145,9 +170,8 @@ async function acceptInvitationHandler(request: NextRequest) {
     if (profileError) {
       console.error('Error creating user profile:', profileError);
       
-      // Clean up auth user if profile creation fails
       try {
-        await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+        await supabaseAdmin.auth.admin.deleteUser(finalAuthUserId);
       } catch (cleanupError) {
         console.error('Error cleaning up auth user:', cleanupError);
       }
@@ -160,7 +184,6 @@ async function acceptInvitationHandler(request: NextRequest) {
 
     console.log('User profile created successfully, updating invitation status...');
 
-    // Update invitation status to 'accepted'
     const { error: updateError } = await supabase
       .from('user_invitations')
       .update({ 
@@ -171,7 +194,6 @@ async function acceptInvitationHandler(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating invitation status:', updateError);
-      // Don't fail the entire request, just log the error
     }
 
     console.log('Invitation accepted successfully');
@@ -179,8 +201,8 @@ async function acceptInvitationHandler(request: NextRequest) {
     return NextResponse.json({
       message: "Account created successfully!",
       user: {
-        id: existingAuthUser.id,
-        email: existingAuthUser.email,
+        id: finalAuthUserId,
+        email: invitation.email,
         name: name,
         role: invitation.role,
         company_id: invitation.company_id

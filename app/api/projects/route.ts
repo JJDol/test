@@ -84,17 +84,47 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
       if (userProfile.assigned_projects && userProfile.assigned_projects.length > 0) {
         query = query.in('id', userProfile.assigned_projects);
       } else {
-        // Fallback: no assigned projects, show empty result
-        query = query.eq('id', 'no-projects'); //TODO: Fix this to handle error on dashboard
+        return NextResponse.json([]);
       }
     }
-    // ADMIN sees all projects (filtered by company if specified)
-    // COMPANY_ADMIN sees all projects from their company (no additional filtering)
     
     const { data, error } = await query;
     
-    
     if (error) throw error;
+
+    if (data && data.length > 0) {
+      const projectIds = data.map((p: any) => p.id);
+      const { data: phases } = await queryClient
+        .from("project_phases")
+        .select("project_id, is_current, documents")
+        .in("project_id", projectIds)
+        .eq("is_current", true);
+
+      if (phases) {
+        const currentPhaseMap = new Map<number, any>();
+        for (const phase of phases) {
+          currentPhaseMap.set(phase.project_id, phase);
+        }
+
+        for (const project of data as any[]) {
+          const currentPhase = currentPhaseMap.get(project.id);
+          if (currentPhase?.documents) {
+            const docs = currentPhase.documents as any[];
+            const totalDocs = docs.length;
+            if (totalDocs > 0) {
+              const checkedDocs = docs.filter(
+                (d: any) => d.assignments?.supervisor_checked
+              ).length;
+              project.progress = Math.round((checkedDocs / totalDocs) * 100);
+            } else {
+              project.progress = 0;
+            }
+          } else {
+            project.progress = 0;
+          }
+        }
+      }
+    }
 
     return NextResponse.json(data);
   } catch (error) {
