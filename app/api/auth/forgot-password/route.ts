@@ -77,13 +77,17 @@ export async function POST(request: Request) {
     const vercelUrl = process.env.VERCEL_URL || process.env.VERCEL_BRANCH_URL;
     const isPreviewDeployment = vercelUrl && vercelUrl.includes('git-');
     
+    const siteUrl = process.env.SITE_URL
+      || process.env.NEXT_PUBLIC_SITE_URL
+      || process.env.NEXT_PUBLIC_APP_URL;
+
     if (isPreviewDeployment) {
       console.log('🚀 [forgot-password] Preview deployment detected, using Vercel branch URL:', vercelUrl);
       resetUrl = `https://${vercelUrl}/reset-password/${token}`;
-    } else if (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) {
-      const siteUrl = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
-      console.log('🏭 [forgot-password] Production deployment, using SITE_URL:', siteUrl);
-      resetUrl = `${siteUrl}/reset-password/${token}`;
+    } else if (siteUrl) {
+      const base = siteUrl.replace(/\/$/, '');
+      console.log('🏭 [forgot-password] Using SITE_URL:', base);
+      resetUrl = `${base}/reset-password/${token}`;
     } else if (vercelUrl) {
       console.log('🌐 [forgot-password] Vercel deployment without SITE_URL, using VERCEL_URL:', vercelUrl);
       resetUrl = `https://${vercelUrl}/reset-password/${token}`;

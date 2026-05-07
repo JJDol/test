@@ -338,7 +338,7 @@ export interface ProjectActionsState {
 }
 
 export interface ProjectActionsActions {
-  handleDownloadProject: () => Promise<void>;
+  handleDownloadProject: (phaseIds?: string[]) => Promise<void>;
   handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
   handleTemplateSelected: (template: DocumentTemplate) => Promise<void>;
   handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => Promise<void>;
@@ -448,7 +448,7 @@ export interface UseProjectDetailsReturn {
     updateProjectProgress: () => Promise<void>;
     
     // Action handlers
-    handleDownloadProject: () => Promise<void>;
+    handleDownloadProject: (phaseIds?: string[]) => Promise<void>;
     handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
   handleTemplateSelected: (template: DocumentTemplate) => void;
   handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;

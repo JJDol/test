@@ -13,11 +13,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CategorySelector } from "@/components/ui/category-selector";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingStateInline } from "@/components/ui/loading-state-inline";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, CalendarArrowDown, CalendarArrowUp } from "lucide-react";
 import { ProjectTemplate, DocumentCategory, getCategoryDisplayName, DocumentTemplate } from "@/lib/types/types";
+import type { SortMode } from "@/hooks/use-templates";
 import { ProjectTemplateDialog } from "./project-template-dialog";
 import { ProjectTemplateViewDialog } from "./project-template-view-dialog";
 import { ProjectTemplateDeleteDialog } from "./project-template-delete-dialog";
@@ -28,6 +30,7 @@ interface ProjectTemplatesTabProps {
   // State
   projectTemplates: ProjectTemplate[];
   selectedProjectCategory: DocumentCategory | 'ALL';
+  sortMode: SortMode;
   newProjectTemplate: {
     name: string;
     templates: string[];
@@ -82,6 +85,7 @@ interface ProjectTemplatesTabProps {
     updateProjectTemplate: () => Promise<void>;
     deleteProjectTemplate: () => Promise<void>;
     setSelectedProjectCategory: (category: DocumentCategory | 'ALL') => void;
+    setSortMode: (mode: SortMode) => void;
     setNewProjectTemplateName: (name: string) => void;
     setNewProjectTemplateCategory: (category: DocumentCategory) => void;
     setNewProjectTemplateTemplates: (templates: string[]) => void;
@@ -113,6 +117,7 @@ interface ProjectTemplatesTabProps {
 export function ProjectTemplatesTab({
   projectTemplates,
   selectedProjectCategory,
+  sortMode,
   newProjectTemplate,
   editProjectTemplate,
   projectTemplateToEdit,
@@ -148,14 +153,42 @@ export function ProjectTemplatesTab({
     <>
       <div className="flex justify-between items-center mb-6 mt-16">
         <h2 className="text-3xl font-bold">Project Templates</h2>
-        <Dialog open={dialogs.create} onOpenChange={(open) => open ? actions.openCreateDialog() : actions.closeCreateDialog()}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Project Template
-            </Button>
-          </DialogTrigger>
-        </Dialog>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                Sort
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => actions.setSortMode('name-asc')} className={sortMode === 'name-asc' ? 'bg-accent' : ''}>
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                Name (A → Z)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('name-desc')} className={sortMode === 'name-desc' ? 'bg-accent' : ''}>
+                <ArrowUpAZ className="mr-2 h-4 w-4" />
+                Name (Z → A)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('modified-newest')} className={sortMode === 'modified-newest' ? 'bg-accent' : ''}>
+                <CalendarArrowDown className="mr-2 h-4 w-4" />
+                Modified (Newest)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('modified-oldest')} className={sortMode === 'modified-oldest' ? 'bg-accent' : ''}>
+                <CalendarArrowUp className="mr-2 h-4 w-4" />
+                Modified (Oldest)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Dialog open={dialogs.create} onOpenChange={(open) => open ? actions.openCreateDialog() : actions.closeCreateDialog()}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Project Template
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+        </div>
       </div>
 
       {/* Category selector */}
