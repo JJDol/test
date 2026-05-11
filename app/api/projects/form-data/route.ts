@@ -30,8 +30,8 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
       return NextResponse.json({ message: "User not assigned to a company" }, { status: 403 });
     }
 
-    // Fetch users, templates, and phase catalog in parallel
-    const [usersResponse, templatesResponse, phaseDefsResponse] = await Promise.all([
+    // Fetch users, templates, document templates, and phase catalog in parallel
+    const [usersResponse, templatesResponse, docTemplatesResponse, phaseDefsResponse] = await Promise.all([
       // Get company users (exclude ADMIN users)
       supabase
         .from('users')
@@ -40,10 +40,17 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
         .neq('role', 'ADMIN')
         .order('name'),
       
-      // Get project templates
+      // Get project templates (packages)
       supabase
         .from('project_templates')
         .select('*')
+        .eq('company_id', currentUser.company_id)
+        .order('name'),
+
+      // Get individual document templates (single). PK is `name` — no `id` column.
+      supabase
+        .from('document_templates')
+        .select('name, category, description')
         .eq('company_id', currentUser.company_id)
         .order('name'),
 
@@ -73,6 +80,14 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
       }, { status: 500 });
     }
 
+    if (docTemplatesResponse.error) {
+      console.error('Error fetching document templates:', docTemplatesResponse.error);
+      return NextResponse.json({
+        message: "Failed to fetch document templates",
+        error: docTemplatesResponse.error.message,
+      }, { status: 500 });
+    }
+
     if (phaseDefsResponse.error) {
       console.error('Error fetching phase_definitions:', phaseDefsResponse.error);
       return NextResponse.json({
@@ -84,6 +99,7 @@ async function getProjectFormDataHandler(request: AuthenticatedRequest) {
     return NextResponse.json({
       users: usersResponse.data || [],
       templates: templatesResponse.data || [],
+      documentTemplates: docTemplatesResponse.data || [],
       phaseDefinitions: phaseDefsResponse.data || [],
     });
 

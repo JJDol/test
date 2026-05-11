@@ -43,7 +43,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { CategoryTabsList } from "./category-tabs-list";
-import { ProjectTemplateDropdown } from "./project-template-dropdown";
 import SubscriptionLimitDialog from "./subscription-limit-dialog";
 import type { ContractData } from "@/lib/services/ai/contract-extractor";
 
@@ -65,6 +64,12 @@ interface ProjectTemplate {
   variables: string[];
 }
 
+interface FormDocumentTemplate {
+  name: string;
+  category: string;
+  description: string | null;
+}
+
 interface PhaseDefinition {
   id: string;
   name: string;
@@ -73,10 +78,12 @@ interface PhaseDefinition {
   is_enabled: boolean;
 }
 
+type SelectionMode = "single" | "package";
+
 interface PhaseConfig {
   included: boolean;
   deadline: string;
-  selectedTemplates: { [key in DocumentCategory]?: string };
+  selectedTemplates: { [key in DocumentCategory]?: string[] };
 }
 
 interface SubscriptionUsage {
@@ -160,6 +167,8 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const [step, setStep] = useState<1 | 2>(1);
 
   const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
+  const [documentTemplates, setDocumentTemplates] = useState<FormDocumentTemplate[]>([]);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>("single");
   const [phaseDefinitions, setPhaseDefinitions] = useState<PhaseDefinition[]>([]);
   const [phaseConfig, setPhaseConfig] = useState<Record<string, PhaseConfig>>({});
   const [activePhaseId, setActivePhaseId] = useState<string>("");
@@ -187,11 +196,20 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
 
   const templateCountsByCategory = useMemo(() => {
     const counts = {} as Record<DocumentCategory, number>;
-    for (const t of projectTemplates) {
-      counts[t.category] = (counts[t.category] ?? 0) + 1;
+    if (selectionMode === "package") {
+      for (const t of projectTemplates) {
+        counts[t.category] = (counts[t.category] ?? 0) + 1;
+      }
+    } else {
+      for (const t of documentTemplates) {
+        const cat = t.category?.toUpperCase() as DocumentCategory;
+        if (Object.values(DocumentCategory).includes(cat)) {
+          counts[cat] = (counts[cat] ?? 0) + 1;
+        }
+      }
     }
     return counts;
-  }, [projectTemplates]);
+  }, [projectTemplates, documentTemplates, selectionMode]);
 
   const firstPhaseDefId = useMemo(
     () => phaseDefinitions.find((d) => d.display_order === 1)?.id ?? "",
@@ -208,10 +226,15 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
 
   const countTemplates = (cfg: PhaseConfig | undefined) => {
     if (!cfg) return 0;
-    return Object.values(cfg.selectedTemplates).filter(
-      (v) => typeof v === "string" && v.length > 0 && v !== "none"
-    ).length;
+    return Object.values(cfg.selectedTemplates).reduce(
+      (sum, arr) => sum + (arr?.length ?? 0), 0
+    );
   };
+
+  const totalAvailableTemplates = useMemo(() => {
+    if (selectionMode === "package") return projectTemplates.length;
+    return documentTemplates.length;
+  }, [selectionMode, projectTemplates.length, documentTemplates.length]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -225,6 +248,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       const data = await response.json();
       setUsers(data.users || []);
       setProjectTemplates(data.templates || []);
+      setDocumentTemplates(data.documentTemplates || []);
       const defs: PhaseDefinition[] = data.phaseDefinitions || [];
       setPhaseDefinitions(defs);
       const firstId = defs.find((d) => d.display_order === 1 && d.is_enabled)?.id ?? defs[0]?.id ?? "";
@@ -270,6 +294,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setPhaseDefinitions([]);
     setPhaseConfig({});
     setActivePhaseId("");
+    setSelectionMode("single");
     setIsLoading(false);
     setIsSubmitting(false);
     setProjectName("");
@@ -423,10 +448,19 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
           })
           .map((def) => {
             const cfg = phaseConfig[def.id]!;
-            const selected = Object.entries(cfg.selectedTemplates)
-              .filter(([, v]) => typeof v === "string" && v.length > 0 && v !== "none")
-              .map(([category, template_name]) => ({ category, template_name: template_name as string }));
-            return { phase_definition_id: def.id, deadline: cfg.deadline || null, templates: selected };
+            const templates: { category: string; template_name: string }[] = [];
+            for (const [category, names] of Object.entries(cfg.selectedTemplates)) {
+              if (!names || !Array.isArray(names)) continue;
+              for (const name of names) {
+                templates.push({ category, template_name: name });
+              }
+            }
+            return {
+              phase_definition_id: def.id,
+              deadline: cfg.deadline || null,
+              templates,
+              selection_mode: selectionMode,
+            };
           })
       : undefined;
 
@@ -760,29 +794,103 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                     <Label className="text-xs text-muted-foreground">Templates selected</Label>
                                     <div className="flex h-9 items-center rounded-md border bg-background px-3 text-sm">
                                       <span className={countTemplates(cfg) > 0 ? "font-semibold" : "text-muted-foreground"}>{countTemplates(cfg)}</span>
-                                      <span className="ml-1 text-muted-foreground">/ {projectTemplates.length}</span>
+                                      <span className="ml-1 text-muted-foreground">/ {totalAvailableTemplates}</span>
                                     </div>
                                   </div>
                                 </div>
                               </div>
 
                               <div className={cfg.included ? "" : "opacity-50 pointer-events-none"}>
+                                {/* Select documents label + Single/Package toggle */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <Label className="text-sm font-medium">Select documents</Label>
+                                  <div className="inline-flex h-8 items-center rounded-lg bg-muted p-0.5 text-muted-foreground">
+                                    <button
+                                      type="button"
+                                      className={`inline-flex items-center justify-center rounded-md px-3 h-7 text-xs font-medium transition-colors ${
+                                        selectionMode === "single"
+                                          ? "bg-background text-foreground shadow-sm"
+                                          : "hover:text-foreground"
+                                      }`}
+                                      onClick={() => setSelectionMode("single")}
+                                    >
+                                      Single
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`inline-flex items-center justify-center rounded-md px-3 h-7 text-xs font-medium transition-colors ${
+                                        selectionMode === "package"
+                                          ? "bg-background text-foreground shadow-sm"
+                                          : "hover:text-foreground"
+                                      }`}
+                                      onClick={() => setSelectionMode("package")}
+                                    >
+                                      Package
+                                    </button>
+                                  </div>
+                                </div>
+
                                 <Tabs defaultValue={Object.values(DocumentCategory)[0] as string} className="w-full">
                                   <div className="flex flex-col space-y-2">
                                     <CategoryTabsList categories={Object.values(DocumentCategory).slice(0, 4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={4} />
                                     <CategoryTabsList categories={Object.values(DocumentCategory).slice(4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={3} />
                                   </div>
-                                  {Object.values(DocumentCategory).map((category) => (
-                                    <TabsContent key={category} value={category} className="mt-4">
-                                      <ProjectTemplateDropdown
-                                        category={category}
-                                        selectedTemplate={cfg.selectedTemplates[category]}
-                                        projectTemplates={projectTemplates}
-                                        onTemplateSelect={(templateName) => updatePhaseConfig(def.id, (prev) => ({ ...prev, selectedTemplates: { ...prev.selectedTemplates, [category]: templateName } }))}
-                                        onTemplateClear={() => updatePhaseConfig(def.id, (prev) => { const next = { ...prev.selectedTemplates }; delete next[category]; return { ...prev, selectedTemplates: next }; })}
-                                      />
-                                    </TabsContent>
-                                  ))}
+                                  {Object.values(DocumentCategory).map((category) => {
+                                    const selected = cfg.selectedTemplates[category] ?? [];
+                                    const items = selectionMode === "single"
+                                      ? documentTemplates
+                                          .filter((t) => t.category?.toUpperCase() === category)
+                                          .map((t) => ({ name: t.name, description: t.description }))
+                                      : projectTemplates
+                                          .filter((t) => t.category === category)
+                                          .map((t) => ({ name: t.name, description: t.description }));
+                                    return (
+                                      <TabsContent key={category} value={category} className="mt-4">
+                                        {items.length === 0 ? (
+                                          <p className="text-sm text-muted-foreground italic py-4 text-center">
+                                            No {selectionMode === "single" ? "document" : "package"} templates in this category.
+                                          </p>
+                                        ) : (
+                                          <div className="space-y-1 max-h-[240px] overflow-y-auto rounded-md border p-2">
+                                            {items.map((item) => {
+                                              const isChecked = selected.includes(item.name);
+                                              const checkboxId = `tpl-${def.id}-${category}-${item.name}`;
+                                              return (
+                                                <label
+                                                  key={item.name}
+                                                  htmlFor={checkboxId}
+                                                  className={`flex items-start gap-3 rounded-md px-3 py-2 cursor-pointer transition-colors ${
+                                                    isChecked ? "bg-primary/5" : "hover:bg-muted/50"
+                                                  }`}
+                                                >
+                                                  <Checkbox
+                                                    id={checkboxId}
+                                                    checked={isChecked}
+                                                    onCheckedChange={(checked) => {
+                                                      updatePhaseConfig(def.id, (prev) => {
+                                                        const prevArr = prev.selectedTemplates[category] ?? [];
+                                                        const nextArr = checked
+                                                          ? [...prevArr, item.name]
+                                                          : prevArr.filter((n) => n !== item.name);
+                                                        return { ...prev, selectedTemplates: { ...prev.selectedTemplates, [category]: nextArr } };
+                                                      });
+                                                    }}
+                                                    className="mt-0.5"
+                                                  />
+                                                  <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-medium leading-tight">{item.name}</p>
+                                                    {item.description && (
+                                                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
+                                                    )}
+                                                  </div>
+                                                </label>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </TabsContent>
+                                    );
+                                  })}
                                 </Tabs>
                               </div>
                             </TabsContent>

@@ -350,6 +350,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         is_current?: boolean;
         selected_templates?: Record<string, string>;
         templates?: Array<{ category?: string; template_name: string }>;
+        selection_mode?: 'single' | 'package';
       }>;
       clientName?: string;
       documentReceiver?: string;
@@ -441,9 +442,22 @@ async function createProjectHandler(request: AuthenticatedRequest) {
             { status: 400 }
           );
         }
-        // Prefer the flat list; fall back to the category-keyed map.
         let picks: TemplatePick[];
-        if (Array.isArray(p.templates) && p.templates.length > 0) {
+        const isSingleMode = p.selection_mode === 'single';
+
+        if (isSingleMode && Array.isArray(p.templates) && p.templates.length > 0) {
+          // Single mode: template_name is already a document_template name.
+          // Build TemplatePick directly from the submitted (category, template_name) pairs.
+          picks = [];
+          const seen = new Set<string>();
+          for (const t of p.templates) {
+            if (!t.template_name || seen.has(t.template_name)) continue;
+            seen.add(t.template_name);
+            const cat = normalizeCategory(t.category ?? '');
+            if (cat) picks.push({ templateName: t.template_name, category: cat });
+          }
+        } else if (Array.isArray(p.templates) && p.templates.length > 0) {
+          // Package mode: expand project_template bundles to document_templates
           picks = await expandBundlesToTemplates(
             supabase,
             companyId,
