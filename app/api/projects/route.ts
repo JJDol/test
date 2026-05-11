@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/service-role';
 import { PostgrestError } from "@supabase/supabase-js";
 import { NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
@@ -246,6 +247,25 @@ function decideVariableScopes(
   picks: TemplatePick[],
   templatesByName: Map<string, { variables: DocumentVariable[] }>
 ): VariableScopeDecision[] {
+  // Build a lookup of the explicit scope declared in templates.
+  // If the same variable name has conflicting scopes across templates,
+  // the most permissive one wins (global > category > local).
+  const SCOPE_PRIORITY: Record<string, number> = { global: 3, category: 2, local: 1 };
+  const explicitScopes = new Map<string, string>();
+  for (const pick of picks) {
+    const tpl = templatesByName.get(pick.templateName);
+    if (!tpl) continue;
+    for (const variable of tpl.variables ?? []) {
+      const declared = (variable as any).scope as string | undefined;
+      if (!declared) continue;
+      const existing = explicitScopes.get(variable.name);
+      if (!existing || (SCOPE_PRIORITY[declared] ?? 0) > (SCOPE_PRIORITY[existing] ?? 0)) {
+        explicitScopes.set(variable.name, declared);
+      }
+    }
+  }
+
+  // Distribution-based registry (fallback for variables without explicit scope)
   interface Registry {
     categories: Set<DocumentCategory>;
     templatesPerCategory: Map<DocumentCategory, Set<string>>;
@@ -270,6 +290,13 @@ function decideVariableScopes(
   }
 
   const scopeFor = (varName: string, category: DocumentCategory): VariablePropagationScope => {
+    // 1. Prefer explicit scope from template JSON
+    const declared = explicitScopes.get(varName);
+    if (declared === 'global') return VariablePropagationScope.GLOBAL;
+    if (declared === 'category') return VariablePropagationScope.CATEGORY;
+    if (declared === 'local') return VariablePropagationScope.LOCAL;
+
+    // 2. Fallback: distribution-based heuristic
     const entry = registry.get(varName);
     if (!entry) return VariablePropagationScope.LOCAL;
     if (entry.categories.size > 1) return VariablePropagationScope.GLOBAL;
@@ -326,6 +353,129 @@ function buildProjectVariableBuckets(decisions: VariableScopeDecision[]) {
   return {
     global_variables: { variables: Array.from(globalMap.values()) },
     category_variables,
+  };
+}
+
+function applyContractPrefillToVariables(
+  variables: DocumentVariable[],
+  contractFieldMapping: Record<string, string[]>,
+  contractValues: Record<string, string | undefined>
+): DocumentVariable[] {
+  return variables.map((v) => {
+    for (const [fieldKey, variableNames] of Object.entries(
+      contractFieldMapping
+    )) {
+      const value = contractValues[fieldKey];
+      if (value && variableNames.includes(v.name)) {
+        return { ...v, value } as DocumentVariable;
+      }
+    }
+    return { ...v, value: '' } as DocumentVariable;
+  });
+}
+
+function buildPropagationSettingsForDecision(
+  dec: VariableScopeDecision,
+  allDecisions: VariableScopeDecision[]
+): Record<
+  string,
+  {
+    currentScope: VariablePropagationScope;
+    possibleScopes: VariablePropagationScope[];
+    isOverridden: boolean;
+  }
+> {
+  const propagation: Record<
+    string,
+    {
+      currentScope: VariablePropagationScope;
+      possibleScopes: VariablePropagationScope[];
+      isOverridden: boolean;
+    }
+  > = {};
+  for (const variable of dec.variables) {
+    const scope = dec.scopes[variable.name];
+    const possible: VariablePropagationScope[] = [VariablePropagationScope.LOCAL];
+    const catCount = allDecisions.filter((d) => d.category === dec.category).length;
+    if (catCount > 1) possible.push(VariablePropagationScope.CATEGORY);
+    const seenCategories = new Set(
+      allDecisions
+        .filter((d) => d.variables.some((v) => v.name === variable.name))
+        .map((d) => d.category)
+    );
+    if (seenCategories.size > 1)
+      possible.push(VariablePropagationScope.GLOBAL);
+    propagation[variable.name] = {
+      currentScope: scope,
+      possibleScopes: possible,
+      isOverridden: false,
+    };
+  }
+  return propagation;
+}
+
+/**
+ * Legacy `projects.*_templates[]` + JSONB fields must stay in sync with
+ * `project_phase_documents` so the project-details UI (which still reads the
+ * row) shows templates and variables immediately after creation.
+ */
+function buildLegacyProjectTemplateFieldsFromDecisions(
+  decisionIndex: Map<string, VariableScopeDecision>,
+  allDecisions: VariableScopeDecision[],
+  contractFieldMapping: Record<string, string[]>,
+  contractValues: Record<string, string | undefined>
+): Record<string, unknown> {
+  const templateArrays: Record<string, string[]> = {};
+  for (const cat of Object.values(DocumentCategory)) {
+    templateArrays[`${cat.toLowerCase()}_templates`] = [];
+  }
+
+  const template_variables: Record<
+    string,
+    Record<string, { variables: DocumentVariable[] }>
+  > = {};
+  const variable_propagation_settings: Record<
+    string,
+    Record<
+      string,
+      Record<
+        string,
+        {
+          currentScope: VariablePropagationScope;
+          possibleScopes: VariablePropagationScope[];
+          isOverridden: boolean;
+        }
+      >
+    >
+  > = {};
+
+  for (const dec of Array.from(decisionIndex.values())) {
+    const arrKey = `${dec.category.toLowerCase()}_templates`;
+    if (!templateArrays[arrKey].includes(dec.templateName)) {
+      templateArrays[arrKey].push(dec.templateName);
+    }
+
+    const blankVariables = applyContractPrefillToVariables(
+      dec.variables,
+      contractFieldMapping,
+      contractValues
+    );
+    const propagation = buildPropagationSettingsForDecision(dec, allDecisions);
+
+    if (!template_variables[dec.category]) template_variables[dec.category] = {};
+    template_variables[dec.category][dec.templateName] = {
+      variables: blankVariables,
+    };
+    if (!variable_propagation_settings[dec.category]) {
+      variable_propagation_settings[dec.category] = {};
+    }
+    variable_propagation_settings[dec.category][dec.templateName] = propagation;
+  }
+
+  return {
+    ...templateArrays,
+    template_variables,
+    variable_propagation_settings,
   };
 }
 
@@ -434,9 +584,14 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     const defsById = new Map(
       (phaseDefs ?? []).map((d) => [d.id as string, d])
     );
-    const firstPhaseDef = (phaseDefs ?? []).find(
-      (d) => d.display_order === 1 && d.is_enabled
-    );
+    // Multiple enabled rows at display_order=1 should not happen, but the DB
+    // trigger uses LIMIT 1 without ORDER BY while the client picks `.find()`.
+    // That mismatch drops `phaseIdByDefId` lookups → P1 documents never insert.
+    const p1Candidates = (phaseDefs ?? [])
+      .filter((d) => d.display_order === 1 && d.is_enabled)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const firstPhaseDef = p1Candidates[0];
+    const p1DefinitionIds = new Set(p1Candidates.map((d) => d.id as string));
     if (!firstPhaseDef) {
       console.error(
         '[POST /api/projects] No enabled display_order=1 phase_definition for company',
@@ -519,9 +674,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
 
     // Ensure P1 always exists in the plan so the trigger-created row is
     // represented even if the client forgot to include it.
-    if (
-      !resolvedPhases.some((rp) => rp.phaseDefinitionId === firstPhaseDef.id)
-    ) {
+    if (!resolvedPhases.some((rp) => p1DefinitionIds.has(rp.phaseDefinitionId))) {
       resolvedPhases.unshift({
         phaseDefinitionId: firstPhaseDef.id as string,
         deadline: deadline ?? null,
@@ -539,32 +692,63 @@ async function createProjectHandler(request: AuthenticatedRequest) {
 
     const templatesByName = new Map<string, { variables: DocumentVariable[] }>();
     if (allPicks.length > 0) {
-      const uniqueNames = Array.from(new Set(allPicks.map((p) => p.templateName)));
-      const { data: templateRows, error: templateError } = await supabase
+      // Service role: same `company_id` as the project; avoids RLS hiding rows when
+      // resolving `project_templates.templates` → `document_templates.name` (exact match only).
+      const serviceForTemplates = createServiceRoleClient();
+      const { data: companyTemplateRows, error: templateLoadError } = await serviceForTemplates
         .from('document_templates')
-        .select('name, variables')
-        .eq('company_id', companyId)
-        .in('name', uniqueNames);
-      if (templateError) throw templateError;
+        .select('name, category, variables')
+        .eq('company_id', companyId);
+      if (templateLoadError) throw templateLoadError;
 
-      const found = new Set<string>();
-      for (const row of templateRows ?? []) {
-        templatesByName.set(row.name, {
-          variables: (row.variables ?? []) as DocumentVariable[],
-        });
-        found.add(row.name);
+      const byExactName = new Map<
+        string,
+        { name: string; category: DocumentCategory; variables: DocumentVariable[] }
+      >();
+
+      for (const row of companyTemplateRows ?? []) {
+        const cat = normalizeCategory(String(row.category ?? ''));
+        if (!cat) continue;
+        const variables = (row.variables ?? []) as DocumentVariable[];
+        byExactName.set(row.name, { name: row.name, category: cat, variables });
       }
-      const missing = uniqueNames.filter((n) => !found.has(n));
-      if (missing.length > 0) {
-        console.warn(
-          '[POST /api/projects] Skipping templates not found in document_templates',
-          { missing, companyId }
-        );
-        for (const rp of resolvedPhases) {
-          rp.picks = rp.picks.filter((p) => !missing.includes(p.templateName));
+
+      const missingLabels: string[] = [];
+      for (const rp of resolvedPhases) {
+        const next: TemplatePick[] = [];
+        const dedupe = new Set<string>();
+        for (const pick of rp.picks) {
+          const hit = byExactName.get(pick.templateName);
+          if (!hit) {
+            missingLabels.push(`${pick.category}:${pick.templateName}`);
+            continue;
+          }
+          const dedupeKey = `${hit.category}::${hit.name}`;
+          if (dedupe.has(dedupeKey)) continue;
+          dedupe.add(dedupeKey);
+          next.push({
+            templateName: hit.name,
+            category: hit.category,
+          });
         }
-        allPicks = [];
-        for (const rp of resolvedPhases) allPicks.push(...rp.picks);
+        rp.picks = next;
+      }
+
+      allPicks = [];
+      for (const rp of resolvedPhases) allPicks.push(...rp.picks);
+
+      if (missingLabels.length > 0) {
+        console.warn(
+          '[POST /api/projects] Dropped picks: project_templates.templates[] string must equal document_templates.name',
+          { missing: missingLabels, companyId }
+        );
+      }
+
+      for (const pick of allPicks) {
+        const row = byExactName.get(pick.templateName);
+        if (row) {
+          templatesByName.set(pick.templateName, { variables: row.variables });
+        }
       }
     }
 
@@ -699,10 +883,16 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       }
     }
 
+    // Map every enabled display_order=1 definition id to the single P1 row
+    // (whichever uuid the trigger chose) so seeded docs always attach.
+    for (const pid of Array.from(p1DefinitionIds)) {
+      phaseIdByDefId.set(pid, firstPhase.id as string);
+    }
+
     // Optional: update the auto-created P1 deadline if the user supplied one
     // via the phases payload (the trigger used project.deadline as the seed).
-    const p1Plan = resolvedPhases.find(
-      (rp) => rp.phaseDefinitionId === firstPhase.phase_definition_id
+    const p1Plan = resolvedPhases.find((rp) =>
+      p1DefinitionIds.has(rp.phaseDefinitionId)
     );
     if (p1Plan && p1Plan.deadline && p1Plan.deadline !== deadline) {
       await supabase
@@ -715,51 +905,20 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     const docRows: Array<Record<string, unknown>> = [];
     for (const rp of resolvedPhases) {
       const phaseId = phaseIdByDefId.get(rp.phaseDefinitionId);
-      if (!phaseId) continue;
+      if (!phaseId) {
+        continue;
+      }
       for (const pick of rp.picks) {
         const dec = decisionIndex.get(`${pick.category}::${pick.templateName}`);
-        if (!dec) continue;
-        const blankVariables: DocumentVariable[] = dec.variables.map(
-          (v) => {
-            for (const [fieldKey, variableNames] of Object.entries(contractFieldMapping)) {
-              const value = contractValues[fieldKey];
-              if (value && variableNames.includes(v.name)) {
-                return { ...v, value } as DocumentVariable;
-              }
-            }
-            return { ...v, value: '' } as DocumentVariable;
-          }
-        );
-        const propagation: Record<
-          string,
-          {
-            currentScope: VariablePropagationScope;
-            possibleScopes: VariablePropagationScope[];
-            isOverridden: boolean;
-          }
-        > = {};
-        for (const variable of dec.variables) {
-          const scope = dec.scopes[variable.name];
-          const possible: VariablePropagationScope[] = [
-            VariablePropagationScope.LOCAL,
-          ];
-          const catCount = decisions.filter(
-            (d) => d.category === dec.category
-          ).length;
-          if (catCount > 1) possible.push(VariablePropagationScope.CATEGORY);
-          const seenCategories = new Set(
-            decisions
-              .filter((d) => d.variables.some((v) => v.name === variable.name))
-              .map((d) => d.category)
-          );
-          if (seenCategories.size > 1)
-            possible.push(VariablePropagationScope.GLOBAL);
-          propagation[variable.name] = {
-            currentScope: scope,
-            possibleScopes: possible,
-            isOverridden: false,
-          };
+        if (!dec) {
+          continue;
         }
+        const blankVariables = applyContractPrefillToVariables(
+          dec.variables,
+          contractFieldMapping,
+          contractValues
+        );
+        const propagation = buildPropagationSettingsForDecision(dec, decisions);
         docRows.push({
           project_phase_id: phaseId,
           template_name: dec.templateName,
@@ -773,21 +932,81 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         });
       }
     }
+
+    const pickTotal = resolvedPhases.reduce((n, rp) => n + rp.picks.length, 0);
+
+    if (pickTotal > 0 && docRows.length === 0) {
+      console.error('[POST /api/projects] PHASE_DOC_SEED_EMPTY', {
+        projectId: projectRow.id,
+        pickTotal,
+        resolvedPhases: resolvedPhases.map((rp) => ({
+          phaseDefinitionId: rp.phaseDefinitionId,
+          picks: rp.picks.map((p) => `${p.category}:${p.templateName}`),
+        })),
+      });
+      return NextResponse.json(
+        {
+          error:
+            '프로젝트는 생성됐지만 페이즈 문서 행을 만들지 못했습니다. 서버 로그(PHASE_DOC_SEED_EMPTY)를 확인하세요.',
+          code: 'PHASE_DOC_SEED_EMPTY',
+        },
+        { status: 500 }
+      );
+    }
+
     if (docRows.length > 0) {
-      const { error: docError } = await supabase
+      // Use service role so seeding is not blocked by RLS (e.g. creator is
+      // PROJECT_MANAGER but leader_id is another user — see project_phase_documents INSERT policies).
+      const service = createServiceRoleClient();
+      const { error: docError } = await service
         .from('project_phase_documents')
         .insert(docRows);
-      if (docError) throw docError;
+      if (docError) {
+        throw docError;
+      }
 
-      // Documents created successfully — now populate project-level variables.
-      await supabase
-        .from('projects')
-        .update({
+      const legacyTemplateFields = buildLegacyProjectTemplateFieldsFromDecisions(
+        decisionIndex,
+        decisions,
+        contractFieldMapping,
+        contractValues
+      );
+
+      // Keep legacy `projects` columns in sync when they still exist. After
+      // migration `20260422000000_finalize_phase_system` those columns are
+      // dropped — do not fail project creation if the update rejects.
+      try {
+        const { error: legacyUpdateError } = await supabase
+          .from('projects')
+          .update({
+            ...legacyTemplateFields,
+            global_variables,
+            category_variables,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', projectRow.id);
+        if (legacyUpdateError) throw legacyUpdateError;
+      } catch (legacyErr) {
+        const onlyVarsPayload = {
           global_variables,
           category_variables,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', projectRow.id);
+        };
+        const { error: varsOnlyError } = await supabase
+          .from('projects')
+          .update(onlyVarsPayload)
+          .eq('id', projectRow.id);
+        if (varsOnlyError) {
+          console.warn(
+            '[POST /api/projects] Project variable buckets not persisted on projects row:',
+            varsOnlyError
+          );
+        }
+        console.warn(
+          '[POST /api/projects] Legacy template columns update skipped (expected if phase-finalized schema)',
+          legacyErr
+        );
+      }
     }
 
     // ---- Assign leader's assigned_projects --------------------------------

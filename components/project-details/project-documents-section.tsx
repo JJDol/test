@@ -139,6 +139,40 @@ export function ProjectDocumentsSection({
     return null;
   }
 
+  // Compute filtered global variables: union of variables with GLOBAL scope
+  // in any template's propagation_settings across all categories.
+  const filteredGlobalVariables = (() => {
+    const allPropSettings = project?.variable_propagation_settings || {};
+    const globalVarNames = new Set<string>();
+
+    for (const catSettings of Object.values(allPropSettings)) {
+      if (!catSettings || typeof catSettings !== 'object') continue;
+      for (const templateSettings of Object.values(catSettings as Record<string, any>)) {
+        if (!templateSettings || typeof templateSettings !== 'object') continue;
+        for (const [varName, setting] of Object.entries(templateSettings as Record<string, any>)) {
+          if (setting?.currentScope === VariablePropagationScope.GLOBAL) {
+            globalVarNames.add(varName);
+          }
+        }
+      }
+    }
+
+    const stored = project?.global_variables?.variables || [];
+    if (globalVarNames.size === 0) return stored;
+
+    const result = new Map<string, DocumentVariable>();
+    for (const v of stored) result.set(v.name, v);
+    // Also pick up globals that may have been mis-filed into category_variables
+    for (const cat of Object.values(DocumentCategory)) {
+      for (const v of project?.category_variables?.[cat]?.variables || []) {
+        if (globalVarNames.has(v.name) && !result.has(v.name)) {
+          result.set(v.name, v);
+        }
+      }
+    }
+    return Array.from(result.values()).filter(v => globalVarNames.has(v.name));
+  })();
+
   return (
     <div className="bg-background w-full">
       <div className="w-full">
@@ -225,7 +259,7 @@ export function ProjectDocumentsSection({
                         {/* Global Variables */}
                         <GeneralVariablesSection
                           allTemplates={allTemplates}          
-                          globalVariables={project?.global_variables?.variables || []}
+                          globalVariables={filteredGlobalVariables}
                           templateVariables={templateVariables}
                           propagationSettings={project?.variable_propagation_settings || {} as any}
                           project={project}
@@ -238,7 +272,7 @@ export function ProjectDocumentsSection({
                         {/* Category Variables */}
                         <CategoryVariablesSection
                           category={category}
-                          categoryVariables={project.category_variables?.[category]?.variables || []}
+                          categoryVariables={storedCategoryVariables}
                           categoryTemplates={categoryTemplates.filter(t => templateNames.includes(t.name))}
                           templateVariables={project.template_variables || {}}
                           propagationSettings={project.variable_propagation_settings || {}}

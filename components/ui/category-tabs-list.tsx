@@ -28,14 +28,14 @@ export function CategoryTabsList({
               className="group whitespace-nowrap relative gap-1.5"
             >
               <span>{getCategoryDisplayName(category)}</span>
-              {templateCounts && (
+              {templateCounts && totalCount > 0 && (
                 <span
                   className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${
-                    selectedCount > 0 ? "bg-primary text-primary-foreground" : "bg-black text-white"
+                    selectedCount > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   }`}
-                  aria-label={`${selectedCount} selected of ${totalCount} templates`}
+                  aria-label={`${selectedCount} selected of ${totalCount} available in category`}
                 >
-                  {selectedCount > 0 ? selectedCount : totalCount}
+                  {selectedCount}/{totalCount}
                 </span>
               )}
             </TabsTrigger>

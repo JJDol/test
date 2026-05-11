@@ -83,6 +83,8 @@ type SelectionMode = "single" | "package";
 interface PhaseConfig {
   included: boolean;
   deadline: string;
+  /** Per-phase: Single = document_templates.name, Package = project_templates.name */
+  selectionMode: SelectionMode;
   selectedTemplates: { [key in DocumentCategory]?: string[] };
 }
 
@@ -160,6 +162,36 @@ function getFileExtension(filename: string): string {
   return idx >= 0 ? filename.slice(idx).toLowerCase() : "";
 }
 
+function getTemplateCountsByMode(
+  mode: SelectionMode,
+  projectTemplates: ProjectTemplate[],
+  documentTemplates: FormDocumentTemplate[]
+): Record<DocumentCategory, number> {
+  const counts = {} as Record<DocumentCategory, number>;
+  if (mode === "package") {
+    for (const t of projectTemplates) {
+      counts[t.category as DocumentCategory] =
+        (counts[t.category as DocumentCategory] ?? 0) + 1;
+    }
+  } else {
+    for (const t of documentTemplates) {
+      const cat = t.category?.toUpperCase() as DocumentCategory;
+      if (Object.values(DocumentCategory).includes(cat)) {
+        counts[cat] = (counts[cat] ?? 0) + 1;
+      }
+    }
+  }
+  return counts;
+}
+
+function getTotalTemplatesForMode(
+  mode: SelectionMode,
+  projectTemplatesLength: number,
+  documentTemplatesLength: number
+): number {
+  return mode === "package" ? projectTemplatesLength : documentTemplatesLength;
+}
+
 export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,7 +200,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
 
   const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [documentTemplates, setDocumentTemplates] = useState<FormDocumentTemplate[]>([]);
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>("single");
   const [phaseDefinitions, setPhaseDefinitions] = useState<PhaseDefinition[]>([]);
   const [phaseConfig, setPhaseConfig] = useState<Record<string, PhaseConfig>>({});
   const [activePhaseId, setActivePhaseId] = useState<string>("");
@@ -194,23 +225,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [subscriptionUsage, setSubscriptionUsage] = useState<SubscriptionUsage | null>(null);
 
-  const templateCountsByCategory = useMemo(() => {
-    const counts = {} as Record<DocumentCategory, number>;
-    if (selectionMode === "package") {
-      for (const t of projectTemplates) {
-        counts[t.category] = (counts[t.category] ?? 0) + 1;
-      }
-    } else {
-      for (const t of documentTemplates) {
-        const cat = t.category?.toUpperCase() as DocumentCategory;
-        if (Object.values(DocumentCategory).includes(cat)) {
-          counts[cat] = (counts[cat] ?? 0) + 1;
-        }
-      }
-    }
-    return counts;
-  }, [projectTemplates, documentTemplates, selectionMode]);
-
   const firstPhaseDefId = useMemo(
     () => phaseDefinitions.find((d) => d.display_order === 1)?.id ?? "",
     [phaseDefinitions]
@@ -231,11 +245,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     );
   };
 
-  const totalAvailableTemplates = useMemo(() => {
-    if (selectionMode === "package") return projectTemplates.length;
-    return documentTemplates.length;
-  }, [selectionMode, projectTemplates.length, documentTemplates.length]);
-
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
@@ -254,7 +263,12 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       const firstId = defs.find((d) => d.display_order === 1 && d.is_enabled)?.id ?? defs[0]?.id ?? "";
       const config: Record<string, PhaseConfig> = {};
       for (const def of defs) {
-        config[def.id] = { included: def.id === firstId, deadline: "", selectedTemplates: {} };
+        config[def.id] = {
+          included: def.id === firstId,
+          deadline: "",
+          selectionMode: "single",
+          selectedTemplates: {},
+        };
       }
       setPhaseConfig(config);
       if (firstId) setActivePhaseId(firstId);
@@ -294,7 +308,6 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     setPhaseDefinitions([]);
     setPhaseConfig({});
     setActivePhaseId("");
-    setSelectionMode("single");
     setIsLoading(false);
     setIsSubmitting(false);
     setProjectName("");
@@ -459,7 +472,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
               phase_definition_id: def.id,
               deadline: cfg.deadline || null,
               templates,
-              selection_mode: selectionMode,
+              selection_mode: cfg.selectionMode,
             };
           })
       : undefined;
@@ -776,6 +789,16 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                           const cfg = phaseConfig[def.id];
                           if (!cfg) return null;
                           const isFirst = def.id === firstPhaseDefId;
+                          const phaseCounts = getTemplateCountsByMode(
+                            cfg.selectionMode,
+                            projectTemplates,
+                            documentTemplates
+                          );
+                          const phaseTotalAvailable = getTotalTemplatesForMode(
+                            cfg.selectionMode,
+                            projectTemplates.length,
+                            documentTemplates.length
+                          );
                           return (
                             <TabsContent key={def.id} value={def.id} className="mt-4 space-y-4">
                               <div className="rounded-md border bg-muted/20 p-3 space-y-2">
@@ -794,7 +817,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                     <Label className="text-xs text-muted-foreground">Templates selected</Label>
                                     <div className="flex h-9 items-center rounded-md border bg-background px-3 text-sm">
                                       <span className={countTemplates(cfg) > 0 ? "font-semibold" : "text-muted-foreground"}>{countTemplates(cfg)}</span>
-                                      <span className="ml-1 text-muted-foreground">/ {totalAvailableTemplates}</span>
+                                      <span className="ml-1 text-muted-foreground">/ {phaseTotalAvailable}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -808,36 +831,58 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                     <button
                                       type="button"
                                       className={`inline-flex items-center justify-center rounded-md px-3 h-7 text-xs font-medium transition-colors ${
-                                        selectionMode === "single"
+                                        cfg.selectionMode === "single"
                                           ? "bg-background text-foreground shadow-sm"
                                           : "hover:text-foreground"
                                       }`}
-                                      onClick={() => setSelectionMode("single")}
+                                      onClick={() =>
+                                        updatePhaseConfig(def.id, (prev) => {
+                                          if (prev.selectionMode === "single") return prev;
+                                          return {
+                                            ...prev,
+                                            selectionMode: "single",
+                                            selectedTemplates: {},
+                                          };
+                                        })
+                                      }
                                     >
                                       Single
                                     </button>
                                     <button
                                       type="button"
                                       className={`inline-flex items-center justify-center rounded-md px-3 h-7 text-xs font-medium transition-colors ${
-                                        selectionMode === "package"
+                                        cfg.selectionMode === "package"
                                           ? "bg-background text-foreground shadow-sm"
                                           : "hover:text-foreground"
                                       }`}
-                                      onClick={() => setSelectionMode("package")}
+                                      onClick={() =>
+                                        updatePhaseConfig(def.id, (prev) => {
+                                          if (prev.selectionMode === "package") return prev;
+                                          return {
+                                            ...prev,
+                                            selectionMode: "package",
+                                            selectedTemplates: {},
+                                          };
+                                        })
+                                      }
                                     >
                                       Package
                                     </button>
                                   </div>
                                 </div>
 
-                                <Tabs defaultValue={Object.values(DocumentCategory)[0] as string} className="w-full">
+                                <Tabs
+                                  key={`${def.id}-${cfg.selectionMode}`}
+                                  defaultValue={Object.values(DocumentCategory)[0] as string}
+                                  className="w-full"
+                                >
                                   <div className="flex flex-col space-y-2">
-                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(0, 4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={4} />
-                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(4)} selectedTemplates={cfg.selectedTemplates} templateCounts={templateCountsByCategory} gridCols={3} />
+                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(0, 4)} selectedTemplates={cfg.selectedTemplates} templateCounts={phaseCounts} gridCols={4} />
+                                    <CategoryTabsList categories={Object.values(DocumentCategory).slice(4)} selectedTemplates={cfg.selectedTemplates} templateCounts={phaseCounts} gridCols={3} />
                                   </div>
                                   {Object.values(DocumentCategory).map((category) => {
                                     const selected = cfg.selectedTemplates[category] ?? [];
-                                    const items = selectionMode === "single"
+                                    const items = cfg.selectionMode === "single"
                                       ? documentTemplates
                                           .filter((t) => t.category?.toUpperCase() === category)
                                           .map((t) => ({ name: t.name, description: t.description }))
@@ -848,7 +893,7 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                                       <TabsContent key={category} value={category} className="mt-4">
                                         {items.length === 0 ? (
                                           <p className="text-sm text-muted-foreground italic py-4 text-center">
-                                            No {selectionMode === "single" ? "document" : "package"} templates in this category.
+                                            No {cfg.selectionMode === "single" ? "document" : "package"} templates in this category.
                                           </p>
                                         ) : (
                                           <div className="space-y-1 max-h-[240px] overflow-y-auto rounded-md border p-2">

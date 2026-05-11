@@ -240,18 +240,22 @@ export function ProjectDetailsContent({
 
   const virtualProject = useMemo<Project | null>(() => {
     if (!project) return project;
-    if (!activePhase) {
-      const emptyArrays: Record<string, string[]> = {};
-      Object.values(DocumentCategory).forEach((cat) => {
-        emptyArrays[`${cat.toLowerCase()}_templates`] = [];
-      });
+    // While phases are loading, or before any phase row exists, keep the
+    // `/api/projects/[id]` snapshot — otherwise we wipe `*_templates` and the UI
+    // shows an empty project even though the row + phase documents are fine.
+    if (phasesState.loading) return project;
+    if (!phasesState.phases.length) return project;
+    if (!activePhase) return project;
+
+    // Current phase has no `project_phase_documents` rows but the project row
+    // was populated (e.g. create-project sync). Show legacy fields as fallback.
+    if (
+      activeDocuments.length === 0 &&
+      assignedTemplateNames(project).length > 0
+    ) {
       return {
         ...project,
-        ...emptyArrays,
-        template_variables: {} as Project["template_variables"],
-        variable_propagation_settings: {} as Project["variable_propagation_settings"],
-        document_assignments: {} as Project["document_assignments"],
-        document_review_status: {} as unknown,
+        deadline: activePhase.deadline ?? project.deadline,
       } as Project;
     }
 
@@ -290,7 +294,13 @@ export function ProjectDetailsContent({
       document_assignments: assignments as Project["document_assignments"],
       document_review_status: reviewStatus as unknown,
     } as Project;
-  }, [project, activePhase, activeDocuments]);
+  }, [
+    project,
+    activePhase,
+    activeDocuments,
+    phasesState.loading,
+    phasesState.phases.length,
+  ]);
 
   const progressProject = virtualProject ?? project;
 
