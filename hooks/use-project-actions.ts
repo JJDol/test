@@ -326,7 +326,7 @@ export function useProjectActions(
           
           updatedTemplateVariables[template.category]![template.name].variables.push({
             ...variable,
-            value: variableValue
+            value: variableValue ?? variable.value,
           });
           
           updatedPropagationSettings[template.category]![template.name]![variable.name] = {
@@ -600,7 +600,7 @@ export function useProjectActions(
         // Add the variable with its resolved value
         updatedTemplateVariables[template.category]![template.name].variables.push({
           ...variable,
-          value: variableValue
+          value: variableValue ?? variable.value,
         });
         
         // Set the propagation setting

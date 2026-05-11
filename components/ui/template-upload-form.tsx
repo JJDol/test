@@ -22,6 +22,51 @@ interface TemplateUploadFormProps {
 
 const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB threshold for blob upload
 
+function normalizeVariableKeyForDocumentMeta(name: string): string {
+  return name.toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+const DOCUMENT_META_ID_KEYS = new Set([
+  "document_id",
+  "documentid",
+  "doc_id",
+  "docid",
+]);
+const DOCUMENT_META_TITLE_KEYS = new Set([
+  "document_title",
+  "documenttitle",
+  "doc_title",
+  "doctitle",
+]);
+const DOCUMENT_META_TYPE_KEYS = new Set([
+  "document_type",
+  "documenttype",
+  "doc_type",
+  "doctype",
+]);
+
+function documentMetaSlotForVariableName(name: string): "id" | "title" | "type" | null {
+  const n = normalizeVariableKeyForDocumentMeta(name);
+  if (DOCUMENT_META_ID_KEYS.has(n)) return "id";
+  if (DOCUMENT_META_TITLE_KEYS.has(n)) return "title";
+  if (DOCUMENT_META_TYPE_KEYS.has(n)) return "type";
+  return null;
+}
+
+function applyDefaultDocumentMetaToVariables(
+  vars: DocumentVariable[],
+  defaults: { id: string; title: string; type: string }
+): DocumentVariable[] {
+  return vars.map((v) => {
+    const slot = documentMetaSlotForVariableName(v.name);
+    if (!slot) return v;
+    const raw = slot === "id" ? defaults.id : slot === "title" ? defaults.title : defaults.type;
+    const trimmed = raw.trim();
+    if (!trimmed) return v;
+    return { ...v, value: trimmed } as DocumentVariable;
+  });
+}
+
 export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [variables, setVariables] = useState<DocumentVariable[]>([]);
@@ -37,6 +82,9 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
   const [duplicateNameError, setDuplicateNameError] = useState<string | null>(null);
   const [duplicateFileError, setDuplicateFileError] = useState<string | null>(null);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [defaultDocumentId, setDefaultDocumentId] = useState("");
+  const [defaultDocumentTitle, setDefaultDocumentTitle] = useState("");
+  const [defaultDocumentType, setDefaultDocumentType] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -255,6 +303,9 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
     setDuplicateFileError(null);
     setBlobUrl(null);
     setExtractingVariables(false);
+    setDefaultDocumentId("");
+    setDefaultDocumentTitle("");
+    setDefaultDocumentType("");
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -264,6 +315,9 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
     setTemplateName('');
     setSelectedCategory('');
     setDescription('');
+    setDefaultDocumentId('');
+    setDefaultDocumentTitle('');
+    setDefaultDocumentType('');
     setDuplicateNameError(null);
     setDuplicateFileError(null);
   };
@@ -375,8 +429,14 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
         });
       }
       
+      const variablesForSubmit = applyDefaultDocumentMetaToVariables(variables, {
+        id: defaultDocumentId,
+        title: defaultDocumentTitle,
+        type: defaultDocumentType,
+      });
+
       // Send the enhanced variables format with types
-      formData.append('variablesWithTypes', JSON.stringify(variables));
+      formData.append('variablesWithTypes', JSON.stringify(variablesForSubmit));
       formData.append('isPublic', isPublic.toString());
 
 
@@ -572,6 +632,55 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+      </div>
+
+      <div className="rounded-md border border-dashed p-3 space-y-3 bg-muted/30">
+        <div>
+          <p className="text-sm font-medium">Default document fields (optional)</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            If the template defines <span className="font-mono">document_id</span>,{" "}
+            <span className="font-mono">document_title</span>, or{" "}
+            <span className="font-mono">document_type</span>, set starting values here. They stay editable in projects.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="default-document-id" className="text-xs">
+              Document ID
+            </Label>
+            <Input
+              id="default-document-id"
+              placeholder="hint) A1"
+              value={defaultDocumentId}
+              onChange={(e) => setDefaultDocumentId(e.target.value)}
+              disabled={variables.length === 0}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="default-document-title" className="text-xs">
+              Document title
+            </Label>
+            <Input
+              id="default-document-title"
+              placeholder="hint) Konstruktionsndringer"
+              value={defaultDocumentTitle}
+              onChange={(e) => setDefaultDocumentTitle(e.target.value)}
+              disabled={variables.length === 0}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="default-document-type" className="text-xs">
+              Document type
+            </Label>
+            <Input
+              id="default-document-type"
+              placeholder="hint) Construction Documentation"
+              value={defaultDocumentType}
+              onChange={(e) => setDefaultDocumentType(e.target.value)}
+              disabled={variables.length === 0}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center space-x-2">
