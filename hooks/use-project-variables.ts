@@ -73,7 +73,7 @@ export function useProjectVariables(
         const collapsedCategorySections: { [key in DocumentCategory]: boolean } = {} as any;
 
         Object.keys(templateVariables).forEach(category => {
-          collapsedCategorySections[category as DocumentCategory] = false;
+          collapsedCategorySections[category as DocumentCategory] = true;
 
           const categoryTemplates = templateVariables[category as DocumentCategory];
           if (categoryTemplates) {
@@ -178,7 +178,7 @@ export function useProjectVariables(
       ...prev,
       collapsedCategorySections: {
         ...prev.collapsedCategorySections,
-        [category]: !((prev.collapsedCategorySections as { [key in DocumentCategory]: boolean })[category] ?? false)
+        [category]: !((prev.collapsedCategorySections as { [key in DocumentCategory]: boolean })[category] ?? true)
       }
     }));
   }, []);

@@ -17,14 +17,16 @@
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw, Plus, LayoutGrid, List } from "lucide-react";
 import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } from "@/lib/types/types";
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
 import { DocumentTemplateCard } from './document-template-card';
+import { DocumentListView } from './document-list-view';
 import { Project, DocumentTemplate, User, ProjectTemplate } from "@/lib/types/types";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DocumentVariable } from "@/lib/types/variable-types";
@@ -131,9 +133,45 @@ export function ProjectDocumentsSection({
   isLocked = false,
   onDropdownOptionsChange,
 }: ProjectDocumentsSectionProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
   if (!project) {
     return null;
   }
+
+  // Compute filtered global variables: union of variables with GLOBAL scope
+  // in any template's propagation_settings across all categories.
+  const filteredGlobalVariables = (() => {
+    const allPropSettings = project?.variable_propagation_settings || {};
+    const globalVarNames = new Set<string>();
+
+    for (const catSettings of Object.values(allPropSettings)) {
+      if (!catSettings || typeof catSettings !== 'object') continue;
+      for (const templateSettings of Object.values(catSettings as Record<string, any>)) {
+        if (!templateSettings || typeof templateSettings !== 'object') continue;
+        for (const [varName, setting] of Object.entries(templateSettings as Record<string, any>)) {
+          if (setting?.currentScope === VariablePropagationScope.GLOBAL) {
+            globalVarNames.add(varName);
+          }
+        }
+      }
+    }
+
+    const stored = project?.global_variables?.variables || [];
+    if (globalVarNames.size === 0) return stored;
+
+    const result = new Map<string, DocumentVariable>();
+    for (const v of stored) result.set(v.name, v);
+    // Also pick up globals that may have been mis-filed into category_variables
+    for (const cat of Object.values(DocumentCategory)) {
+      for (const v of project?.category_variables?.[cat]?.variables || []) {
+        if (globalVarNames.has(v.name) && !result.has(v.name)) {
+          result.set(v.name, v);
+        }
+      }
+    }
+    return Array.from(result.values()).filter(v => globalVarNames.has(v.name));
+  })();
 
   return (
     <div className="bg-background w-full">
@@ -221,7 +259,7 @@ export function ProjectDocumentsSection({
                         {/* Global Variables */}
                         <GeneralVariablesSection
                           allTemplates={allTemplates}          
-                          globalVariables={project?.global_variables?.variables || []}
+                          globalVariables={filteredGlobalVariables}
                           templateVariables={templateVariables}
                           propagationSettings={project?.variable_propagation_settings || {} as any}
                           project={project}
@@ -234,12 +272,12 @@ export function ProjectDocumentsSection({
                         {/* Category Variables */}
                         <CategoryVariablesSection
                           category={category}
-                          categoryVariables={project.category_variables?.[category]?.variables || []}
-                          categoryTemplates={Object.keys(project.template_variables?.[category] || {}).map((templateName) => allTemplates.find((t) => t.name === templateName) || null).filter((t) => t !== null) as DocumentTemplate[]}
+                          categoryVariables={storedCategoryVariables}
+                          categoryTemplates={categoryTemplates.filter(t => templateNames.includes(t.name))}
                           templateVariables={project.template_variables || {}}
                           propagationSettings={project.variable_propagation_settings || {}}
                           globalVariables={project.global_variables?.variables || []}
-                          collapsed={collapsedCategorySections[category] || false}
+                          collapsed={collapsedCategorySections[category] ?? true}
                           canEdit={isLocked ? false : canEditGeneralVariables()}
                           projectId={project.id}
                           onToggleCollapse={() => onToggleCategorySectionCollapse(category)}
@@ -248,11 +286,33 @@ export function ProjectDocumentsSection({
                         />
                       </div>
 
-                      {/* Document Template Cards - Grid Layout */}
+                      {/* Document Template Cards */}
                       <div className="border rounded-lg p-4">
-                        {/* Add Document Button - Top Right */}
-                        {!project.is_archived && (
-                          <div className="flex justify-end mb-4">
+                        {/* Top Bar: View Toggle + Add Document Button */}
+                        <div className="flex items-center justify-between mb-4">
+                          {/* View Toggle */}
+                          <div className="flex items-center border rounded-md">
+                            <Button
+                              variant={viewMode === "grid" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-r-none"
+                              onClick={() => setViewMode("grid")}
+                              title="Card View"
+                            >
+                              <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant={viewMode === "list" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-l-none"
+                              onClick={() => setViewMode("list")}
+                              title="List View"
+                            >
+                              <List className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {!project.is_archived && (
                             <TemplateSelectorDialog
                               category={category}
                               onTemplateSelected={onTemplateSelected}
@@ -265,64 +325,89 @@ export function ProjectDocumentsSection({
                                 </Button>
                               }
                             />
-                          </div>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                        {categoryTemplates
-                          .filter(t => templateNames.includes(t.name))
-                          .map((template) => {
-                            const isExpanded = !collapsedTemplates[template.name];
-                            return (
-                        <div 
-                          key={template.name}
-                          className={isExpanded ? "col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5" : ""}
-                        >
-                          <ErrorBoundary
-                            fallback={
-                              <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
-                                <p className="text-destructive text-sm">
-                                  Error loading template: {template.name}
-                                </p>
-                              </div>
-                            }
-                            onError={(error) => {
-                              console.error(`Error in template ${template.name}:`, error);
-                            }}
-                          >
-                            <DocumentTemplateCard
-                            template={template}
+                          )}
+                        </div>
+
+                        {/* List View */}
+                        {viewMode === "list" ? (
+                          <DocumentListView
+                            templates={categoryTemplates.filter(t => templateNames.includes(t.name))}
                             project={project}
                             currentUser={currentUser}
-                            templateVariables={templateVariables[template.category]?.[template.name]?.variables || []}
-                            collapsed={collapsedTemplates[template.name]}
-                            categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
-                            globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
-                            canEditVariables={isLocked ? false : canEditVariables(template.name)}
-                            canCheckVariables={isLocked ? false : canCheckVariables(template.name)}
-                            canEditGeneralVariables={isLocked ? false : canEditGeneralVariables()}
+                            templateVariables={templateVariables}
                             isLocked={isLocked}
-                            calculateProgress={calculateTemplateProgress}
+                            calculateTemplateProgress={calculateTemplateProgress}
                             getVariableType={getVariableType}
-                            onToggleCollapse={() => onToggleTemplateCollapse(template.name)}
+                            canEditVariables={canEditVariables}
+                            canCheckVariables={canCheckVariables}
+                            canEditGeneralVariables={canEditGeneralVariables}
                             onVariableChange={onVariableChange}
                             onPropagationChange={onPropagationChange}
                             onSupervisorCheck={onSupervisorCheck}
                             onReadyForControl={onReadyForControl}
                             onGenerateDocument={onGenerateDocument}
                             onTemplateRemove={onTemplateRemove}
-                            onAssignmentUpdate={onAssignmentUpdate}
-                            onUpgradeVersion={onUpgradeVersion}
-                            onRefresh={onRefresh}
-                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id ||
-                              currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
-                            canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
                             onDropdownOptionsChange={onDropdownOptionsChange}
                           />
-                          </ErrorBoundary>
-                        </div>
-                            );
-                          })}
-                      </div>
+                        ) : (
+                          /* Card View (Grid) */
+                          <div className="flex flex-wrap gap-4">
+                            {categoryTemplates
+                              .filter(t => templateNames.includes(t.name))
+                              .map((template) => {
+                                const isExpanded = !(collapsedTemplates[template.name] ?? true);
+                                return (
+                                  <div 
+                                    key={template.name}
+                                    className={isExpanded ? "w-full" : "w-[200px]"}
+                                  >
+                                    <ErrorBoundary
+                                      fallback={
+                                        <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+                                          <p className="text-destructive text-sm">
+                                            Error loading template: {template.name}
+                                          </p>
+                                        </div>
+                                      }
+                                      onError={(error) => {
+                                        console.error(`Error in template ${template.name}:`, error);
+                                      }}
+                                    >
+                                      <DocumentTemplateCard
+                                        template={template}
+                                        project={project}
+                                        currentUser={currentUser}
+                                        templateVariables={templateVariables[template.category]?.[template.name]?.variables || []}
+                                        collapsed={collapsedTemplates[template.name] ?? true}
+                                        categoryVariableNames={project.category_variables?.[template.category]?.variables?.map((v: any) => v.name) || []}
+                                        globalVariableNames={project.global_variables?.variables?.map((v: any) => v.name) || []}
+                                        canEditVariables={isLocked ? false : canEditVariables(template.name)}
+                                        canCheckVariables={isLocked ? false : canCheckVariables(template.name)}
+                                        canEditGeneralVariables={isLocked ? false : canEditGeneralVariables()}
+                                        isLocked={isLocked}
+                                        calculateProgress={calculateTemplateProgress}
+                                        getVariableType={getVariableType}
+                                        onToggleCollapse={() => onToggleTemplateCollapse(template.name)}
+                                        onVariableChange={onVariableChange}
+                                        onPropagationChange={onPropagationChange}
+                                        onSupervisorCheck={onSupervisorCheck}
+                                        onReadyForControl={onReadyForControl}
+                                        onGenerateDocument={onGenerateDocument}
+                                        onTemplateRemove={onTemplateRemove}
+                                        onAssignmentUpdate={onAssignmentUpdate}
+                                        onUpgradeVersion={onUpgradeVersion}
+                                        onRefresh={onRefresh}
+                                        canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id ||
+                                          currentUser?.id === project.document_assignments?.[template.name]?.supervisor_id)}
+                                        canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
+                                        onDropdownOptionsChange={onDropdownOptionsChange}
+                                      />
+                                    </ErrorBoundary>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
                       </div>
                       
                       {/* Empty State */}

@@ -27,6 +27,8 @@ import { Download, Archive, Loader2, MoreHorizontal, Edit, Trash2, PauseCircle }
 import { UserAvatar, UserAvatarStack } from "@/components/ui/user-avatar";
 import { formatDate, getDeadlineColor } from "@/utils/project-utils";
 import { User, Project } from "@/lib/types/types";
+import { DownloadPhaseDialog } from "./download-phase-dialog";
+import type { ProjectPhaseFull } from "@/lib/phases/types";
 
 export interface ProjectHoldState {
   is_on_hold: boolean;
@@ -48,8 +50,9 @@ interface ProjectOverviewProps {
   canUpdateProject: boolean;
   canAssignWorkers: boolean;
   canDownloadProject: boolean;
+  phases: ProjectPhaseFull[];
   onBackToDashboard: () => void;
-  onDownloadProject: () => Promise<void>;
+  onDownloadProject: (phaseIds?: string[]) => Promise<void>;
   onArchiveProject: () => Promise<void>;
   onProjectDeleted: () => void;
   onProjectUpdated: () => Promise<void>;
@@ -71,6 +74,7 @@ export function ProjectOverview({
   canUpdateProject,
   canAssignWorkers,
   canDownloadProject,
+  phases,
   onBackToDashboard: _onBackToDashboard,
   onDownloadProject,
   onArchiveProject,
@@ -82,6 +86,7 @@ export function ProjectOverview({
 }: ProjectOverviewProps) {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [holdDialogOpen, setHoldDialogOpen] = useState(false);
   const [holdNote, setHoldNote] = useState("");
   const [holdSubmitting, setHoldSubmitting] = useState(false);
@@ -152,7 +157,7 @@ export function ProjectOverview({
 
               {canDownloadProject && (
                 <DropdownMenuItem
-                  onClick={onDownloadProject}
+                  onClick={() => setShowDownloadDialog(true)}
                   disabled={loadingAction !== "none"}
                 >
                   {loadingAction === "download" ? (
@@ -320,6 +325,14 @@ export function ProjectOverview({
       {showDeleteDialog && (
         <DeleteProject project={project} onDeleted={onProjectDeleted} />
       )}
+
+      <DownloadPhaseDialog
+        open={showDownloadDialog}
+        onOpenChange={setShowDownloadDialog}
+        phases={phases}
+        onDownload={onDownloadProject}
+        loading={loadingAction === "download"}
+      />
     </div>
   );
 }

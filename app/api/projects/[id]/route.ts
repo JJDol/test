@@ -79,11 +79,11 @@ async function getProjectHandler(
       workerDetails = workers || [];
     }
 
-    // Add workers_names for frontend compatibility
-    // TODO: Maybe this should be done in the frontend?
     const transformedProject = {
       ...project,
-      workers_names: workerDetails.map(w => w.name || w.email)
+      workers_names: workerDetails.map(w => w.name || w.email),
+      assignedTo: project.leader?.name || project.leader?.email || 'Unassigned',
+      leaderName: project.leader?.name || project.leader?.email || 'Unassigned',
     };
 
     return NextResponse.json(transformedProject);

@@ -230,77 +230,79 @@ export function DocumentTemplateCard({
         </DropdownMenu>
       </div>
 
-      {/* Template Title and Version - fixed height for consistency */}
-      <div className="mb-2 min-h-[4.5rem] text-center">
-        <h3 className="text-base font-semibold line-clamp-2 mb-1">{template.name}</h3>
-        <div className="flex items-center gap-1 flex-wrap">
-          <Badge
-            variant={hasNewerVersion ? "outline" : "secondary"}
-            className={`text-xs ${hasNewerVersion ? "border-amber-500 text-amber-600" : ""}`}
-            title={hasNewerVersion
-              ? `Using version ${lockedVersion}. Version ${latestVersion} available.`
-              : `Using latest version (v${lockedVersion})`
-            }
-          >
-            v{lockedVersion}
-            {hasNewerVersion && (
-              <ArrowUpCircle className="ml-1 h-3 w-3" />
-            )}
-          </Badge>
-          {hasCustomTemplate && (
+      <div className="max-w-[220px]">
+        {/* Template Title and Version - fixed height for consistency */}
+        <div className="mb-2 min-h-[4.5rem] text-center">
+          <h3 className="text-base font-semibold line-clamp-2 mb-1">{template.name}</h3>
+          <div className="flex items-center gap-1 flex-wrap">
             <Badge
-              variant="outline"
-              className="text-xs border-blue-500 text-blue-600"
-              title="This project uses a customized version of the template"
+              variant={hasNewerVersion ? "outline" : "secondary"}
+              className={`text-xs ${hasNewerVersion ? "border-amber-500 text-amber-600" : ""}`}
+              title={hasNewerVersion
+                ? `Using version ${lockedVersion}. Version ${latestVersion} available.`
+                : `Using latest version (v${lockedVersion})`
+              }
             >
-              Customized
+              v{lockedVersion}
+              {hasNewerVersion && (
+                <ArrowUpCircle className="ml-1 h-3 w-3" />
+              )}
             </Badge>
-          )}
+            {hasCustomTemplate && (
+              <Badge
+                variant="outline"
+                className="text-xs border-blue-500 text-blue-600"
+                title="This project uses a customized version of the template"
+              >
+                Customized
+              </Badge>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Circular Progress */}
-      <div className="flex justify-center py-1">
-        <CircularProgress value={progressValue} size={80} strokeWidth={6} />
-      </div>
-
-      {/* Assignment Information - fixed height for consistency */}
-      <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem] text-center">
-        <p className="truncate">Assigned to: {project.document_assignments?.[template.name]?.assignee_name || 'Not assigned'}</p>
-        <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || 'Not assigned'}</p>
-        <div className="h-6 flex items-center justify-center">
-          {project.document_assignments?.[template.name]?.supervisor_checked && (
-            <Badge variant="outline" className="text-xs">Checked by supervisor</Badge>
-          )}
+        {/* Circular Progress */}
+        <div className="flex justify-center py-1">
+          <CircularProgress value={progressValue} size={80} strokeWidth={6} />
         </div>
-      </div>
 
-      {/* Checkboxes Section - fixed height for consistency */}
-      <div className="mt-auto pt-3 space-y-2 min-h-[3.5rem] flex flex-col items-center">
-        {!project.is_archived && canCheckVariables && (
+        {/* Assignment Information - fixed height for consistency */}
+        <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem] text-center">
+          <p className="truncate">Assigned to: {project.document_assignments?.[template.name]?.assignee_name || 'Not assigned'}</p>
+          <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || 'Not assigned'}</p>
+          <div className="h-6 flex items-center justify-center">
+            {project.document_assignments?.[template.name]?.supervisor_checked && (
+              <Badge variant="outline" className="text-xs">Checked by supervisor</Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Checkboxes Section - fixed height for consistency */}
+        <div className="pt-3 space-y-2 min-h-[3.5rem] flex flex-col items-center">
+          {!project.is_archived && canCheckVariables && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`check-${template.name}`}
+                checked={project.document_assignments?.[template.name]?.supervisor_checked || false}
+                disabled={isLocked}
+                onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
+              />
+              <Label htmlFor={`check-${template.name}`} className="text-xs text-muted-foreground">
+                Check by supervisor
+              </Label>
+            </div>
+          )}
+          {/* Ready for control checkbox */}
           <div className="flex items-center gap-2">
             <Checkbox
-              id={`check-${template.name}`}
-              checked={project.document_assignments?.[template.name]?.supervisor_checked || false}
-              disabled={isLocked}
-              onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
+              id={`ready-${template.name}`}
+              checked={project.document_assignments?.[template.name]?.ready_for_control || false}
+              disabled={isLocked || project.is_archived || !project.document_assignments?.[template.name]?.supervisor_checked}
+              onCheckedChange={(checked) => onReadyForControl(template.name, checked as boolean)}
             />
-            <Label htmlFor={`check-${template.name}`} className="text-xs text-muted-foreground">
-              Check by supervisor
+            <Label htmlFor={`ready-${template.name}`} className="text-xs text-muted-foreground">
+              Ready for control
             </Label>
           </div>
-        )}
-        {/* Ready for control checkbox */}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={`ready-${template.name}`}
-            checked={project.document_assignments?.[template.name]?.ready_for_control || false}
-            disabled={isLocked || project.is_archived || !project.document_assignments?.[template.name]?.supervisor_checked}
-            onCheckedChange={(checked) => onReadyForControl(template.name, checked as boolean)}
-          />
-          <Label htmlFor={`ready-${template.name}`} className="text-xs text-muted-foreground">
-            Ready for control
-          </Label>
         </div>
       </div>
 

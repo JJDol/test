@@ -51,6 +51,7 @@ import { DocumentTemplate, DocumentCategory } from "@/lib/types/types";
 
 // Types
 type ViewMode = 'all' | 'public' | 'private';
+export type SortMode = 'name-asc' | 'name-desc' | 'modified-newest' | 'modified-oldest';
 
 interface TemplateDialogState {
   upload: boolean;
@@ -64,6 +65,7 @@ interface TemplatesState {
   archivedTemplates: DocumentTemplate[];
   showArchived: boolean;
   viewMode: ViewMode;
+  sortMode: SortMode;
   selectedCategory: DocumentCategory | 'ALL';
   expandedTemplates: Record<string, boolean>;
   templateToEdit: DocumentTemplate | null;
@@ -90,6 +92,7 @@ interface TemplatesActions {
   
   // UI state management
   setViewMode: (mode: ViewMode) => void;
+  setSortMode: (mode: SortMode) => void;
   setSelectedCategory: (category: DocumentCategory | 'ALL') => void;
   toggleTemplateExpanded: (name: string) => void;
   
@@ -115,6 +118,7 @@ interface UseTemplatesReturn {
   archivedTemplates: DocumentTemplate[];
   showArchived: boolean;
   viewMode: ViewMode;
+  sortMode: SortMode;
   selectedCategory: DocumentCategory | 'ALL';
   expandedTemplates: Record<string, boolean>;
   templateToEdit: DocumentTemplate | null;
@@ -165,6 +169,7 @@ export function useTemplates(): UseTemplatesReturn {
     archivedTemplates: [],
     showArchived: false,
     viewMode: 'all',
+    sortMode: 'name-asc',
     selectedCategory: 'ALL',
     expandedTemplates: {},
     templateToEdit: null,
@@ -538,10 +543,6 @@ export function useTemplates(): UseTemplatesReturn {
     
     handleUploadComplete: async () => {
       try {
-        setState(prev => ({
-          ...prev,
-          dialogs: { ...prev.dialogs, upload: false }
-        }));
         await fetchTemplates();
       } catch (error) {
         console.error('[useTemplates] Error refreshing templates after upload:', error);
@@ -551,6 +552,10 @@ export function useTemplates(): UseTemplatesReturn {
     // UI state management
     setViewMode: (mode: ViewMode) => {
       setState(prev => ({ ...prev, viewMode: mode }));
+    },
+
+    setSortMode: (mode: SortMode) => {
+      setState(prev => ({ ...prev, sortMode: mode }));
     },
     
     setSelectedCategory: (category: DocumentCategory | 'ALL') => {
@@ -661,15 +666,36 @@ export function useTemplates(): UseTemplatesReturn {
     return true;
   });
 
-  // Initialize all categories with empty arrays, then populate with templates
-  const templatesByCategory = state.templates.reduce((acc, template) => {
-    const category = template.category;
-    acc[category].push(template);
+  const sortTemplates = (templates: DocumentTemplate[]): DocumentTemplate[] => {
+    return [...templates].sort((a, b) => {
+      switch (state.sortMode) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'modified-newest':
+          return (b.updated_at || '').localeCompare(a.updated_at || '');
+        case 'modified-oldest':
+          return (a.updated_at || '').localeCompare(b.updated_at || '');
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const templatesByCategory = Object.entries(
+    state.templates.reduce((acc, template) => {
+      const category = template.category;
+      acc[category].push(template);
+      return acc;
+    }, Object.values(DocumentCategory).reduce((acc, category) => {
+      acc[category] = [];
+      return acc;
+    }, {} as Record<DocumentCategory, DocumentTemplate[]>))
+  ).reduce((acc, [category, templates]) => {
+    acc[category as DocumentCategory] = sortTemplates(templates);
     return acc;
-  }, Object.values(DocumentCategory).reduce((acc, category) => {
-    acc[category] = [];
-    return acc;
-  }, {} as Record<DocumentCategory, DocumentTemplate[]>));
+  }, {} as Record<DocumentCategory, DocumentTemplate[]>);
 
   const templateStats = {
     total: state.templates.length,
@@ -691,6 +717,7 @@ export function useTemplates(): UseTemplatesReturn {
     archivedTemplates: state.archivedTemplates,
     showArchived: state.showArchived,
     viewMode: state.viewMode,
+    sortMode: state.sortMode,
     selectedCategory: state.selectedCategory,
     expandedTemplates: state.expandedTemplates,
     templateToEdit: state.templateToEdit,

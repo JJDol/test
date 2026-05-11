@@ -118,10 +118,22 @@ export function canEditGeneralVariables(project: any, currentUser: any): boolean
 }
 
 /**
- * Format a date for display
+ * Format a date for display (dd. MMM. YYYY)
  */
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString();
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return String(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = d.toLocaleDateString("en-US", { month: "short" });
+  const year = d.getFullYear();
+  return `${day}. ${month}. ${year}`;
+}
+
+/**
+ * Format a date in short form for tight spaces (dd. MMM. YYYY)
+ */
+export function formatDateShort(date: string | Date): string {
+  return formatDate(date);
 }
 
 /**

@@ -86,6 +86,7 @@ export function TemplatesContent() {
             archivedTemplates={documentTemplatesHook.archivedTemplates}
             showArchived={documentTemplatesHook.showArchived}
             viewMode={documentTemplatesHook.viewMode}
+            sortMode={documentTemplatesHook.sortMode}
             selectedCategory={documentTemplatesHook.selectedCategory}
             expandedTemplates={documentTemplatesHook.expandedTemplates}
             templateToEdit={documentTemplatesHook.templateToEdit}
@@ -117,6 +118,7 @@ export function TemplatesContent() {
             // State
             projectTemplates={projectTemplatesHook.projectTemplates}
             selectedProjectCategory={projectTemplatesHook.selectedProjectCategory}
+            sortMode={projectTemplatesHook.sortMode}
             newProjectTemplate={projectTemplatesHook.newProjectTemplate}
             editProjectTemplate={projectTemplatesHook.editProjectTemplate}
             projectTemplateToEdit={projectTemplatesHook.projectTemplateToEdit}

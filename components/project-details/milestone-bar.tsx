@@ -583,8 +583,8 @@ function chevronStateStyle(state: MilestoneVisualState): React.CSSProperties {
 function formatDeadline(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const year = date.getFullYear();
+  return `${day}. ${month}. ${year}`;
 }

@@ -171,7 +171,7 @@ interface ProjectDetailsContentProps {
     toggleGlobalSectionCollapse: () => void;
     toggleCategorySectionCollapse: (category: DocumentCategory) => void;
     setTemplateVariables: (variables: any) => void;
-    handleDownloadProject: () => Promise<void>;
+    handleDownloadProject: (phaseIds?: string[]) => Promise<void>;
     handleGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
     handleTemplateSelected: (template: DocumentTemplate) => void;
     handleProjectTemplateSelected: (projectTemplate: ProjectTemplate) => void;
@@ -240,18 +240,22 @@ export function ProjectDetailsContent({
 
   const virtualProject = useMemo<Project | null>(() => {
     if (!project) return project;
-    if (!activePhase) {
-      const emptyArrays: Record<string, string[]> = {};
-      Object.values(DocumentCategory).forEach((cat) => {
-        emptyArrays[`${cat.toLowerCase()}_templates`] = [];
-      });
+    // While phases are loading, or before any phase row exists, keep the
+    // `/api/projects/[id]` snapshot — otherwise we wipe `*_templates` and the UI
+    // shows an empty project even though the row + phase documents are fine.
+    if (phasesState.loading) return project;
+    if (!phasesState.phases.length) return project;
+    if (!activePhase) return project;
+
+    // Current phase has no `project_phase_documents` rows but the project row
+    // was populated (e.g. create-project sync). Show legacy fields as fallback.
+    if (
+      activeDocuments.length === 0 &&
+      assignedTemplateNames(project).length > 0
+    ) {
       return {
         ...project,
-        ...emptyArrays,
-        template_variables: {} as Project["template_variables"],
-        variable_propagation_settings: {} as Project["variable_propagation_settings"],
-        document_assignments: {} as Project["document_assignments"],
-        document_review_status: {} as unknown,
+        deadline: activePhase.deadline ?? project.deadline,
       } as Project;
     }
 
@@ -284,12 +288,19 @@ export function ProjectDetailsContent({
     return {
       ...project,
       ...templateArrays,
+      deadline: activePhase.deadline ?? project.deadline,
       template_variables: templateVariablesMap as Project["template_variables"],
       variable_propagation_settings: propagationSettings as Project["variable_propagation_settings"],
       document_assignments: assignments as Project["document_assignments"],
       document_review_status: reviewStatus as unknown,
     } as Project;
-  }, [project, activePhase, activeDocuments]);
+  }, [
+    project,
+    activePhase,
+    activeDocuments,
+    phasesState.loading,
+    phasesState.phases.length,
+  ]);
 
   const progressProject = virtualProject ?? project;
 
@@ -646,7 +657,7 @@ export function ProjectDetailsContent({
 
         {/* Phase Milestone Bar + Control Panel */}
         {projectId && !phasesState.loading && !phasesState.error && (
-          <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+          <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: "#F0E6E6" }}>
             <MilestoneBar
               slots={phasesState.slots}
               activePhaseId={activePhase?.id ?? null}
@@ -687,6 +698,7 @@ export function ProjectDetailsContent({
               canUpdateProject={permissions.canUpdateProject()}
               canAssignWorkers={permissions.canAssignWorkers()}
               canDownloadProject={permissions.canDownloadProject()}
+              phases={phasesState.phases}
               onBackToDashboard={actions.handleBackToDashboard}
               onDownloadProject={actions.handleDownloadProject}
               onArchiveProject={actions.handleArchiveProject}

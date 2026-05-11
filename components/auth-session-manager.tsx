@@ -19,7 +19,9 @@ export function AuthSessionManager() {
   );
 
   const isAuthPage = useCallback((path: string | null) => {
-    return path === '/sign-in' || path === '/sign-up' || path === '/forgot-password';
+    if (!path) return false;
+    return path === '/sign-in' || path === '/sign-up' || path === '/forgot-password'
+      || path.startsWith('/invite') || path.startsWith('/reset-password');
   }, []);
 
   useEffect(() => {

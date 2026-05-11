@@ -24,8 +24,10 @@ import { CategorySelector } from "@/components/ui/category-selector";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingStateInline } from "@/components/ui/loading-state-inline";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
-import { Plus, Archive, RotateCcw, Loader2, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, Archive, RotateCcw, Loader2, ChevronDown, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, CalendarArrowDown, CalendarArrowUp } from "lucide-react";
 import { DocumentTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import type { SortMode } from "@/hooks/use-templates";
 import { TemplateUploadForm } from "@/components/ui/template-upload-form";
 import { DocumentTemplateCard } from "./document-template-card";
 import { DocumentTemplateEditDialog } from "./document-template-edit-dialog";
@@ -39,6 +41,7 @@ interface DocumentTemplatesTabProps {
   archivedTemplates: DocumentTemplate[];
   showArchived: boolean;
   viewMode: 'all' | 'public' | 'private';
+  sortMode: SortMode;
   selectedCategory: DocumentCategory | 'ALL';
   expandedTemplates: Record<string, boolean>;
   templateToEdit: DocumentTemplate | null;
@@ -94,6 +97,7 @@ interface DocumentTemplatesTabProps {
     handleUploadComplete: () => Promise<void>;
     toggleShowArchived: () => void;
     setViewMode: (mode: 'all' | 'public' | 'private') => void;
+    setSortMode: (mode: SortMode) => void;
     setSelectedCategory: (category: DocumentCategory | 'ALL') => void;
     toggleTemplateExpanded: (name: string) => void;
     openUploadDialog: () => void;
@@ -115,6 +119,7 @@ export function DocumentTemplatesTab({
   archivedTemplates,
   showArchived,
   viewMode,
+  sortMode,
   selectedCategory,
   expandedTemplates,
   templateToEdit,
@@ -158,6 +163,32 @@ export function DocumentTemplatesTab({
           />
         </div>
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                Sort
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => actions.setSortMode('name-asc')} className={sortMode === 'name-asc' ? 'bg-accent' : ''}>
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                Name (A → Z)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('name-desc')} className={sortMode === 'name-desc' ? 'bg-accent' : ''}>
+                <ArrowUpAZ className="mr-2 h-4 w-4" />
+                Name (Z → A)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('modified-newest')} className={sortMode === 'modified-newest' ? 'bg-accent' : ''}>
+                <CalendarArrowDown className="mr-2 h-4 w-4" />
+                Modified (Newest)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.setSortMode('modified-oldest')} className={sortMode === 'modified-oldest' ? 'bg-accent' : ''}>
+                <CalendarArrowUp className="mr-2 h-4 w-4" />
+                Modified (Oldest)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="outline"
             onClick={actions.toggleShowArchived}
