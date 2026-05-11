@@ -94,33 +94,58 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
 
     if (data && data.length > 0) {
       const projectIds = data.map((p: any) => p.id);
+
+      /** Normalize bigint / string JSON from PostgREST so Map lookups match `project.id`. */
+      const numericProjectId = (id: unknown): number => {
+        if (typeof id === 'number' && !Number.isNaN(id)) return id;
+        if (typeof id === 'string') return parseInt(id, 10);
+        return Number(id);
+      };
+
+      // Step 1: Get current phase IDs per project
       const { data: phases } = await queryClient
         .from("project_phases")
-        .select("project_id, is_current, documents")
+        .select("id, project_id")
         .in("project_id", projectIds)
         .eq("is_current", true);
 
-      if (phases) {
-        const currentPhaseMap = new Map<number, any>();
+      if (phases && phases.length > 0) {
+        const phaseIdToProjectId = new Map<string, number>();
         for (const phase of phases) {
-          currentPhaseMap.set(phase.project_id, phase);
+          phaseIdToProjectId.set(
+            String(phase.id),
+            numericProjectId(phase.project_id)
+          );
+        }
+
+        // Step 2: Get documents from project_phase_documents for current phases
+        const phaseIds = phases.map((p: any) => p.id);
+        const { data: phaseDocs } = await queryClient
+          .from("project_phase_documents")
+          .select("project_phase_id, assignments")
+          .in("project_phase_id", phaseIds);
+
+        // Step 3: Group documents by project and calculate supervisor_checked ratio
+        const docsByProject = new Map<number, any[]>();
+        for (const doc of phaseDocs ?? []) {
+          const projectId = phaseIdToProjectId.get(String(doc.project_phase_id));
+          if (projectId === undefined || Number.isNaN(projectId)) continue;
+          const list = docsByProject.get(projectId) ?? [];
+          list.push(doc);
+          docsByProject.set(projectId, list);
         }
 
         for (const project of data as any[]) {
-          const currentPhase = currentPhaseMap.get(project.id);
-          if (currentPhase?.documents) {
-            const docs = currentPhase.documents as any[];
-            const totalDocs = docs.length;
-            if (totalDocs > 0) {
-              const checkedDocs = docs.filter(
-                (d: any) => d.assignments?.supervisor_checked
-              ).length;
-              project.progress = Math.round((checkedDocs / totalDocs) * 100);
-            } else {
-              project.progress = 0;
-            }
-          } else {
-            project.progress = 0;
+          const pid = numericProjectId(project.id);
+          const docs = docsByProject.get(pid);
+          // Only override when the current phase actually has documents to score.
+          // Otherwise keep `projects.progress` from the row (e.g. variable fill %)
+          // instead of forcing 0 — which made the dashboard look empty on first load.
+          if (docs && docs.length > 0) {
+            const checkedDocs = docs.filter(
+              (d: any) => d.assignments?.supervisor_checked
+            ).length;
+            project.progress = Math.round((checkedDocs / docs.length) * 100);
           }
         }
       }
