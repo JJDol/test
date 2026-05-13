@@ -99,6 +99,11 @@ async function patchPhaseHandler(
         patch.locked_at = null;
       }
     }
+    // ✅ D2 X2'' (2026-05-13) — phase-scoped category_variables 저장
+    // shape: { [category]: { variables: DocumentVariable[] } }
+    if (body && typeof body === "object" && body.category_variables && typeof body.category_variables === "object") {
+      patch.category_variables = body.category_variables;
+    }
 
     let updated = phase as unknown;
     if (Object.keys(patch).length > 0) {

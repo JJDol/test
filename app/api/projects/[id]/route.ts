@@ -100,7 +100,24 @@ async function updateProjectHandler(
 
   try {
     const { id } = await params;
-    const updates = await request.json();
+    const rawUpdates = await request.json();
+
+    // Issue 15 (D3 옵션 B): `projects.deadline` 컬럼은 제거되고 `start_date`로
+    // 분리됨. 옛 클라이언트가 `deadline`을 보내도 start_date로 매핑해 호환
+    // 유지. `current_phase_deadline`은 GET 응답 hydrate 필드라 PATCH로
+    // 받지 않는다.
+    const updates: Record<string, unknown> = { ...rawUpdates };
+    if ('deadline' in updates) {
+      const legacy = updates.deadline;
+      delete updates.deadline;
+      if (!('start_date' in updates) || updates.start_date == null) {
+        updates.start_date = legacy ?? null;
+      }
+    }
+    if ('current_phase_deadline' in updates) {
+      delete updates.current_phase_deadline;
+    }
+
     const supabase = await createClient();
 
     // Get current user profile (auth middleware already verified user exists)
@@ -239,9 +256,9 @@ async function updateProjectHandler(
 
       if (projectError) throw projectError;
 
-      const currentWorkerIds = currentProject?.workers || [];
-      const newWorkerIds = updates.workers || [];
-      
+      const currentWorkerIds: string[] = currentProject?.workers || [];
+      const newWorkerIds: string[] = (updates.workers as string[] | undefined) || [];
+
       // Find added and removed workers
       const addedWorkers = newWorkerIds.filter((workerId: string) => !currentWorkerIds.includes(workerId));
       const removedWorkers = currentWorkerIds.filter((workerId: string) => !newWorkerIds.includes(workerId));

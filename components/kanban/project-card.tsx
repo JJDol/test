@@ -87,8 +87,12 @@ export function ProjectCard({
       <p className="text-sm text-gray-600">
         Leader: {project.leader?.name || project.leader?.email || 'Unassigned'}
       </p>
+      {/* Issue 15 (D3 옵션 B): show current phase deadline. */}
       <p className="text-sm text-gray-600">
-        Deadline: {new Date(project.deadline).toLocaleDateString()}
+        Deadline:{" "}
+        {project.current_phase_deadline
+          ? new Date(project.current_phase_deadline).toLocaleDateString()
+          : "—"}
       </p>
       
       {/* Progress Bar */}

@@ -25,12 +25,22 @@ interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ stage, projects, className = "", isLoading = false }: KanbanColumnProps) {
-  // Sort projects by deadline
-  // TODO: Consider if we need to sort by other criteria or person can  manually order the projects
+  // Sort projects by overall project deadline (Issue 15) — `last_phase_deadline`
+  // is MAX(deadline) across every phase, representing the project's expected
+  // completion date. Cards on the column are talking about the project as a
+  // whole, so the sort key is the project-wide deadline (not the active phase
+  // deadline shown on each card). Projects without any phase deadline sink to
+  // the bottom of the column.
   const sortedProjects = projects
     .filter(project => project.stage === stage.id)
     .sort((a, b) => {
-      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      const aTime = a.last_phase_deadline
+        ? new Date(a.last_phase_deadline).getTime()
+        : Number.POSITIVE_INFINITY;
+      const bTime = b.last_phase_deadline
+        ? new Date(b.last_phase_deadline).getTime()
+        : Number.POSITIVE_INFINITY;
+      return aTime - bTime;
     });
 
   return (

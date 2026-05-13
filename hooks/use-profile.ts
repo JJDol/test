@@ -24,7 +24,12 @@ export type Project = {
   id: string;
   name: string;
   location: string;
-  deadline: string;
+  /** Issue 15 (D3 옵션 B): replaces the removed `deadline` column. */
+  start_date: string | null;
+  /** Hydrated by `GET /api/projects` — current phase deadline. */
+  current_phase_deadline?: string | null;
+  /** Hydrated by `GET /api/projects` — MAX(deadline) across all phases. */
+  last_phase_deadline?: string | null;
   status: string;
   assignedTo?: string;
   leaderName?: string;

@@ -100,18 +100,25 @@ export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated
                 </div>
                 <p className="text-sm text-gray-600 mt-1">{project.progress}%</p>
             </div>
-            <p className="text-sm mt-2">
-                Deadline:{" "}
-                <span
-                    className={`font-bold ${
-                        new Date(project.deadline) < new Date()
-                            ? "text-red-500"
-                            : "text-blue-500"
-                    }`}
-                >
-                    {new Date(project.deadline).toLocaleDateString()}
-                </span>
-            </p>
+            {/* Issue 15 (D3 옵션 B): the dashboard/kanban surfaces now show
+                the deadline of the project's current phase instead of the
+                removed `projects.deadline` column. */}
+            {project.current_phase_deadline ? (
+                <p className="text-sm mt-2">
+                    Deadline:{" "}
+                    <span
+                        className={`font-bold ${
+                            new Date(project.current_phase_deadline) < new Date()
+                                ? "text-red-500"
+                                : "text-blue-500"
+                        }`}
+                    >
+                        {new Date(project.current_phase_deadline).toLocaleDateString()}
+                    </span>
+                </p>
+            ) : (
+                <p className="text-sm mt-2 text-gray-500">No phase deadline set</p>
+            )}
             <p className="text-sm mt-2">Project Leader: {project.leader?.name || project.leader?.email || 'Unassigned'}</p>
             {project.is_archived && (
                 <div className="mt-2">

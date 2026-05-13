@@ -16,16 +16,17 @@ export interface ProjectContext {
       name: string;
       progress: number;
       stage: string;
-      deadline: string | null;
+      /** Issue 15 (D3 옵션 B): replaces the dropped `deadline` column. */
+      start_date: string | null;
     }>;
   };
-  
+
   // Company-wide recent projects (with leaders)
   recentCompanyProjects: Array<{
     name: string;
     progress: number;
     stage: string;
-    deadline: string | null;
+    start_date: string | null;
     leader_name: string;
   }>;
   
@@ -87,23 +88,41 @@ export class ProjectContextService {
           .eq('is_archived', false)
           .eq('stage', 'COMPLETED'),
           
-        // Overdue projects (active projects past deadline)
-        // TODO: Use API route for this
+        // Overdue projects: project as a whole missed its overall deadline.
+        // Issue 15: "project deadline" is MAX(phase.deadline) — pulled all
+        // (project_id, deadline) tuples and aggregate client-side because
+        // PostgREST has no clean GROUP BY HAVING surface.
         supabase
-          .from('projects')
-          .select('id', { count: 'exact', head: true })
-          .eq('is_archived', false)
-          .in('stage', ['IN_PROGRESS', 'TODO', 'REVIEW'])
-          .lt('deadline', new Date().toISOString()),
-          
+          .from('project_phases')
+          .select('project_id, deadline')
+          .not('deadline', 'is', null),
+
         // Projects where current user is leader (simplified for now)
         // TODO: Use API route for this
         supabase
           .from('projects')
-          .select('name, progress, stage, deadline')
+          .select('name, progress, stage, start_date')
           .eq('leader_id', user.id)
           .eq('is_archived', false)
       ]);
+
+      // Client-side aggregation: count distinct projects whose MAX(phase
+      // deadline) is in the past — that's the project-level "overdue" set.
+      const nowMs = Date.now();
+      const projectMaxDeadline = new Map<string, number>();
+      for (const row of (overdueProjectsResult.data ?? []) as Array<{
+        project_id: string | number;
+        deadline: string | null;
+      }>) {
+        if (!row.deadline) continue;
+        const t = new Date(row.deadline).getTime();
+        const pid = String(row.project_id);
+        const prev = projectMaxDeadline.get(pid);
+        if (prev === undefined || t > prev) projectMaxDeadline.set(pid, t);
+      }
+      const overdueProjectCount = Array.from(projectMaxDeadline.values()).filter(
+        (t) => t < nowMs
+      ).length;
 
       // ✅ FIXED: Get recent projects with proper company isolation
       // TODO: Use API route for this
@@ -113,7 +132,7 @@ export class ProjectContextService {
           name,
           progress,
           stage,
-          deadline,
+          start_date,
           leader_id
         `)
         .eq('is_archived', false)
@@ -143,7 +162,7 @@ export class ProjectContextService {
         name: p.name,
         progress: p.progress || 0,
         stage: p.stage || 'unknown',
-        deadline: p.deadline,
+        start_date: (p as any).start_date ?? null,
         leader_name: leaderNames[p.leader_id] || 'Unknown'
       })) || [];
 
@@ -176,14 +195,14 @@ export class ProjectContextService {
         totalProjects: totalProjectsResult.count || 0,
         activeProjects: activeProjectsResult.count || 0,
         completedProjects: completedProjectsResult.count || 0,
-        overDueProjects: overdueProjectsResult.count || 0,
+        overDueProjects: overdueProjectCount,
         myLeadershipData: {
           projectCount: myLeaderProjects.data?.length || 0,
           projects: myLeaderProjects.data?.map(p => ({
             name: p.name,
             progress: p.progress || 0,
             stage: p.stage || 'unknown',
-            deadline: p.deadline
+            start_date: (p as any).start_date ?? null
           })) || [],
         },
         recentCompanyProjects: recentProjects,
@@ -228,7 +247,7 @@ COMPANY PROJECT DATA FOR ${context.companyName.toUpperCase()}
 Projects YOU are the leader of: ${context.myLeadershipData.projectCount}
 ${context.myLeadershipData.projects.length > 0 ? 
   context.myLeadershipData.projects.map(p => 
-    `• ${p.name} - ${p.progress}% complete, Stage: ${p.stage}${p.deadline ? `, Deadline: ${p.deadline}` : ''}`
+    `• ${p.name} - ${p.progress}% complete, Stage: ${p.stage}${p.start_date ? `, Start Date: ${p.start_date}` : ''}`
   ).join('\n') : 
   '• You are not currently leading any projects'
 }
@@ -241,7 +260,7 @@ ${context.myLeadershipData.projects.length > 0 ?
 
 === RECENT COMPANY PROJECTS (with their leaders) ===
 ${context.recentCompanyProjects.map(p => 
-  `• ${p.name} - ${p.progress}% complete, Stage: ${p.stage}, Leader: ${p.leader_name}${p.deadline ? `, Deadline: ${p.deadline}` : ''}`
+  `• ${p.name} - ${p.progress}% complete, Stage: ${p.stage}, Leader: ${p.leader_name}${p.start_date ? `, Start Date: ${p.start_date}` : ''}`
 ).join('\n')}
 
 === TEAM & CAPACITY ===

@@ -102,16 +102,25 @@ export function GeneralVariablesSection({
             </p>
           )}
           {globalVariables.map((variable) => {
-            // Get the general value (first non-empty value from templates using general mode)
+            // ✅ Issue 12 fix — D2 X2 정책: SSOT(project.global_variables)에서 직접 조회.
+            // 기존: 모든 template의 doc.variables를 순회해 첫 non-empty 값을 사용 (옛 SSOT 패턴).
+            //       이 경로는 GLOBAL scope 변수의 입력 값이 doc.variables에 동기되지 않으면 빈값으로 표시됨.
+            // 신규: project.global_variables.variables에서 직접 lookup.
+            //       SSOT entry 미존재 시 기존 doc.variables 경로로 fallback (마이그레이션 호환).
             let generalValue: any = '';
-            for (const template of allTemplates) {
-              const propagationSetting = propagationSettings[template.category]?.[template.name]?.[variable.name];
-              const useGlobal = propagationSetting?.currentScope !== VariablePropagationScope.LOCAL && propagationSetting?.currentScope !== VariablePropagationScope.CATEGORY; // Default to general unless explicitly set to local
-              if (useGlobal) {
-                const variableObj = templateVariables[template.category]?.[template.name]?.variables?.find(v => v.name === variable.name);
-                if (variableObj && variableObj.value && variableObj.value !== '') {
-                  generalValue = variableObj.value; // ← Get the actual value from DocumentVariable
-                  break;
+            const ssotEntry = (project.global_variables?.variables ?? []).find((v) => v.name === variable.name);
+            if (ssotEntry && ssotEntry.value !== undefined && ssotEntry.value !== null && ssotEntry.value !== '') {
+              generalValue = ssotEntry.value;
+            } else {
+              for (const template of allTemplates) {
+                const propagationSetting = propagationSettings[template.category]?.[template.name]?.[variable.name];
+                const useGlobal = propagationSetting?.currentScope !== VariablePropagationScope.LOCAL && propagationSetting?.currentScope !== VariablePropagationScope.CATEGORY;
+                if (useGlobal) {
+                  const variableObj = templateVariables[template.category]?.[template.name]?.variables?.find(v => v.name === variable.name);
+                  if (variableObj && variableObj.value && variableObj.value !== '') {
+                    generalValue = variableObj.value;
+                    break;
+                  }
                 }
               }
             }

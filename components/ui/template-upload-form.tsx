@@ -643,8 +643,8 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
             <span className="font-mono">document_type</span>, set starting values here. They stay editable in projects.
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div className="grid gap-1.5">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-5">
+          <div className="grid gap-1.5 sm:col-span-1">
             <Label htmlFor="default-document-id" className="text-xs">
               Document ID
             </Label>
@@ -656,19 +656,7 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
               disabled={variables.length === 0}
             />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="default-document-title" className="text-xs">
-              Document title
-            </Label>
-            <Input
-              id="default-document-title"
-              placeholder="hint) Konstruktionsndringer"
-              value={defaultDocumentTitle}
-              onChange={(e) => setDefaultDocumentTitle(e.target.value)}
-              disabled={variables.length === 0}
-            />
-          </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-1.5 sm:col-span-4">
             <Label htmlFor="default-document-type" className="text-xs">
               Document type
             </Label>
@@ -677,6 +665,18 @@ export function TemplateUploadForm({ onUploadComplete }: TemplateUploadFormProps
               placeholder="hint) Construction Documentation"
               value={defaultDocumentType}
               onChange={(e) => setDefaultDocumentType(e.target.value)}
+              disabled={variables.length === 0}
+            />
+          </div>
+          <div className="grid gap-1.5 sm:col-span-5">
+            <Label htmlFor="default-document-title" className="text-xs">
+              Document title
+            </Label>
+            <Input
+              id="default-document-title"
+              placeholder="hint) Konstruktionsndringer"
+              value={defaultDocumentTitle}
+              onChange={(e) => setDefaultDocumentTitle(e.target.value)}
               disabled={variables.length === 0}
             />
           </div>

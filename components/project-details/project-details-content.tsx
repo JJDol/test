@@ -53,6 +53,31 @@ function assignedTemplateNames(project: Project): string[] {
   ];
 }
 
+// ✅ Issue 9 fix — D2 X2 정책: GLOBAL/CATEGORY scope 변수는 SSOT(project.global/category_variables)에서 lookup.
+// doc.variables(local)에는 GLOBAL/CATEGORY entry가 없을 수 있으므로 propagation scope에 따라 source 분기.
+function lookupVariableForProgress(
+  project: Project,
+  category: DocumentCategory,
+  templateName: string,
+  variableName: string
+): DocumentVariable | undefined {
+  const propagation = (project.variable_propagation_settings?.[category]?.[templateName] ?? {}) as Record<
+    string,
+    { currentScope?: string }
+  >;
+  const scope = propagation[variableName]?.currentScope ?? "LOCAL";
+  const localVars = (project.template_variables?.[category]?.[templateName]?.variables ?? []) as DocumentVariable[];
+  if (scope === "GLOBAL") {
+    const globals = (project.global_variables?.variables ?? []) as DocumentVariable[];
+    return globals.find((g) => g.name === variableName) ?? localVars.find((l) => l.name === variableName);
+  }
+  if (scope === "CATEGORY") {
+    const cats = (project.category_variables?.[category]?.variables ?? []) as DocumentVariable[];
+    return cats.find((c) => c.name === variableName) ?? localVars.find((l) => l.name === variableName);
+  }
+  return localVars.find((l) => l.name === variableName);
+}
+
 function computeOverallProgress(
   project: Project | null,
   allTemplates: DocumentTemplate[]
@@ -67,9 +92,7 @@ function computeOverallProgress(
       if (template?.variables) {
         totalVariables += template.variables.length;
         template.variables.forEach((variable) => {
-          const docVariable = project.template_variables?.[category]?.[
-            templateName
-          ]?.variables?.find((v) => v.name === variable.name);
+          const docVariable = lookupVariableForProgress(project, category, templateName, variable.name);
           if (docVariable && isVariableValueFilled(docVariable)) {
             filledVariables++;
           }
@@ -111,9 +134,8 @@ function computeTemplateProgress(
   const total = template.variables.length;
   let filled = 0;
   template.variables.forEach((variable) => {
-    const templateVariable = project.template_variables?.[
-      template.category
-    ]?.[templateName]?.variables?.find((v) => v.name === variable.name);
+    // ✅ Issue 9 fix — scope-aware lookup (GLOBAL/CATEGORY는 SSOT 우선)
+    const templateVariable = lookupVariableForProgress(project, template.category, templateName, variable.name);
     if (templateVariable && isVariableValueFilled(templateVariable)) {
       filled++;
     }
@@ -161,7 +183,10 @@ interface ProjectDetailsContentProps {
     fetchCurrentUser: () => Promise<void>;
     fetchTemplatesForCategory: (category: DocumentCategory) => Promise<void>;
     setActiveCategory: (category: DocumentCategory) => void;
-    refreshProject: () => Promise<void>;
+    // silent=true → loading state를 건드리지 않고 백그라운드로 fetch (Issue 17 follow-up: 인풋 반응성 개선)
+    refreshProject: (silent?: boolean) => Promise<void>;
+    // 부모 project state 옵티미스틱 업데이트용 (debounce flush 시 즉시 SSOT 반영)
+    updateProjectState?: (updater: (prev: any) => any) => void;
     handleVariableChange: (templateName: string, variable: string, value: any, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => Promise<void>;
     handlePropagationChange: (templateCategory: DocumentCategory, templateName: string, variableName: string, useCategory: boolean, useLocal: boolean) => Promise<void>;
     updateGeneralVariables: () => Promise<void>;
@@ -247,15 +272,77 @@ export function ProjectDetailsContent({
     if (!phasesState.phases.length) return project;
     if (!activePhase) return project;
 
-    // Current phase has no `project_phase_documents` rows but the project row
-    // was populated (e.g. create-project sync). Show legacy fields as fallback.
-    if (
-      activeDocuments.length === 0 &&
-      assignedTemplateNames(project).length > 0
-    ) {
+    // ✅ Issue 11 fix — D1 X1 정책: project_phase_documents가 SSOT.
+    // 옛 fallback은 모든 빈 phase에 legacy template list를 그대로 보여줘서
+    // phase 5 같은 비어 있는 phase에도 다른 phase의 문서들이 ghost로 보였음.
+    // → 첫 phase(legacy 옛 프로젝트 호환)에서만 fallback 유지, 그 외 phase는 진짜 빈 상태로 표시.
+    // ✅ D2 X2'' (2026-05-13) — phase-scoped category SSOT 머지 helper.
+    // 정책 핵심:
+    //  - 변수 LIST (어떤 변수가 category scope인지) = project ∪ phase 의 union
+    //    → phase에 한 변수만 입력해도 다른 변수가 사라지지 않음 (mask 방지)
+    //  - 변수 VALUE = phase 우선; project entry는 metadata만 유지하고 value는 비움
+    //    → 다른 phase의 옛 값이 현재 phase에 leak되지 않음 (D11 phase 격리)
+    //  - 마이그레이션 미적용 환경(phaseLevel === null) = legacy fallback (project bucket 그대로)
+    //
+    // ⚠ 이전 동작(phase에 1개 entry라도 있으면 phase 통째로 SSOT)은 다른 변수가
+    // 사라지는 문제 발생 → name 기준 union으로 변경.
+    const mergePhaseCategoryVariables = (): Project["category_variables"] => {
+      const phaseLevelRaw = activePhase.category_variables as unknown;
+      // 마이그레이션 적용 후엔 phase row가 항상 객체(`{}` default). undefined면 마이그레이션 전.
+      const isMigrated = phaseLevelRaw !== undefined && phaseLevelRaw !== null;
+      const phaseLevel = (phaseLevelRaw ?? {}) as Record<string, { variables?: DocumentVariable[] }>;
+      const projectLevel = (project.category_variables ?? {}) as Record<string, { variables?: DocumentVariable[] }>;
+      const out: Record<string, { variables: DocumentVariable[] }> = {};
+      for (const cat of Object.values(DocumentCategory)) {
+        const phaseBucket = (phaseLevel?.[cat]?.variables ?? []) as DocumentVariable[];
+        const projectBucket = (projectLevel?.[cat]?.variables ?? []) as DocumentVariable[];
+        if (!isMigrated) {
+          // 마이그레이션 전 — legacy: project bucket 그대로 (모든 phase 공유 표시)
+          out[cat] = { variables: projectBucket };
+          continue;
+        }
+        // name 기준 union — project를 base(metadata만, value는 비움), phase가 덮어씀.
+        // → phase에 entry 있는 변수는 그 phase의 value 표시
+        // → phase에 entry 없는 변수는 project entry의 type/dropdownOptions 등 metadata만
+        //   유지하고 value는 빈 input ('') — 다른 phase의 옛 값 leak 방지
+        const byName = new Map<string, DocumentVariable>();
+        for (const v of projectBucket) {
+          byName.set(v.name, { ...v, value: '' } as DocumentVariable);
+        }
+        for (const v of phaseBucket) {
+          byName.set(v.name, v);
+        }
+        out[cat] = { variables: Array.from(byName.values()) };
+      }
+      return out as Project["category_variables"];
+    };
+
+    if (activeDocuments.length === 0) {
+      const isFirstPhase = phasesState.phases[0]?.id === activePhase.id;
+      const hasLegacyTemplates = assignedTemplateNames(project).length > 0;
+      if (isFirstPhase && hasLegacyTemplates) {
+        // 옛 프로젝트(legacy *_templates만 채워진 케이스) 안전망 — 마이그레이션 후 dead code.
+        // Issue 15 (D3 옵션 B): project.start_date is the project start date and
+        // is no longer overwritten with the active phase deadline. Surfaces that
+        // need the active phase deadline read it from `phases.find(p => p.is_current)`.
+        return {
+          ...project,
+          category_variables: mergePhaseCategoryVariables(),
+        } as Project;
+      }
+      // 정상 빈 phase — *_templates / template_variables 모두 비워 empty state 렌더링 유도.
+      const emptyTemplateArrays: Record<string, string[]> = {};
+      Object.values(DocumentCategory).forEach((cat) => {
+        emptyTemplateArrays[`${cat.toLowerCase()}_templates`] = [];
+      });
       return {
         ...project,
-        deadline: activePhase.deadline ?? project.deadline,
+        ...emptyTemplateArrays,
+        template_variables: {} as Project["template_variables"],
+        variable_propagation_settings: {} as Project["variable_propagation_settings"],
+        document_assignments: {} as Project["document_assignments"],
+        document_review_status: {} as unknown,
+        category_variables: mergePhaseCategoryVariables(),
       } as Project;
     }
 
@@ -288,11 +375,12 @@ export function ProjectDetailsContent({
     return {
       ...project,
       ...templateArrays,
-      deadline: activePhase.deadline ?? project.deadline,
+      // Issue 15: do not overwrite project.start_date with the phase deadline.
       template_variables: templateVariablesMap as Project["template_variables"],
       variable_propagation_settings: propagationSettings as Project["variable_propagation_settings"],
       document_assignments: assignments as Project["document_assignments"],
       document_review_status: reviewStatus as unknown,
+      category_variables: mergePhaseCategoryVariables(),
     } as Project;
   }, [
     project,
@@ -444,9 +532,184 @@ export function ProjectDetailsContent({
   const pendingPatchRef = useRef<Record<string, { phaseId: string; docId: string; patch: Record<string, unknown> }>>({});
   const phasesStateRef = useRef(phasesState);
   phasesStateRef.current = phasesState;
+  // ✅ D2 X2'' (2026-05-13) — activePhase ref (flush 콜백 stale closure 방지)
+  const activePhaseRef = useRef(activePhase);
+  activePhaseRef.current = activePhase;
+
+  // ✅ Issue 12/13/14 fix — D2 X2 정책 (project.global_variables = SSOT)
+  // ✅ D2 X2'' (2026-05-13) — Category SSOT는 phase-level (project_phases.category_variables)로 변경
+  // - GLOBAL: project.global_variables (project-level, 모든 phase 공유)
+  // - CATEGORY: project_phases[activePhase.id].category_variables (phase-level, 같은 phase 내만 공유)
+  // - LOCAL: doc.variables
+  // doc.variables의 GLOBAL/CATEGORY entry는 derived view로 취급 (생성/조회 시 SSOT 우선).
+  // race condition 방지를 위해 pending changes ref + 통합 디바운스 패턴 사용.
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const pendingGlobalChangesRef = useRef<Record<string, unknown>>({});
+  const pendingCategoryChangesRef = useRef<Record<string, Record<string, unknown>>>({});
+  const globalDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const categoryDebounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const allTemplatesRef = useRef(allTemplates);
+  allTemplatesRef.current = allTemplates;
+
+  const resolveVariableType = useCallback((variableName: string): string => {
+    for (const tmpl of allTemplatesRef.current) {
+      const found = tmpl.variables.find((v) => v.name === variableName);
+      if (found?.type) return found.type;
+    }
+    return "text";
+  }, []);
+
+  // ✅ Issue 17 follow-up — 인풋 반응성 개선 (한 글자마다 spinner 뜨는 회귀 fix)
+  // 1) 디바운스 만료 즉시 부모 project state에 옵티미스틱 set → 즉각 SSOT 반영
+  // 2) PATCH 후 silent refresh (loading state 안 set, spinner 안 뜸)
+  // 3) 디바운스는 800ms로 약간 완화 (PATCH 호출 빈도 ↓)
+  const flushGlobalChanges = useCallback(async () => {
+    const changes = pendingGlobalChangesRef.current;
+    pendingGlobalChangesRef.current = {};
+    const latestProject = projectRef.current;
+    if (!latestProject || Object.keys(changes).length === 0) return;
+    const globalWrapper = (latestProject.global_variables ?? { variables: [] }) as { variables?: DocumentVariable[] };
+    const nextGlobal = [...(globalWrapper.variables ?? [])];
+    for (const [name, val] of Object.entries(changes)) {
+      const idx = nextGlobal.findIndex((v) => v.name === name);
+      if (idx >= 0) {
+        nextGlobal[idx] = { ...nextGlobal[idx], value: val } as DocumentVariable;
+      } else {
+        nextGlobal.push({ name, type: resolveVariableType(name), value: val } as DocumentVariable);
+      }
+    }
+    const nextGlobalWrapper = { ...globalWrapper, variables: nextGlobal };
+    // (1) 옵티미스틱 — 다른 phase 이동 / derived view(generalValue, donut) 즉시 반영
+    if (actions.updateProjectState) {
+      actions.updateProjectState((prev) => ({
+        ...prev,
+        project: prev.project ? { ...prev.project, global_variables: nextGlobalWrapper } : prev.project,
+      }));
+    }
+    const patch = { global_variables: nextGlobalWrapper };
+    try {
+      const res = await fetch(`/api/projects/${latestProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to update global variables");
+      }
+      // (2) silent refresh — spinner 안 뜸. 백그라운드로 server truth 반영.
+      await actions.refreshProject(true);
+    } catch (err) {
+      toast({ title: "Global variable save failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      // 실패 시 옵티미스틱 롤백을 위해 정상 refresh
+      await actions.refreshProject(false);
+    }
+  }, [actions, toast, resolveVariableType]);
+
+  // ✅ D2 X2'' (2026-05-13) — Category SSOT를 phase-level로 변경.
+  // 저장: project_phases[activePhase.id].category_variables[category].variables
+  // (이전: project.category_variables[category].variables)
+  // - phase 변경 시 독립
+  // - 같은 phase 내 다른 도큐먼트끼리만 공유
+  // - silent PATCH(=phasesState.patchPhaseCategoryVariables) 사용 — typing UX 보호
+  const flushCategoryChanges = useCallback(async (category: DocumentCategory) => {
+    const changes = pendingCategoryChangesRef.current[category];
+    delete pendingCategoryChangesRef.current[category];
+    if (!changes || Object.keys(changes).length === 0) return;
+    const phase = activePhaseRef.current;
+    if (!phase) return;
+    const categoryWrapperAll = ((phase.category_variables as unknown) ?? {}) as Record<string, { variables?: DocumentVariable[] }>;
+    const categoryWrapper = (categoryWrapperAll[category] ?? { variables: [] }) as { variables?: DocumentVariable[] };
+    const nextCategory = [...(categoryWrapper.variables ?? [])];
+    for (const [name, val] of Object.entries(changes)) {
+      const idx = nextCategory.findIndex((v) => v.name === name);
+      if (idx >= 0) {
+        nextCategory[idx] = { ...nextCategory[idx], value: val } as DocumentVariable;
+      } else {
+        nextCategory.push({ name, type: resolveVariableType(name), value: val } as DocumentVariable);
+      }
+    }
+    const nextCategoryAll = {
+      ...categoryWrapperAll,
+      [category]: { ...categoryWrapper, variables: nextCategory },
+    } as Record<string, { variables: unknown[] }>;
+    await phasesStateRef.current.patchPhaseCategoryVariables(phase.id, nextCategoryAll);
+  }, [resolveVariableType]);
 
   const handleVariableChangePhase = useCallback(
-    async (templateName: string, variableName: string, value: unknown, category: DocumentCategory, _isGlobal: boolean, _isCategory: boolean) => {
+    async (templateName: string, variableName: string, value: unknown, category: DocumentCategory, isGlobal: boolean, isCategory: boolean) => {
+      // ✅ Issue 12 fix — GLOBAL: SSOT(project.global_variables)에 통합 PATCH
+      // 디바운스 800ms — 빠른 typing 시 PATCH 호출 빈도 감소
+      // EnhancedVariableInput이 fully controlled(value={variable.value})이므로
+      // 부모 state를 즉시 동기해야 사용자 typing이 lost되지 않음 → 옵티미스틱 setState는 onChange 시점에 즉시.
+      if (isGlobal) {
+        // (1) 즉시 옵티미스틱 — input controlled state 동기 (typing lag 방지)
+        if (actions.updateProjectState) {
+          actions.updateProjectState((prev: any) => {
+            if (!prev.project) return prev;
+            const globalWrapper = prev.project.global_variables ?? { variables: [] };
+            const nextGlobal = [...(globalWrapper.variables ?? [])];
+            const idx = nextGlobal.findIndex((v: DocumentVariable) => v.name === variableName);
+            if (idx >= 0) {
+              nextGlobal[idx] = { ...nextGlobal[idx], value } as DocumentVariable;
+            } else {
+              nextGlobal.push({ name: variableName, type: resolveVariableType(variableName), value } as DocumentVariable);
+            }
+            return {
+              ...prev,
+              project: {
+                ...prev.project,
+                global_variables: { ...globalWrapper, variables: nextGlobal },
+              },
+            };
+          });
+        }
+        // (2) PATCH는 디바운스
+        pendingGlobalChangesRef.current[variableName] = value;
+        if (globalDebounceTimerRef.current) clearTimeout(globalDebounceTimerRef.current);
+        globalDebounceTimerRef.current = setTimeout(() => {
+          globalDebounceTimerRef.current = null;
+          void flushGlobalChanges();
+        }, 800);
+        return;
+      }
+
+      // ✅ D2 X2'' (2026-05-13) — CATEGORY: phase-scoped SSOT
+      // 저장: project_phases[activePhase.id].category_variables[category].variables
+      if (isCategory) {
+        const phase = activePhaseRef.current;
+        if (!phase) return;
+        // (1) 즉시 옵티미스틱 — phase row의 category_variables를 머지
+        const categoryWrapperAll = ((phase.category_variables as unknown) ?? {}) as Record<string, { variables?: DocumentVariable[] }>;
+        const categoryWrapper = categoryWrapperAll[category] ?? { variables: [] };
+        const nextCategory = [...(categoryWrapper.variables ?? [])];
+        const idx = nextCategory.findIndex((v: DocumentVariable) => v.name === variableName);
+        if (idx >= 0) {
+          nextCategory[idx] = { ...nextCategory[idx], value } as DocumentVariable;
+        } else {
+          nextCategory.push({ name: variableName, type: resolveVariableType(variableName), value } as DocumentVariable);
+        }
+        const optimisticAll = {
+          ...categoryWrapperAll,
+          [category]: { ...categoryWrapper, variables: nextCategory },
+        } as Record<string, { variables: unknown[] }>;
+        // (1) 옵티미스틱: hook setData만 즉시 머지 (PATCH 미전송 — 디바운스로 분리)
+        void phasesStateRef.current.patchPhaseCategoryVariables(phase.id, optimisticAll, { optimisticOnly: true });
+        // (2) pending에 누적 → 디바운스 후 실제 PATCH
+        pendingCategoryChangesRef.current[category] = {
+          ...(pendingCategoryChangesRef.current[category] ?? {}),
+          [variableName]: value,
+        };
+        if (categoryDebounceTimersRef.current[category]) clearTimeout(categoryDebounceTimersRef.current[category]);
+        categoryDebounceTimersRef.current[category] = setTimeout(() => {
+          delete categoryDebounceTimersRef.current[category];
+          void flushCategoryChanges(category);
+        }, 800);
+        return;
+      }
+
+      // LOCAL scope — 기존 동작 (active phase 내 단일 doc.variables patch)
       if (!activePhase) return;
       const doc = findDocByTemplate(templateName, category);
       if (!doc) return;
@@ -478,7 +741,7 @@ export function ProjectDetailsContent({
         }
       }, 600);
     },
-    [activePhase, findDocByTemplate]
+    [activePhase, findDocByTemplate, flushGlobalChanges, flushCategoryChanges, actions, resolveVariableType]
   );
 
   const handleSupervisorCheckPhase = useCallback(
@@ -548,18 +811,39 @@ export function ProjectDetailsContent({
         toast({ title: "Template not in this phase", description: `${templateName} is not attached to the active phase.`, variant: "destructive" });
         return;
       }
+      // ✅ Issue 13 fix — template definition을 iterate 기준으로 사용 (D2 X2 정책)
+      // doc.variables는 derived view이므로 GLOBAL/CATEGORY scope의 entry가 비어있을 수 있음.
+      // 변수 정의(template.variables)를 base로 하고 scope에 따라 SSOT(global/category) 우선 조회,
+      // SSOT 미스 시에만 local entry로 fallback.
+      const templateMeta = allTemplates.find((t) => t.name === templateName && t.category === category);
+      if (!templateMeta) {
+        toast({ title: "Template metadata missing", description: `${templateName} definition not found.`, variant: "destructive" });
+        return;
+      }
       const localVars = ((doc.variables as { variables?: DocumentVariable[] } | null | undefined)?.variables ?? []);
       const globalVars = (project.global_variables?.variables ?? []) as DocumentVariable[];
-      const categoryVars = ((project.category_variables as Record<string, { variables?: DocumentVariable[] }> | undefined)?.[category]?.variables ?? []) as DocumentVariable[];
+      // ✅ D2 X2'' (2026-05-13) — Category SSOT는 phase-level. activePhase 우선, legacy fallback
+      const phaseCategoryVars = ((activePhase?.category_variables as Record<string, { variables?: DocumentVariable[] }> | undefined)?.[category]?.variables ?? []) as DocumentVariable[];
+      const projectCategoryVars = ((project.category_variables as Record<string, { variables?: DocumentVariable[] }> | undefined)?.[category]?.variables ?? []) as DocumentVariable[];
+      const categoryVars: DocumentVariable[] = phaseCategoryVars.length > 0 ? phaseCategoryVars : projectCategoryVars;
       const propagation = (doc.propagation_settings ?? {}) as Record<string, { currentScope: VariablePropagationScope }>;
       const variablesObject: Record<string, unknown> = {};
-      for (const v of localVars) {
-        const scope = propagation[v.name]?.currentScope ?? VariablePropagationScope.LOCAL;
-        let source: DocumentVariable | undefined = v;
-        if (scope === VariablePropagationScope.GLOBAL) source = globalVars.find((g) => g.name === v.name) ?? v;
-        else if (scope === VariablePropagationScope.CATEGORY) source = categoryVars.find((g) => g.name === v.name) ?? v;
-        const typed = source as unknown as { type?: string; value?: unknown };
-        variablesObject[v.name] = typed?.type === "text" ? (typed.value ?? "") : (source as unknown);
+      for (const tmplVar of templateMeta.variables) {
+        const name = tmplVar.name;
+        const scope = propagation[name]?.currentScope ?? VariablePropagationScope.LOCAL;
+        let source: DocumentVariable | undefined;
+        if (scope === VariablePropagationScope.GLOBAL) {
+          source = globalVars.find((g) => g.name === name) ?? localVars.find((l) => l.name === name);
+        } else if (scope === VariablePropagationScope.CATEGORY) {
+          source = categoryVars.find((c) => c.name === name) ?? localVars.find((l) => l.name === name);
+        } else {
+          source = localVars.find((l) => l.name === name);
+        }
+        if (!source) continue;
+        const sourceType = (source as unknown as { type?: string }).type;
+        const sourceValue = (source as unknown as { value?: unknown }).value;
+        const isTextType = sourceType === "text" || tmplVar.type === "text";
+        variablesObject[name] = isTextType ? (sourceValue ?? "") : (source as unknown);
       }
       try {
         const response = await fetch(`/api/projects/${project.id}/generate-document`, {
@@ -588,7 +872,7 @@ export function ProjectDetailsContent({
         toast({ title: "Generation failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
       }
     },
-    [project, findDocByTemplate, toast]
+    [project, findDocByTemplate, toast, allTemplates, activePhase]
   );
 
   const handlePropagationChangePhase = useCallback(

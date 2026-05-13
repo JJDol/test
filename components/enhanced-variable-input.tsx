@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,19 @@ export function EnhancedVariableInput({
   const [imageRemoving, setImageRemoving] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Issue 17 follow-up — text input typing UX 개선
+  // 1) typing 중에는 local draft state만 사용 → 부모로 onChange 전파 X (PATCH/refresh 안 일어남)
+  // 2) blur 시 한 번만 onChange 호출 → 부모에서 옵티미스틱 + PATCH
+  // 3) focus 중에는 외부 prop value 변경(silent refresh 도착 등)을 무시 → typing이 lost되지 않음
+  // 4) blur/disabled 상태에서는 prop value를 그대로 sync (다른 곳에서 GLOBAL 변경되면 즉시 반영)
+  const propTextValue = typeof variable.value === 'string' ? variable.value : '';
+  const [textDraft, setTextDraft] = useState<string>(propTextValue);
+  const [isTextFocused, setIsTextFocused] = useState(false);
+  useEffect(() => {
+    if (isTextFocused) return;
+    setTextDraft(propTextValue);
+  }, [propTextValue, isTextFocused]);
 
   const handleImageUpload = async (file: File) => {
     if (!projectId || !templateName) {
@@ -697,10 +710,21 @@ export function EnhancedVariableInput({
     }
 
     // Default: text input for other types
+    // typing 중에는 local draft, blur 시에만 부모로 commit (PATCH 1회)
     return (
       <Input
-        value={typeof variable.value === 'string' ? variable.value : ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={textDraft}
+        onChange={(e) => setTextDraft(e.target.value)}
+        onFocus={() => setIsTextFocused(true)}
+        onBlur={() => {
+          setIsTextFocused(false);
+          if (textDraft !== propTextValue) onChange(textDraft);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
         placeholder={`Enter ${variable.name}...`}
         disabled={disabled}
       />

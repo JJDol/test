@@ -74,7 +74,18 @@ function ProjectCard({ project }: ProjectCardProps) {
       </div>
       <div className="text-sm text-muted-foreground mb-4">
         <p>Location: {project.location}</p>
-        <p>Deadline: {new Date(project.deadline).toLocaleDateString()}</p>
+        <p>
+          Start Date:{" "}
+          {project.start_date
+            ? new Date(project.start_date).toLocaleDateString()
+            : "—"}
+        </p>
+        <p>
+          Phase Deadline:{" "}
+          {project.current_phase_deadline
+            ? new Date(project.current_phase_deadline).toLocaleDateString()
+            : "—"}
+        </p>
       </div>
       <Button asChild variant="outline" size="sm">
         <Link href={`/protected/dashboard/project/${project.id}`}>

@@ -242,8 +242,16 @@ export function useDashboard(): UseDashboardReturn {
   }, [fetchProjects, currentUser]);
 
   // Computed values
+  // Issue 15 (D3 옵션 B): "overdue" is a project-as-a-whole question
+  // ("did this project miss its overall deadline?"), so it uses
+  // last_phase_deadline = MAX(phase deadline) — the same key the kanban
+  // column sorts by. Projects without any phase deadline are not flagged.
   const activeProjects = state.projects.filter(p => p.progress < 100);
-  const overdueProjects = state.projects.filter(p => new Date(p.deadline) < new Date());
+  const overdueProjects = state.projects.filter(p =>
+    p.last_phase_deadline
+      ? new Date(p.last_phase_deadline) < new Date()
+      : false
+  );
 
   // Loading and error state consolidation
   const overallLoading = loadingStates.projects || loadingStates.company || authLoading;
