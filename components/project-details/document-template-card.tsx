@@ -15,7 +15,6 @@
 
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,15 +22,11 @@ import { CircularProgress } from "@/components/ui/circular-progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
-import { DocumentAssignDialog } from "@/components/ui/document-assign-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ProjectTemplateReuploadDialog } from "./project-template-reupload-dialog";
-import { ChevronDown, ChevronUp, MoreHorizontal, ArrowUpCircle, Upload, RotateCcw, FileText, Trash2 } from "lucide-react";
+import { DocumentActionsMenu } from "./document-actions-menu";
+import { ChevronDown, ChevronUp, ArrowUpCircle } from "lucide-react";
 import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
 import { DocumentTemplate, Project, User } from "@/lib/types/types";
 import { DocumentVariable } from "@/lib/types/variable-types";
-import { useToast } from "@/components/ui/toast";
 
 interface DocumentTemplateCardProps {
   template: DocumentTemplate;
@@ -96,60 +91,11 @@ export function DocumentTemplateCard({
   isLocked = false,
   onDropdownOptionsChange,
 }: DocumentTemplateCardProps) {
-  const { toast } = useToast();
-
-  // State for dialogs
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showReuploadDialog, setShowReuploadDialog] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-
-  // Get current assignments for this template
-  const currentAssignments = project.document_assignments?.[template.name];
-
-  // Version info
+  // Version info (used to render the badge in the card body)
   const lockedVersion = project.template_version_locks?.[template.name] || 1;
   const latestVersion = template.current_version || 1;
   const hasNewerVersion = latestVersion > lockedVersion;
-
-  // Check if project has a custom template
-  const hasCustomTemplate = !!(project.custom_templates?.[template.name]);
-
-  // Handle reset to original
-  const handleResetToOriginal = async () => {
-    setIsResetting(true);
-    try {
-      const response = await fetch(`/api/projects/${project.id}/reset-template`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateName: template.name }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reset template');
-      }
-
-      toast({
-        title: "Success",
-        description: "Template reset to original",
-      });
-
-      setShowResetConfirm(false);
-      if (onRefresh) {
-        await onRefresh();
-      }
-    } catch (error) {
-      console.error('Error resetting template:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to reset template',
-        variant: "destructive",
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
+  const hasCustomTemplate = !!project.custom_templates?.[template.name];
 
   const progressValue = calculateProgress(template.name, template);
 
@@ -166,68 +112,18 @@ export function DocumentTemplateCard({
           {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         </Button>
         
-        {/* Actions Dropdown */}
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {!project.is_archived && (
-              <DropdownMenuItem onClick={() => onGenerateDocument(template.name, template.category)}>
-                <FileText className="mr-2 h-4 w-4" />
-                Generate document
-              </DropdownMenuItem>
-            )}
-            {!project.is_archived && !isLocked && hasNewerVersion && onUpgradeVersion && (
-              <DropdownMenuItem
-                onClick={() => onUpgradeVersion(template.name)}
-                className="text-amber-600"
-              >
-                <ArrowUpCircle className="mr-2 h-4 w-4" />
-                Upgrade to v{latestVersion}
-              </DropdownMenuItem>
-            )}
-            {!project.is_archived && !isLocked && canManageProject && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Reupload Document
-                </DropdownMenuItem>
-                {hasCustomTemplate && (
-                  <DropdownMenuItem
-                    onClick={() => setShowResetConfirm(true)}
-                    className="text-blue-600"
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Reset to Original
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-              </>
-            )}
-            {!isLocked && canAssignDocuments && (
-              <DocumentAssignDialog
-                projectId={Number(project.id)}
-                templateName={template.name}
-                category={template.category}
-                onAssignmentUpdate={onAssignmentUpdate}
-                currentAssignments={currentAssignments}
-              />
-            )}
-            {!isLocked && canManageProject && (
-              <DropdownMenuItem
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Remove from project
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <DocumentActionsMenu
+          template={template}
+          project={project}
+          isLocked={isLocked}
+          canManageProject={canManageProject}
+          canAssignDocuments={canAssignDocuments}
+          onGenerateDocument={onGenerateDocument}
+          onTemplateRemove={onTemplateRemove}
+          onAssignmentUpdate={onAssignmentUpdate}
+          onUpgradeVersion={onUpgradeVersion}
+          onRefresh={onRefresh}
+        />
       </div>
 
       <div className="max-w-[220px]">
@@ -443,65 +339,6 @@ export function DocumentTemplateCard({
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove template from project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove <strong>{template.name}</strong> from this project.
-              The template itself will not be deleted and can be added back later.
-              Any filled variables for this template will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => onTemplateRemove(template.name, template.category)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reset to Original Confirmation Dialog */}
-      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset to original template?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the customized version of <strong>{template.name}</strong> and
-              revert to the original global template.
-              Your variable values will be preserved, but the template structure will change
-              back to the original.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleResetToOriginal}
-              disabled={isResetting}
-            >
-              {isResetting ? "Resetting..." : "Reset to Original"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Project Template Reupload Dialog */}
-      <ProjectTemplateReuploadDialog
-        open={showReuploadDialog}
-        onOpenChange={setShowReuploadDialog}
-        template={template}
-        projectId={project.id}
-        onReuploadComplete={async () => {
-          if (onRefresh) {
-            await onRefresh();
-          }
-        }}
-      />
     </Card>
   );
 }

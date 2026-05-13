@@ -207,7 +207,9 @@ export function StageDetailView({ stage, projects, onBackToKanban, onClearFilter
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {new Date(project.deadline).toLocaleDateString()}
+                    {project.current_phase_deadline
+                      ? new Date(project.current_phase_deadline).toLocaleDateString()
+                      : "—"}
                   </div>
                 </div>
 

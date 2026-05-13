@@ -87,10 +87,16 @@ export function MilestoneBar({
       role="navigation"
       aria-label="Project phase milestones"
     >
-      {/* Each chevron column is given `flex-1` so the whole bar naturally
-          spans the available horizontal space — matching the width of
-          surrounding sections. */}
-      <div className="flex w-full items-start">
+      {/* CSS Grid with `1fr` per slot strictly enforces equal column widths,
+          regardless of the intrinsic min-content width of any single chevron
+          (e.g. CURRENT renders larger text). `flex-1` was not enough on its
+          own because flex still respects each item's min-content size. */}
+      <div
+        className="grid w-full items-start"
+        style={{
+          gridTemplateColumns: `repeat(${slots.length}, minmax(0, 1fr))`,
+        }}
+      >
         {slots.map((slot, index) => (
           <ChevronColumn
             key={slot.definition.id}
@@ -188,9 +194,13 @@ function ChevronColumn({
       aria-label={definition.name}
       aria-current={isCurrent ? "step" : undefined}
       className={cn(
-        "relative flex w-full items-center justify-center text-xs font-semibold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "relative flex w-full min-w-0 items-center justify-center text-xs uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         chevronStateClasses(state),
-        isCurrent && "text-sm font-bold"
+        // Keep font-size identical across slots so a single CURRENT chevron
+        // does not push its grid track / column wider than its neighbours.
+        // Differentiate purely with weight + colour (see chevronStateClasses
+        // and the pill badge above).
+        isCurrent ? "font-bold" : "font-semibold"
       )}
       style={{
         clipPath,
@@ -201,7 +211,7 @@ function ChevronColumn({
         ...chevronStateStyle(state),
       }}
     >
-      {displayLabel}
+      <span className="truncate">{displayLabel}</span>
       {isLocked && <Lock className="ml-1 h-3 w-3 opacity-70" />}
     </button>
   );
@@ -238,12 +248,14 @@ function ChevronColumn({
   const column = (
     <div
       className={cn(
-        "group relative flex min-w-0 flex-1 flex-col items-stretch",
+        "group relative flex min-w-0 flex-col items-stretch",
         isCurrent && "z-10"
       )}
-      // Give the current slot a little more weight so the CURRENT PHASE pill
-      // and full-name tooltip never collide with neighbours on narrow widths.
-      style={isCurrent ? { flexGrow: 1.35 } : undefined}
+      // Width is dictated by the parent `grid-cols-1fr` track (one per slot)
+      // so every column is exactly the same pixel width regardless of the
+      // intrinsic content width of any chevron. Do NOT add `flex-1` here —
+      // it has no effect inside grid and tempts future readers to undo the
+      // fix for Issue 6-1.
     >
       {currentBadge}
       {lockBadge}
@@ -252,7 +264,7 @@ function ChevronColumn({
       {/* Row 2: deadline label, centered under the chevron */}
       <div
         className={cn(
-          "mt-1.5 text-center text-[10px] font-medium leading-tight",
+          "mt-1.5 truncate text-center text-[10px] font-medium leading-tight",
           isCurrent ? "text-foreground" : "text-muted-foreground/80",
           !deadlineLabel && "invisible"
         )}
@@ -317,11 +329,16 @@ function ActiveChevronOutline({ isFirst }: { isFirst: boolean }) {
   const h = CHEVRON_HEIGHT;
   const points = React.useMemo(() => {
     if (width <= 0) return "";
-    const tipX = width - GAP;
-    const baseX = width - NOTCH - GAP;
     if (isFirst) {
+      // First chevron has marginLeft: 0 (no back-notch) — pull tip an extra
+      // NOTCH inward so the air gap to the next chevron matches the rest
+      // of the bar. See FIRST_CHEVRON_CLIP for the rationale.
+      const tipX = width - NOTCH - GAP;
+      const baseX = width - 2 * NOTCH - GAP;
       return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h}`;
     }
+    const tipX = width - GAP;
+    const baseX = width - NOTCH - GAP;
     return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h} ${NOTCH},${h / 2}`;
   }, [width, isFirst, h]);
 
@@ -390,18 +407,22 @@ function IrrelevantChevronButton({
   }, []);
 
   // Polygon points in pixel space — mirrors the CSS clip-path used by
-  // filled siblings (tip inset by GAP) so the dashed outline keeps the
-  // same uniform sliver of air between neighbouring slots.
+  // filled siblings so the dashed outline keeps a uniform air gap to
+  // neighbouring slots regardless of whether this is the first chevron.
   const h = CHEVRON_HEIGHT;
   const points = React.useMemo(() => {
     if (width <= 0) return "";
-    const tipX = width - GAP;
-    const baseX = width - NOTCH - GAP;
     if (isFirst) {
-      // Flat left, arrow right.
+      // Flat left, arrow right. Tip pulled inward by an extra NOTCH px so
+      // the air gap to the next chevron matches the rest of the bar
+      // (mirrors FIRST_CHEVRON_CLIP).
+      const tipX = width - NOTCH - GAP;
+      const baseX = width - 2 * NOTCH - GAP;
       return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h}`;
     }
     // Back-notch + arrow.
+    const tipX = width - GAP;
+    const baseX = width - NOTCH - GAP;
     return `0,0 ${baseX},0 ${tipX},${h / 2} ${baseX},${h} 0,${h} ${NOTCH},${h / 2}`;
   }, [width, isFirst, h]);
 
@@ -413,13 +434,16 @@ function IrrelevantChevronButton({
       aria-label={aria}
       disabled={!canOpen}
       className={cn(
-        "relative flex w-full items-center justify-center text-xs font-semibold uppercase tracking-wide text-neutral-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "relative flex w-full min-w-0 items-center justify-center text-xs font-semibold uppercase tracking-wide text-neutral-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         canOpen ? "hover:text-neutral-700" : "cursor-not-allowed"
       )}
       style={{
         height: CHEVRON_HEIGHT,
         paddingLeft: isFirst ? 12 : 12 + NOTCH,
-        paddingRight: 12 + NOTCH + GAP,
+        // First chevron's right padding is bumped by an extra NOTCH so the
+        // centred label content area matches the non-leading chevron
+        // (which has the back-notch eating into its left side).
+        paddingRight: isFirst ? 12 + 2 * NOTCH + GAP : 12 + NOTCH + GAP,
         marginLeft: isFirst ? 0 : -NOTCH,
       }}
     >
@@ -542,10 +566,21 @@ const UNIFORM_CHEVRON_CLIP = `polygon(0 0, calc(100% - ${NOTCH + GAP}px) 0, calc
 const UNIFORM_CHEVRON_PADDING = { left: 12 + NOTCH, right: 12 + NOTCH + GAP };
 
 // First slot is special: its left edge is flat (rectangular) so the bar
-// terminates cleanly on the left. Still has an arrow point on the right
-// (also inset by GAP so the P1→P2 transition matches the rest of the bar).
-const FIRST_CHEVRON_CLIP = `polygon(0 0, calc(100% - ${NOTCH + GAP}px) 0, calc(100% - ${GAP}px) 50%, calc(100% - ${NOTCH + GAP}px) 100%, 0 100%)`;
-const FIRST_CHEVRON_PADDING = { left: 12, right: 12 + NOTCH + GAP };
+// terminates cleanly on the left.
+//
+// The right-side tip is pulled an EXTRA `NOTCH` px inward compared to
+// non-leading chevrons. That's because non-leading chevrons live in their
+// column with `marginLeft: -NOTCH` (so their back-notch lands exactly on
+// the previous column's right edge). The first chevron has `marginLeft: 0`
+// — so without this extra NOTCH offset its tip would sit `NOTCH` px
+// closer to the next column's back-notch, collapsing the air gap from
+// the standard `NOTCH` px down to just `GAP` px and producing the
+// noticeable "Phase 1 ↔ Phase 2 are touching" defect.
+//
+// Padding is bumped by the same amount on the right so the centred label
+// content area matches the non-leading chevron exactly.
+const FIRST_CHEVRON_CLIP = `polygon(0 0, calc(100% - ${2 * NOTCH + GAP}px) 0, calc(100% - ${NOTCH + GAP}px) 50%, calc(100% - ${2 * NOTCH + GAP}px) 100%, 0 100%)`;
+const FIRST_CHEVRON_PADDING = { left: 12, right: 12 + 2 * NOTCH + GAP };
 
 function chevronStateClasses(state: MilestoneVisualState): string {
   switch (state) {

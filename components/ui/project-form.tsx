@@ -122,8 +122,8 @@ interface FieldDef {
 
 const CORE_FIELD_DEFS: FieldDef[] = [
   { field: "name", label: "Project Name", placeholder: "Enter project name", required: true, extractKey: "projectName" },
-  { field: "location", label: "Location", placeholder: "Enter project location", required: true, extractKey: "projectAddress" },
-  { field: "deadline", label: "Deadline", inputType: "date", required: true, extractKey: "endDate" },
+  { field: "location", label: "Project Address", placeholder: "Enter project address", required: true, extractKey: "projectAddress" },
+  { field: "deadline", label: "Start Date", inputType: "date", required: true, extractKey: "endDate" },
 ];
 
 const EXTENDED_FIELD_DEFS: FieldDef[] = [
@@ -480,7 +480,10 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
     const projectData = {
       name: projectName,
       location,
-      deadline,
+      // Issue 15 (D3 옵션 B): UI는 Start Date를 입력. 서버는 `start_date`
+      // 컬럼에 저장. (state 변수명 deadline은 다른 폼 코드와의 호환을 위해
+      // 그대로 두지만 의미는 시작일.)
+      start_date: deadline || null,
       assignedTo: selectedUserId,
       phases: phasesPayload,
       clientName: extendedValues.clientName || undefined,
@@ -699,11 +702,11 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
                       <Input id="name" value={projectName} onChange={(e) => handleFieldChange("name", e.target.value)} placeholder="Enter project name" required />
                     </div>
                     <div className="grid w-full items-center gap-2">
-                      {renderFieldLabel("location", "Location", "location")}
-                      <Input id="location" value={location} onChange={(e) => handleFieldChange("location", e.target.value)} placeholder="Enter project location" required />
+                      {renderFieldLabel("location", "Project Address", "location")}
+                      <Input id="location" value={location} onChange={(e) => handleFieldChange("location", e.target.value)} placeholder="Enter project address" required />
                     </div>
                     <div className="grid w-full items-center gap-2">
-                      {renderFieldLabel("deadline", "Deadline", "deadline")}
+                      {renderFieldLabel("deadline", "Start Date", "deadline")}
                       <Input id="deadline" type="date" value={deadline} onChange={(e) => handleFieldChange("deadline", e.target.value)} required />
                     </div>
                     <div className="grid w-full items-center gap-2">

@@ -353,19 +353,24 @@ export function ProjectDocumentsSection({
                             onReadyForControl={onReadyForControl}
                             onGenerateDocument={onGenerateDocument}
                             onTemplateRemove={onTemplateRemove}
+                            onAssignmentUpdate={onAssignmentUpdate}
+                            onUpgradeVersion={onUpgradeVersion}
+                            onRefresh={onRefresh}
+                            canManageProject={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
+                            canAssignDocuments={isLocked ? false : (currentUser?.role === 'ADMIN' || currentUser?.role === 'COMPANY_ADMIN' || currentUser?.id === project.leader_id)}
                             onDropdownOptionsChange={onDropdownOptionsChange}
                           />
                         ) : (
-                          /* Card View (Grid) */
-                          <div className="flex flex-wrap gap-4">
+                          /* Card View (Grid) — responsive: 2 / 3 / 4 / 5 cols by viewport */
+                          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                             {categoryTemplates
                               .filter(t => templateNames.includes(t.name))
                               .map((template) => {
                                 const isExpanded = !(collapsedTemplates[template.name] ?? true);
                                 return (
-                                  <div 
+                                  <div
                                     key={template.name}
-                                    className={isExpanded ? "w-full" : "w-[200px]"}
+                                    className={isExpanded ? "col-span-full w-full" : "mx-auto w-full max-w-[220px]"}
                                   >
                                     <ErrorBoundary
                                       fallback={

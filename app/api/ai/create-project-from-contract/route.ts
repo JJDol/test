@@ -151,11 +151,14 @@ async function createProjectFromContractHandler(request: AuthenticatedRequest) {
       return n > 1 ? VariablePropagationScope.CATEGORY : VariablePropagationScope.LOCAL;
     };
 
-    // ---- Parse deadline (from contract) if available. ---------------------
-    let deadline: string | null = null;
+    // ---- Parse start date (from contract) if available. -------------------
+    // Issue 15 (D3 옵션 B): the contract's endDate is treated as the project
+    // start date. Per-phase deadlines are managed separately on the milestone
+    // bar.
+    let startDate: string | null = null;
     if (contractData.endDate) {
       const parsed = new Date(contractData.endDate);
-      if (!isNaN(parsed.getTime())) deadline = parsed.toISOString();
+      if (!isNaN(parsed.getTime())) startDate = parsed.toISOString();
     }
 
     // ---- Build project-level global / category buckets, pre-filled. -------
@@ -197,7 +200,7 @@ async function createProjectFromContractHandler(request: AuthenticatedRequest) {
       .insert({
         name: contractData.projectName,
         location: contractData.projectAddress,
-        deadline,
+        start_date: startDate,
         leader_id: assigneeData.id,
         company_id: companyId,
         global_variables,
@@ -313,7 +316,7 @@ async function createProjectFromContractHandler(request: AuthenticatedRequest) {
         id: project.id,
         name: project.name,
         location: project.location,
-        deadline: project.deadline,
+        start_date: project.start_date,
         leader: project.leader,
         createdAt: project.created_at,
       },

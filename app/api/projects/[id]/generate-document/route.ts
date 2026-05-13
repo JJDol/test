@@ -272,9 +272,35 @@ async function generateDocumentHandler(
       }
     };
 
+    // Issue 15 (D3 옵션 B): `projects.deadline` 컬럼이 제거됨. 문서에 들어가는
+    //   * `project_start_date` ← projects.start_date  (사용자 입력 시작일)
+    //   * `project_deadline`   ← MAX(deadline) across all phases
+    //                            (= 프로젝트 전체 완공 예정일).
+    // 문서 변수는 "프로젝트 전체에 대한 정보"이므로 current phase가 아닌
+    // last phase 기준이 더 적합. (사이드보드/대시보드 카드는 별도로 current
+    // phase를 표시한다.)
+    const { data: allPhaseRows } = await supabase
+      .from('project_phases')
+      .select('deadline')
+      .eq('project_id', projectId);
+    const lastPhaseDeadline = (allPhaseRows ?? [])
+      .map((r: any) => r.deadline as string | null)
+      .filter((d): d is string => !!d)
+      .reduce<string | null>(
+        (max, d) => (!max || new Date(d).getTime() > new Date(max).getTime() ? d : max),
+        null
+      );
+
     setFallback('project_name', project.name);
     setFallback('project_location', project.location);
-    setFallback('project_deadline', project.deadline ? new Date(project.deadline).toLocaleDateString() : '');
+    setFallback(
+      'project_start_date',
+      project.start_date ? new Date(project.start_date).toLocaleDateString() : ''
+    );
+    setFallback(
+      'project_deadline',
+      lastPhaseDeadline ? new Date(lastPhaseDeadline).toLocaleDateString() : ''
+    );
     setFallback('project_leader', project.leader?.name || 'Unassigned');
 
     console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);

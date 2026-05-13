@@ -109,10 +109,19 @@ export function ProjectOverview({
     }
   };
 
-  const deadlineRelativeText = (() => {
-    if (!project.deadline) return null;
+  // Issue 15 (D3 옵션 B): the sidebar now distinguishes
+  //   * Start Date  ← project.start_date (raw, plain colour)
+  //   * Phase Deadline ← current phase deadline (drives the relative
+  //     "X days left / overdue" hint and the colour signal)
+  const currentPhaseDeadline =
+    phases.find((p) => p.is_current)?.deadline ??
+    project.current_phase_deadline ??
+    null;
+
+  const phaseDeadlineRelativeText = (() => {
+    if (!currentPhaseDeadline) return null;
     const now = new Date();
-    const deadline = new Date(project.deadline);
+    const deadline = new Date(currentPhaseDeadline);
     const diffTime = deadline.getTime() - now.getTime();
     const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (totalDays < 0) {
@@ -267,12 +276,25 @@ export function ProjectOverview({
         </Card>
 
         <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Deadline</h2>
-          <p className={`text-sm font-medium ${getDeadlineColor(project.deadline)}`}>
-            {formatDate(project.deadline)}
+          <h2 className="text-sm font-semibold mb-1">Start Date</h2>
+          <p className="text-sm font-medium text-gray-700">
+            {project.start_date ? formatDate(project.start_date) : "—"}
           </p>
-          {deadlineRelativeText && (
-            <p className="text-xs text-gray-500 mt-0.5">{deadlineRelativeText}</p>
+        </Card>
+
+        <Card className="p-3">
+          <h2 className="text-sm font-semibold mb-1">Phase Deadline</h2>
+          <p
+            className={`text-sm font-medium ${
+              currentPhaseDeadline
+                ? getDeadlineColor(currentPhaseDeadline)
+                : "text-gray-500"
+            }`}
+          >
+            {currentPhaseDeadline ? formatDate(currentPhaseDeadline) : "—"}
+          </p>
+          {phaseDeadlineRelativeText && (
+            <p className="text-xs text-gray-500 mt-0.5">{phaseDeadlineRelativeText}</p>
           )}
         </Card>
       </div>

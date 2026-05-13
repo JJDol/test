@@ -55,7 +55,7 @@ export interface Database {
           type: string
           address: string
           progress: number
-          deadline: string
+          start_date: string | null
           assignedTo: string
           stage: string
           created_at: string
@@ -67,7 +67,7 @@ export interface Database {
           type: string
           address: string
           progress?: number
-          deadline: string
+          start_date?: string | null
           assignedTo: string
           stage?: string
           created_at?: string
@@ -79,7 +79,7 @@ export interface Database {
           type?: string
           address?: string
           progress?: number
-          deadline?: string
+          start_date?: string | null
           assignedTo?: string
           stage?: string
           created_at?: string

@@ -322,9 +322,11 @@ export function ProjectDetailsContent({
       const hasLegacyTemplates = assignedTemplateNames(project).length > 0;
       if (isFirstPhase && hasLegacyTemplates) {
         // 옛 프로젝트(legacy *_templates만 채워진 케이스) 안전망 — 마이그레이션 후 dead code.
+        // Issue 15 (D3 옵션 B): project.start_date is the project start date and
+        // is no longer overwritten with the active phase deadline. Surfaces that
+        // need the active phase deadline read it from `phases.find(p => p.is_current)`.
         return {
           ...project,
-          deadline: activePhase.deadline ?? project.deadline,
           category_variables: mergePhaseCategoryVariables(),
         } as Project;
       }
@@ -336,7 +338,6 @@ export function ProjectDetailsContent({
       return {
         ...project,
         ...emptyTemplateArrays,
-        deadline: activePhase.deadline ?? project.deadline,
         template_variables: {} as Project["template_variables"],
         variable_propagation_settings: {} as Project["variable_propagation_settings"],
         document_assignments: {} as Project["document_assignments"],
@@ -374,7 +375,7 @@ export function ProjectDetailsContent({
     return {
       ...project,
       ...templateArrays,
-      deadline: activePhase.deadline ?? project.deadline,
+      // Issue 15: do not overwrite project.start_date with the phase deadline.
       template_variables: templateVariablesMap as Project["template_variables"],
       variable_propagation_settings: propagationSettings as Project["variable_propagation_settings"],
       document_assignments: assignments as Project["document_assignments"],

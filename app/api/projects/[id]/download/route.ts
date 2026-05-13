@@ -304,6 +304,22 @@ downloadProjectHandler(
 
     console.log(`Processing ${processItems.length} documents with 60s limit...`);
 
+    // Issue 15 (D3 옵션 B): `project_deadline` template variable now resolves
+    // to MAX(deadline) across all phases of the project — the project-as-a-
+    // whole completion date. Computed once before the per-document loop so we
+    // don't re-query for every doc in a multi-phase zip.
+    const { data: allProjectPhases } = await supabase
+      .from('project_phases')
+      .select('deadline')
+      .eq('project_id', id);
+    const projectLastPhaseDeadline = (allProjectPhases ?? [])
+      .map((r: any) => r.deadline as string | null)
+      .filter((d): d is string => !!d)
+      .reduce<string | null>(
+        (max, d) => (!max || new Date(d).getTime() > new Date(max).getTime() ? d : max),
+        null
+      );
+
     const batchPromises = processItems.map(async ({ template, storedVariables, folderPrefix, propagationSettings, docCategory, phaseCategoryVariables }) => {
       try {
         console.log(`Processing template: ${template.name} (folder: ${folderPrefix})`);
@@ -460,7 +476,18 @@ downloadProjectHandler(
         };
         setFallback('project_name', project.name);
         setFallback('project_location', project.location);
-        setFallback('project_deadline', project.deadline ? new Date(project.deadline).toLocaleDateString() : '');
+        setFallback(
+          'project_start_date',
+          project.start_date ? new Date(project.start_date).toLocaleDateString() : ''
+        );
+        // Issue 15: `project_deadline` = MAX(deadline) across every phase of
+        // the project — the project-as-a-whole completion date. The same
+        // value goes into every doc in this zip, regardless of which phase
+        // the individual doc belongs to.
+        setFallback(
+          'project_deadline',
+          projectLastPhaseDeadline ? new Date(projectLastPhaseDeadline).toLocaleDateString() : ''
+        );
         setFallback('project_leader', project.leader?.name || 'Unassigned');
 
         console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);

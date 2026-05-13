@@ -119,7 +119,8 @@ export function UpdateProjectForm({ project, onProjectUpdated, open: controlledO
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const location = formData.get("location") as string;
-    const deadline = formData.get("deadline") as string;
+    // Issue 15 (D3 옵션 B): UI input is the project Start Date.
+    const startDate = formData.get("start_date") as string;
 
     try {
       // Add a safety timeout to avoid a stuck UI in case the network hangs
@@ -134,7 +135,7 @@ export function UpdateProjectForm({ project, onProjectUpdated, open: controlledO
         body: JSON.stringify({
           name,
           location,
-          deadline,
+          start_date: startDate || null,
           leader_id: selectedUserId,
         }),
         signal: controller.signal,
@@ -183,22 +184,22 @@ export function UpdateProjectForm({ project, onProjectUpdated, open: controlledO
           />
         </div>
         <div className="grid w-full items-center gap-2">
-          <Label htmlFor="location">Location</Label>
+          <Label htmlFor="location">Project Address</Label>
           <Input
             id="location"
             name="location"
-            placeholder="Enter project location"
+            placeholder="Enter project address"
             defaultValue={project.location}
             required
           />
         </div>
         <div className="grid w-full items-center gap-2">
-          <Label htmlFor="deadline">Deadline</Label>
+          <Label htmlFor="start_date">Start Date</Label>
           <Input
-            id="deadline"
-            name="deadline"
+            id="start_date"
+            name="start_date"
             type="date"
-            defaultValue={project.deadline?.split('T')[0]}
+            defaultValue={project.start_date?.split('T')[0]}
             required
           />
         </div>

@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
-import { ChevronDown, ChevronRight, MoreHorizontal, FileText, Trash2, Upload, RotateCcw, ArrowUpCircle } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DocumentCategory, VariablePropagationScope } from "@/lib/types/types";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { DocumentActionsMenu } from "./document-actions-menu";
+import { DocumentCategory } from "@/lib/types/types";
 import { DocumentTemplate, Project, User } from "@/lib/types/types";
 import { DocumentVariable } from "@/lib/types/variable-types";
 
@@ -34,6 +33,19 @@ interface DocumentListViewProps {
   onReadyForControl: (templateName: string, checked: boolean) => Promise<void>;
   onGenerateDocument: (templateName: string, category: DocumentCategory) => Promise<void>;
   onTemplateRemove: (template: string, category: DocumentCategory) => Promise<void>;
+  onAssignmentUpdate?: (
+    templateName: string,
+    assignments: {
+      assignee_id?: string;
+      assignee_name?: string;
+      supervisor_id?: string;
+      supervisor_name?: string;
+    }
+  ) => Promise<void>;
+  onUpgradeVersion?: (templateName: string) => Promise<void>;
+  onRefresh?: () => void | Promise<void>;
+  canManageProject?: boolean;
+  canAssignDocuments?: boolean;
   onDropdownOptionsChange?: (templateName: string, variableName: string, category: DocumentCategory, options: { displayText: string; value: string }[]) => Promise<void>;
 }
 
@@ -54,6 +66,11 @@ export function DocumentListView({
   onReadyForControl,
   onGenerateDocument,
   onTemplateRemove,
+  onAssignmentUpdate,
+  onUpgradeVersion,
+  onRefresh,
+  canManageProject = false,
+  canAssignDocuments = false,
   onDropdownOptionsChange,
 }: DocumentListViewProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -106,7 +123,7 @@ export function DocumentListView({
         );
 
         return (
-          <div key={template.name} className="border-b last:border-b-0">
+          <div key={template.name} className="group border-b last:border-b-0">
             {/* Row */}
             <div className="grid grid-cols-[minmax(250px,2fr)_80px_120px_120px_120px_100px_100px] gap-2 px-3 py-2.5 items-center hover:bg-muted/50 transition-colors">
               {/* Document name with expand toggle */}
@@ -125,32 +142,22 @@ export function DocumentListView({
                 </Button>
                 <span className="text-sm truncate">{template.name}</span>
 
-                {/* Actions */}
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0 ml-auto opacity-0 group-hover:opacity-100 hover:opacity-100">
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onGenerateDocument(template.name, template.category)}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Generate Document
-                    </DropdownMenuItem>
-                    {!isLocked && !project.is_archived && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onTemplateRemove(template.name, template.category)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="ml-auto shrink-0">
+                  <DocumentActionsMenu
+                    template={template}
+                    project={project}
+                    isLocked={isLocked}
+                    canManageProject={canManageProject}
+                    canAssignDocuments={canAssignDocuments}
+                    onGenerateDocument={onGenerateDocument}
+                    onTemplateRemove={onTemplateRemove}
+                    onAssignmentUpdate={onAssignmentUpdate}
+                    onUpgradeVersion={onUpgradeVersion}
+                    onRefresh={onRefresh}
+                    triggerClassName="h-6 w-6"
+                    iconClassName="h-3.5 w-3.5"
+                  />
+                </div>
               </div>
 
               {/* Version */}

@@ -160,8 +160,8 @@ export default function DocumentationPage() {
                       icon={<Plus className="h-5 w-5" />}
                       steps={[
                         "Navigate to the Dashboard and click 'Create New Project'",
-                        "Enter project details: name, location, client information",
-                        "Set project deadline and select the project stage",
+                        "Enter project details: name, project address, client information",
+                        "Set project start date and select the project stage",
                         "Assign a project leader from your team",
                         "Choose which document templates you'll need",
                         "Save the project to start working"

@@ -155,15 +155,37 @@ async function generateDocumentEnhancedHandler(
       }
     });
 
-    // Add common project variables ONLY if not already provided by user
+    // Add common project variables ONLY if not already provided by user.
+    // Issue 15 (D3 옵션 B): `projects.deadline` 컬럼 제거.
+    //   * project_start_date ← projects.start_date
+    //   * project_deadline   ← MAX(deadline) across all phases
+    //                          (= 프로젝트 전체 완공 예정일)
     if (!allVariables['project_name']) {
       allVariables['project_name'] = project.name;
     }
     if (!allVariables['project_location']) {
       allVariables['project_location'] = project.location;
     }
+    if (!allVariables['project_start_date']) {
+      allVariables['project_start_date'] = project.start_date
+        ? new Date(project.start_date).toLocaleDateString()
+        : '';
+    }
     if (!allVariables['project_deadline']) {
-      allVariables['project_deadline'] = new Date(project.deadline).toLocaleDateString();
+      const { data: allPhaseRows } = await supabase
+        .from('project_phases')
+        .select('deadline')
+        .eq('project_id', projectId);
+      const lastPhaseDeadline = (allPhaseRows ?? [])
+        .map((r: any) => r.deadline as string | null)
+        .filter((d): d is string => !!d)
+        .reduce<string | null>(
+          (max, d) => (!max || new Date(d).getTime() > new Date(max).getTime() ? d : max),
+          null
+        );
+      allVariables['project_deadline'] = lastPhaseDeadline
+        ? new Date(lastPhaseDeadline).toLocaleDateString()
+        : '';
     }
     if (!allVariables['project_leader']) {
       allVariables['project_leader'] = project.leader?.name || 'Unassigned';

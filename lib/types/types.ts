@@ -144,7 +144,22 @@ export interface Project {
   id: string;
   name: string;
   location: string;
-  deadline: string;
+  /** Project start date. Distinct from per-phase deadlines (project_phases.deadline). */
+  start_date: string | null;
+  /**
+   * Convenience field hydrated by `GET /api/projects` — the deadline of the
+   * project's `is_current` phase. Used by surfaces that show "what's due
+   * right now" (sidebar Phase Deadline card, dashboard/kanban/profile cards).
+   */
+  current_phase_deadline?: string | null;
+  /**
+   * Convenience field hydrated by `GET /api/projects` — `MAX(deadline)`
+   * across every phase of the project (NULLs ignored). Represents the
+   * project-wide completion deadline used by surfaces that talk about the
+   * whole project rather than the active phase (kanban sort, AI overdue
+   * count, `project_deadline` template variable, etc.).
+   */
+  last_phase_deadline?: string | null;
   leader_id: string;
   leaderName: string;
   leader?: {

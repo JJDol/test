@@ -376,7 +376,7 @@ export function ContractUploadDialog({ onProjectCreated }: ContractUploadDialogP
               </div>
 
               <div>
-                <Label htmlFor="endDate">Deadline</Label>
+                <Label htmlFor="endDate">Start Date</Label>
                 <Input
                   id="endDate"
                   type="date"

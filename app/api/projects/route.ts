@@ -104,20 +104,40 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
         return Number(id);
       };
 
-      // Step 1: Get current phase IDs per project
-      const { data: phases } = await queryClient
+      // Step 1: Get phase rows per project. We pull every phase (not just the
+      // current one) so we can compute both the current-phase deadline (used
+      // by "right now" surfaces) and the project-wide deadline (used by
+      // surfaces that talk about the project as a whole — kanban sort, AI
+      // overdue, `project_deadline` template variable, etc.).
+      const { data: allPhases } = await queryClient
         .from("project_phases")
-        .select("id, project_id")
-        .in("project_id", projectIds)
-        .eq("is_current", true);
+        .select("id, project_id, deadline, is_current")
+        .in("project_id", projectIds);
+
+      const currentPhaseDeadlineByProject = new Map<number, string | null>();
+      const lastPhaseDeadlineByProject = new Map<number, string | null>();
+
+      // last_phase_deadline = MAX(deadline) across all phases of the project,
+      // NULLs ignored. NULL when no phase has a deadline yet.
+      for (const phase of allPhases ?? []) {
+        const pid = numericProjectId((phase as any).project_id);
+        const dl = (phase as any).deadline as string | null;
+        if (dl) {
+          const prev = lastPhaseDeadlineByProject.get(pid) ?? null;
+          if (!prev || new Date(dl).getTime() > new Date(prev).getTime()) {
+            lastPhaseDeadlineByProject.set(pid, dl);
+          }
+        }
+      }
+
+      const phases = (allPhases ?? []).filter((p: any) => p.is_current);
 
       if (phases && phases.length > 0) {
         const phaseIdToProjectId = new Map<string, number>();
         for (const phase of phases) {
-          phaseIdToProjectId.set(
-            String(phase.id),
-            numericProjectId(phase.project_id)
-          );
+          const pid = numericProjectId(phase.project_id);
+          phaseIdToProjectId.set(String(phase.id), pid);
+          currentPhaseDeadlineByProject.set(pid, (phase as any).deadline ?? null);
         }
 
         // Step 2: Get documents from project_phase_documents for current phases
@@ -150,6 +170,20 @@ async function getProjectsHandler(request: AuthenticatedRequest) {
             project.progress = Math.round((checkedDocs / docs.length) * 100);
           }
         }
+      }
+
+      // Hydrate `current_phase_deadline` and `last_phase_deadline` on every
+      // row (null when project has no phases / no phase deadlines yet).
+      //   * current_phase_deadline → "right now" surfaces (sidebar Phase
+      //     Deadline card, dashboard / kanban / profile cards).
+      //   * last_phase_deadline → "project as a whole" surfaces (kanban
+      //     sort, AI overdue, `project_deadline` template variable).
+      for (const project of data as any[]) {
+        const pid = numericProjectId(project.id);
+        project.current_phase_deadline =
+          currentPhaseDeadlineByProject.get(pid) ?? null;
+        project.last_phase_deadline =
+          lastPhaseDeadlineByProject.get(pid) ?? null;
       }
     }
 
@@ -505,7 +539,11 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     const {
       name,
       location,
-      deadline,
+      // `start_date` is the canonical name (D3 option B). `deadline` is kept
+      // as a temporary alias so older clients / cached bundles that still
+      // post `deadline` continue to work — interpreted as the start date.
+      start_date: startDateInput,
+      deadline: legacyDeadlineInput,
       assignedTo,
       selectedTemplates,
       phases: phasesPayload,
@@ -521,7 +559,8 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     } = body as {
       name: string;
       location: string;
-      deadline: string;
+      start_date?: string | null;
+      deadline?: string | null;
       assignedTo: string;
       selectedTemplates?: Record<string, string>;
       phases?: Array<{
@@ -541,6 +580,11 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       subject?: string;
       regarding?: string;
     };
+
+    const startDate: string | null =
+      (typeof startDateInput === 'string' && startDateInput) ||
+      (typeof legacyDeadlineInput === 'string' && legacyDeadlineInput) ||
+      null;
 
     // Resolve leader.
     if (!assignedTo || typeof assignedTo !== 'string' || assignedTo.trim() === '') {
@@ -664,7 +708,8 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         });
       }
     } else {
-      // Legacy path — route the whole selection onto P1.
+      // Legacy path — route the whole selection onto P1. P1 deadline is left
+      // null here; the user manages phase deadlines in the milestone bar.
       const picks = await resolvePickedTemplates(
         supabase,
         companyId,
@@ -672,7 +717,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       );
       resolvedPhases.push({
         phaseDefinitionId: firstPhaseDef.id as string,
-        deadline: deadline ?? null,
+        deadline: null,
         picks,
       });
     }
@@ -682,7 +727,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     if (!resolvedPhases.some((rp) => p1DefinitionIds.has(rp.phaseDefinitionId))) {
       resolvedPhases.unshift({
         phaseDefinitionId: firstPhaseDef.id as string,
-        deadline: deadline ?? null,
+        deadline: null,
         picks: [],
       });
     }
@@ -827,10 +872,15 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     }
 
     // ✅ Issue 16 fix — D4 옵션 ① 단방향 초기 시드.
-    // 프로젝트 생성 입력값(name/location/deadline/leader)을 global_variables에 시드한다.
+    // 프로젝트 생성 입력값(name/location/start_date/leader)을 global_variables에 시드한다.
     // 이후 변경은 SSOT(project.global_variables) 단방향 흐름이며,
-    // projects.{name, location, deadline, leader_id} 컬럼은 변경하지 않는다.
+    // projects.{name, location, start_date, leader_id} 컬럼은 변경하지 않는다.
     // (시연 영향 최소화 — 기존 프로젝트 식별/대시보드 표기는 그대로 유지)
+    //
+    // Issue 15 (D3 옵션 B): `project_deadline` 변수는 더 이상 프로젝트
+    // 시작일을 가리키지 않는다. 시드 시점에는 P1(=current phase)의 deadline을
+    // 사용하고, 이후 phase가 advance되면 다음 phase deadline은 phase 변경
+    // 트리거 또는 generate-document API의 fallback에서 다시 매핑된다.
     const seedProjectGlobal = (variableName: string, value: unknown) => {
       if (value === undefined || value === null || value === '') return;
       const existingIdx = global_variables.variables.findIndex((v) => v.name === variableName);
@@ -843,9 +893,13 @@ async function createProjectHandler(request: AuthenticatedRequest) {
         global_variables.variables.push({ name: variableName, type: 'text', value } as any);
       }
     };
+    const p1PlanForSeed = resolvedPhases.find((rp) =>
+      p1DefinitionIds.has(rp.phaseDefinitionId)
+    );
     seedProjectGlobal('project_name', name);
     seedProjectGlobal('project_location', location);
-    seedProjectGlobal('project_deadline', deadline);
+    seedProjectGlobal('project_start_date', startDate);
+    seedProjectGlobal('project_deadline', p1PlanForSeed?.deadline ?? null);
     seedProjectGlobal('project_leader', userData.name);
 
     // Quick lookup: for a given (templateName, category), return the matching
@@ -862,7 +916,7 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       .insert({
         name,
         location,
-        deadline,
+        start_date: startDate,
         leader_id: userData.id,
         company_id: companyId,
         global_variables: { variables: [] },
@@ -894,12 +948,18 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     firstPhase = triggerPhase as { id: string; phase_definition_id: string } | null;
 
     if (!firstPhase) {
+      // Manual fallback when the trigger didn't fire. P1 deadline comes from
+      // the matching phases payload entry (if any) — never from the project's
+      // start_date, which now has separate semantics (Issue 15).
+      const p1PlanFallback = resolvedPhases.find((rp) =>
+        p1DefinitionIds.has(rp.phaseDefinitionId)
+      );
       const { data: manualP1, error: manualError } = await supabase
         .from('project_phases')
         .insert({
           project_id: projectRow.id,
           phase_definition_id: firstPhaseDef.id,
-          deadline: deadline ?? null,
+          deadline: p1PlanFallback?.deadline ?? null,
           is_current: true,
         })
         .select('id, phase_definition_id')
@@ -947,11 +1007,12 @@ async function createProjectHandler(request: AuthenticatedRequest) {
     }
 
     // Optional: update the auto-created P1 deadline if the user supplied one
-    // via the phases payload (the trigger used project.deadline as the seed).
+    // via the phases payload. Issue 15: project.start_date is no longer used
+    // as the P1 deadline seed, so we always honour the explicit phase value.
     const p1Plan = resolvedPhases.find((rp) =>
       p1DefinitionIds.has(rp.phaseDefinitionId)
     );
-    if (p1Plan && p1Plan.deadline && p1Plan.deadline !== deadline) {
+    if (p1Plan && p1Plan.deadline) {
       await supabase
         .from('project_phases')
         .update({ deadline: p1Plan.deadline })
