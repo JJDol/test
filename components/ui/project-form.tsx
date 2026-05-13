@@ -555,7 +555,15 @@ export function ProjectForm({ onProjectCreated }: ProjectFormProps) {
         <DialogTrigger asChild>
           <Button variant="default">+ New Project</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogContent
+          className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          // Issue 17 fix: 다른 tab/window 또는 native file picker가 focus를 가져갈 때
+          // dialog가 자동으로 닫히는 회귀 방지. preventDefault로 close 트리거 차단.
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Create New Project</DialogTitle>
             <DialogDescription>Please fill out the form below to create a new project.</DialogDescription>

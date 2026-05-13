@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 import { DocumentCategory, VariablePropagationScope } from '@/lib/types/types';
 import type { DocumentVariable } from '@/lib/types/variable-types';
+import { normalizeVariableName } from '@/lib/utils/variable-utils';
 
 export const maxDuration = 60;
 
@@ -361,12 +362,16 @@ function applyContractPrefillToVariables(
   contractFieldMapping: Record<string, string[]>,
   contractValues: Record<string, string | undefined>
 ): DocumentVariable[] {
+  // ✅ normalize-aware 매칭 — 'Client Name' / 'client_name' / 'CLIENT NAME' 등 변형 모두 같은 normalized key로 비교
+  const normalizedMapping: Record<string, Set<string>> = {};
+  for (const [fieldKey, variableNames] of Object.entries(contractFieldMapping)) {
+    normalizedMapping[fieldKey] = new Set(variableNames.map((n) => normalizeVariableName(n)));
+  }
   return variables.map((v) => {
-    for (const [fieldKey, variableNames] of Object.entries(
-      contractFieldMapping
-    )) {
+    const normName = normalizeVariableName(v.name);
+    for (const [fieldKey, _names] of Object.entries(contractFieldMapping)) {
       const value = contractValues[fieldKey];
-      if (value && variableNames.includes(v.name)) {
+      if (value && normalizedMapping[fieldKey].has(normName)) {
         return { ...v, value } as DocumentVariable;
       }
     }
@@ -757,39 +762,91 @@ async function createProjectHandler(request: AuthenticatedRequest) {
       buildProjectVariableBuckets(decisions);
 
     // Prefill global_variables with values from AI contract extraction.
-    // The mapping connects frontend field keys to the Danish variable names
+    // The mapping connects frontend field keys to the Danish AND English variable names
     // used in templates (mirroring contract-extractor.ts mapToProjectVariables).
+    // ✅ Issue follow-up: 영어 변수명 추가 + normalize-aware 매칭 (Client Name / client / client_name 등 변형 모두 커버)
     const contractFieldMapping: Record<string, string[]> = {
-      clientName: ['Bygherres navn', 'Bygherre navn', 'Bygherrenavn', 'Kunde navn'],
-      documentReceiver: ['Modtager', 'Dokumentmodtager'],
-      caseNumber: ['Sagsnummer', 'Sagsnr', 'Sag nr'],
-      constructionAddress: ['Byggeadresse', 'Byggepladsens adresse'],
-      cadastralNumber: ['Matrikelnummer', 'Matrikel'],
-      cadastralDistrict: ['Ejerlav'],
-      subject: ['Emne'],
-      regarding: ['Vedrørende', 'Vedr', 'Vedr.'],
+      clientName: [
+        'Bygherres navn', 'Bygherre navn', 'Bygherrenavn', 'Kunde navn',
+        'client_name', 'client', 'Client Name', 'Client', 'Client_Name',
+      ],
+      documentReceiver: [
+        'Modtager', 'Dokumentmodtager',
+        'document_recipient', 'Document Recipient', 'document_receiver',
+      ],
+      caseNumber: [
+        'Sagsnummer', 'Sagsnr', 'Sag nr', 'sagsNr',
+        'case_number', 'Case Number', 'project_number', 'Project Number',
+      ],
+      constructionAddress: [
+        'Byggeadresse', 'Byggepladsens adresse',
+        'project_address', 'Project Address', 'construction_address', 'Construction Address',
+      ],
+      cadastralNumber: [
+        'Matrikelnummer', 'Matrikel', 'matrikelNr',
+        'matrikelnr', 'matrikel_nr', 'Matrikel nr.', 'Cadastral Number', 'cadastral_number',
+      ],
+      cadastralDistrict: [
+        'Ejerlav', 'ejerlav', 'Cadastral District', 'cadastral_district',
+      ],
+      subject: ['Emne', 'subject', 'Subject'],
+      regarding: [
+        'Vedrørende', 'Vedr', 'Vedr.', 'vedrrende',
+        'regarding', 'Regarding',
+      ],
     };
     const contractValues: Record<string, string | undefined> = {
       clientName, documentReceiver, caseNumber,
       constructionAddress, cadastralNumber, cadastralDistrict,
       subject, regarding,
     };
+    // normalize-aware 매칭: 'Client Name', 'client_name', 'CLIENT NAME' 등 모두 같은 normalized key로 비교
+    const normalizedMapping: Record<string, Set<string>> = {};
     for (const [fieldKey, variableNames] of Object.entries(contractFieldMapping)) {
+      normalizedMapping[fieldKey] = new Set(variableNames.map((n) => normalizeVariableName(n)));
+    }
+    const matchVariable = (gvName: string, fieldKey: string): boolean => {
+      const norm = normalizeVariableName(gvName);
+      return normalizedMapping[fieldKey].has(norm);
+    };
+    for (const [fieldKey, _variableNames] of Object.entries(contractFieldMapping)) {
       const value = contractValues[fieldKey];
       if (!value) continue;
       for (const gv of global_variables.variables) {
-        if (variableNames.includes(gv.name) && !gv.value) {
+        if (matchVariable(gv.name, fieldKey) && !gv.value) {
           (gv as any).value = value;
         }
       }
       for (const catBucket of Object.values(category_variables)) {
         for (const cv of catBucket.variables) {
-          if (variableNames.includes(cv.name) && !cv.value) {
+          if (matchVariable(cv.name, fieldKey) && !cv.value) {
             (cv as any).value = value;
           }
         }
       }
     }
+
+    // ✅ Issue 16 fix — D4 옵션 ① 단방향 초기 시드.
+    // 프로젝트 생성 입력값(name/location/deadline/leader)을 global_variables에 시드한다.
+    // 이후 변경은 SSOT(project.global_variables) 단방향 흐름이며,
+    // projects.{name, location, deadline, leader_id} 컬럼은 변경하지 않는다.
+    // (시연 영향 최소화 — 기존 프로젝트 식별/대시보드 표기는 그대로 유지)
+    const seedProjectGlobal = (variableName: string, value: unknown) => {
+      if (value === undefined || value === null || value === '') return;
+      const existingIdx = global_variables.variables.findIndex((v) => v.name === variableName);
+      if (existingIdx >= 0) {
+        // contract prefill이 이미 채웠으면 그 값 우선
+        if (!(global_variables.variables[existingIdx] as any).value) {
+          (global_variables.variables[existingIdx] as any).value = value;
+        }
+      } else {
+        global_variables.variables.push({ name: variableName, type: 'text', value } as any);
+      }
+    };
+    seedProjectGlobal('project_name', name);
+    seedProjectGlobal('project_location', location);
+    seedProjectGlobal('project_deadline', deadline);
+    seedProjectGlobal('project_leader', userData.name);
 
     // Quick lookup: for a given (templateName, category), return the matching
     // decision so we can seed phase documents consistently.

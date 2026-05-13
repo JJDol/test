@@ -352,26 +352,15 @@ export function DocumentTemplateCard({
                     name: variableName,
                     type: variableType as any,
                     value: (() => {
-                      // All values are stored in template_variables, not in global_variables/category_variables
-                      // The global_variables and category_variables only store metadata (name, type)
-                      if (scopeOfVariable === VariablePropagationScope.LOCAL) {
-                        // Local scope: read from this specific template's variables
-                        return project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || '';
-                      } else if (scopeOfVariable === VariablePropagationScope.CATEGORY) {
-                        // Category scope: find value from any template in same category using CATEGORY scope
-                        const categoryTemplateVars = project.template_variables?.[template.category] || {};
-                        for (const tName of Object.keys(categoryTemplateVars)) {
-                          const tScope = project.variable_propagation_settings?.[template.category]?.[tName]?.[variableName]?.currentScope;
-                          if (tScope === VariablePropagationScope.CATEGORY) {
-                            const varValue = categoryTemplateVars[tName]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
-                            if (varValue !== undefined && varValue !== '') {
-                              return varValue;
-                            }
-                          }
-                        }
-                        return '';
-                      } else {
-                        // GLOBAL scope: find value from any template across all categories using GLOBAL scope
+                      // ✅ D2 X2 정책 — scope별 SSOT 우선 조회.
+                      // GLOBAL  → project.global_variables.variables (SSOT)
+                      // CATEGORY → project.category_variables[category].variables (SSOT)
+                      // LOCAL    → doc-level template_variables[category][template].variables
+                      // 모든 scope에서 SSOT가 비어 있으면 옛 doc-level 위치로 fallback (마이그레이션 호환).
+                      if (scopeOfVariable === VariablePropagationScope.GLOBAL) {
+                        const ssot = project.global_variables?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
+                        if (ssot !== undefined && ssot !== '' && ssot !== null) return ssot;
+                        // legacy fallback — 옛 모델에서 doc-level에 저장됐던 값
                         const allCategories = Object.keys(project.template_variables || {}) as DocumentCategory[];
                         for (const cat of allCategories) {
                           const catTemplateVars = project.template_variables?.[cat] || {};
@@ -379,14 +368,28 @@ export function DocumentTemplateCard({
                             const tScope = project.variable_propagation_settings?.[cat]?.[tName]?.[variableName]?.currentScope;
                             if (tScope === VariablePropagationScope.GLOBAL) {
                               const varValue = catTemplateVars[tName]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
-                              if (varValue !== undefined && varValue !== '') {
-                                return varValue;
-                              }
+                              if (varValue !== undefined && varValue !== '') return varValue;
                             }
                           }
                         }
                         return '';
                       }
+                      if (scopeOfVariable === VariablePropagationScope.CATEGORY) {
+                        const ssot = project.category_variables?.[template.category]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
+                        if (ssot !== undefined && ssot !== '' && ssot !== null) return ssot;
+                        // legacy fallback
+                        const categoryTemplateVars = project.template_variables?.[template.category] || {};
+                        for (const tName of Object.keys(categoryTemplateVars)) {
+                          const tScope = project.variable_propagation_settings?.[template.category]?.[tName]?.[variableName]?.currentScope;
+                          if (tScope === VariablePropagationScope.CATEGORY) {
+                            const varValue = categoryTemplateVars[tName]?.variables?.find((v: DocumentVariable) => v.name === variableName)?.value;
+                            if (varValue !== undefined && varValue !== '') return varValue;
+                          }
+                        }
+                        return '';
+                      }
+                      // LOCAL scope (또는 scope 미정의 시 default)
+                      return project.template_variables?.[template.category]?.[template.name]?.variables?.find(v => v.name === variableName)?.value || '';
                     })(),
                     // Include dropdownOptions - prioritize custom options from project, fall back to template
                     ...((() => {

@@ -102,19 +102,26 @@ downloadProjectHandler(
       template_name: string;
       category: string;
       variables: any;
+      // ✅ 10-B fix: propagation_settings 포함하여 scope-aware lookup 가능하게
+      propagation_settings: Record<string, { currentScope?: string }> | null;
       phaseName: string;
+      // ✅ D2 X2'' (2026-05-13): phase-level category SSOT
+      // shape: { [category]: { variables: DocumentVariable[] } }
+      phaseCategoryVariables: Record<string, { variables?: Array<{ name: string; value?: unknown; type?: string; dropdownOptions?: { displayText: string; value: string }[] }> }>;
     }
     let phaseDocuments: PhaseDocument[] = [];
     let allTemplateNames: string[] = [];
 
     if (phaseIds && phaseIds.length > 0) {
       // Fetch documents with phase info for folder naming
+      // ✅ D2 X2'' (2026-05-13): project_phase.category_variables 도 함께 select
       const { data: phaseDocs, error: phaseDocsError } = await supabase
         .from('project_phase_documents')
         .select(`
-          template_name, category, variables,
+          template_name, category, variables, propagation_settings,
           project_phase:project_phase_id (
             id,
+            category_variables,
             phase_definition:phase_definition_id ( short_label, name )
           )
         `)
@@ -136,7 +143,9 @@ downloadProjectHandler(
           template_name: doc.template_name,
           category: doc.category,
           variables: doc.variables,
+          propagation_settings: doc.propagation_settings ?? null,
           phaseName,
+          phaseCategoryVariables: (doc.project_phase?.category_variables ?? {}) as PhaseDocument['phaseCategoryVariables'],
         });
         if (!allTemplateNames.includes(doc.template_name)) {
           allTemplateNames.push(doc.template_name);
@@ -257,6 +266,11 @@ downloadProjectHandler(
       template: (typeof templates)[number];
       storedVariables: any;
       folderPrefix: string;
+      // ✅ 10-B fix: phase doc의 경우 propagation_settings + category 정보 보관 (scope-aware lookup용)
+      propagationSettings?: Record<string, { currentScope?: string }> | null;
+      docCategory?: string;
+      // ✅ D2 X2'' (2026-05-13): phase-level category SSOT (per-doc, since 다른 phase는 다른 값)
+      phaseCategoryVariables?: Record<string, { variables?: Array<{ name: string; value?: unknown; type?: string; dropdownOptions?: { displayText: string; value: string }[] }> }>;
     }
     const processItems: ProcessItem[] = [];
 
@@ -272,6 +286,9 @@ downloadProjectHandler(
           template,
           storedVariables: doc.variables?.variables || [],
           folderPrefix: prefix,
+          propagationSettings: doc.propagation_settings,
+          docCategory: doc.category,
+          phaseCategoryVariables: doc.phaseCategoryVariables,
         });
       }
     } else {
@@ -287,7 +304,7 @@ downloadProjectHandler(
 
     console.log(`Processing ${processItems.length} documents with 60s limit...`);
 
-    const batchPromises = processItems.map(async ({ template, storedVariables, folderPrefix }) => {
+    const batchPromises = processItems.map(async ({ template, storedVariables, folderPrefix, propagationSettings, docCategory, phaseCategoryVariables }) => {
       try {
         console.log(`Processing template: ${template.name} (folder: ${folderPrefix})`);
 
@@ -381,6 +398,70 @@ downloadProjectHandler(
             }
           });
         }
+
+        // ✅ 10-B fix + D2 X2'' (2026-05-13): GLOBAL/CATEGORY scope 변수를 SSOT에서 merge
+        // - GLOBAL: project.global_variables (project-level, 모든 phase 공유)
+        // - CATEGORY: project_phase.category_variables (phase-level, 같은 phase 내만 공유)
+        //   → 본 doc이 속한 phase의 category SSOT를 우선 조회, legacy fallback은 project.category_variables
+        // doc.variables(local)에 entry가 없거나 비어 있어도 SSOT 값으로 채움.
+        type SSOTVar = { name: string; value?: unknown; type?: string; dropdownOptions?: { displayText: string; value: string }[] };
+        const propagation = (propagationSettings ?? {}) as Record<string, { currentScope?: string }>;
+        const projectGlobalVars = ((project.global_variables as { variables?: SSOTVar[] } | null | undefined)?.variables ?? []) as SSOTVar[];
+        const ssotCategory = (docCategory ?? template.category) as string;
+        const phaseCategoryVars = ((phaseCategoryVariables as Record<string, { variables?: SSOTVar[] }> | undefined)?.[ssotCategory]?.variables ?? []) as SSOTVar[];
+        const legacyProjectCategoryVars = ((project.category_variables as Record<string, { variables?: SSOTVar[] }> | null | undefined)?.[ssotCategory]?.variables ?? []) as SSOTVar[];
+        // phase에 entry가 1개라도 있으면 phase가 SSOT (Issue B 명시: 빈 phase = explicit empty)
+        const categoryVars: SSOTVar[] = phaseCategoryVars.length > 0 ? phaseCategoryVars : legacyProjectCategoryVars;
+        const tmplVarDefs = (Array.isArray(templateVariables) ? templateVariables : []) as Array<{ name: string; type?: string }>;
+        for (const tv of tmplVarDefs) {
+          const name = tv.name;
+          const scope = propagation[name]?.currentScope ?? 'LOCAL';
+          let source: SSOTVar | undefined;
+          if (scope === 'GLOBAL') {
+            source = projectGlobalVars.find((g) => g.name === name);
+          } else if (scope === 'CATEGORY') {
+            source = categoryVars.find((c) => c.name === name);
+          } else {
+            continue; // LOCAL은 위에서 storedVariables로 이미 처리됨
+          }
+          if (!source) continue;
+          const normalizedKey = normalizeVariableName(name);
+          const sourceType = source.type;
+          const sourceValue = source.value as any;
+          let processedValue: any;
+          if (sourceType === 'image' && sourceValue) {
+            processedValue = source;
+          } else if (sourceType === 'dropdown' && source.dropdownOptions) {
+            processedValue = { type: 'dropdown', value: sourceValue ?? '', dropdownOptions: source.dropdownOptions };
+          } else {
+            processedValue = sourceValue;
+          }
+          allVariables[normalizedKey] = processedValue;
+          if (tagNameMapping[normalizedKey]) {
+            allVariables[tagNameMapping[normalizedKey]] = processedValue;
+          }
+        }
+
+        // ✅ Issue 14 fix — common project variable fallback (SSOT 우선 → projects.* fallback)
+        const lookupGlobal = (key: string): unknown => {
+          const norm = normalizeVariableName(key);
+          const found = projectGlobalVars.find((v) => normalizeVariableName(v.name) === norm);
+          if (!found) return undefined;
+          return found.type === 'text' ? (found.value ?? undefined) : found;
+        };
+        const setFallback = (key: string, fallbackValue: unknown) => {
+          if (allVariables[key] !== undefined) return;
+          const globalValue = lookupGlobal(key);
+          const finalValue = globalValue !== undefined ? globalValue : fallbackValue;
+          allVariables[key] = finalValue;
+          if (tagNameMapping[key]) {
+            allVariables[tagNameMapping[key]] = finalValue;
+          }
+        };
+        setFallback('project_name', project.name);
+        setFallback('project_location', project.location);
+        setFallback('project_deadline', project.deadline ? new Date(project.deadline).toLocaleDateString() : '');
+        setFallback('project_leader', project.leader?.name || 'Unassigned');
 
         console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);
 

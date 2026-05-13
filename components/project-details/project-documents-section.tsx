@@ -231,15 +231,20 @@ export function ProjectDocumentsSection({
           {Object.values(DocumentCategory).map((category) => {
             const categoryTemplates = allTemplates.filter(t => t.category === category);
             const templateNames = project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || [];
+            // ✅ D2 X2'' (2026-05-13): project.category_variables는 virtualProject가
+            // phase-aware로 합성한 결과(activePhase.category_variables[category]가 우선,
+            // legacy fallback 포함). 본 컴포넌트는 그 결과를 그대로 사용.
+            // 표시 목록은 propagation_settings 기준으로 filter — 어느 도큐먼트라도
+            // currentScope === CATEGORY인 변수만 표시 (정책 D2 유지).
             const storedCategoryVariables = project?.category_variables?.[category]?.variables?.filter((variable: any) => {
               const categorySettings = project?.variable_propagation_settings?.[category] || {};
               if (!categorySettings) return false;
-              
-              // Check if any template in this category has this variable set to category
-              return Object.values(categorySettings).some((templateSettings: any) => 
+              return Object.values(categorySettings).some((templateSettings: any) =>
                 templateSettings?.[variable.name]?.currentScope === VariablePropagationScope.CATEGORY
               );
             }) || [];
+            // ✅ Issue B fix — SSOT raw bucket을 child에 전달하여 currentValue 직접 조회.
+            const categorySSOTVariables = (project?.category_variables?.[category]?.variables ?? []) as DocumentVariable[];
 
             return (
               <TabsContent key={category} value={category} className="w-full">
@@ -277,6 +282,7 @@ export function ProjectDocumentsSection({
                           templateVariables={project.template_variables || {}}
                           propagationSettings={project.variable_propagation_settings || {}}
                           globalVariables={project.global_variables?.variables || []}
+                          categorySSOTVariables={categorySSOTVariables}
                           collapsed={collapsedCategorySections[category] ?? true}
                           canEdit={isLocked ? false : canEditGeneralVariables()}
                           projectId={project.id}

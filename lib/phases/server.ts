@@ -169,6 +169,8 @@ export interface UpdateProjectPhaseInput {
   is_locked?: boolean;
   locked_by?: string | null;
   locked_at?: string | null;
+  // ✅ D2 X2'' (2026-05-13) — phase-scoped category SSOT
+  category_variables?: Record<string, unknown>;
 }
 
 export async function updateProjectPhase(

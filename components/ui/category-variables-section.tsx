@@ -48,6 +48,12 @@ interface CategoryVariablesSectionProps {
     };
   } | {};
   globalVariables: DocumentVariable[];
+  /**
+   * ✅ Issue B + D2 X2'' (2026-05-13)
+   * Category SSOT (phase-level via virtualProject.category_variables[category].variables).
+   * 값 조회는 이 SSOT 우선, 비어있으면 templateVariables(legacy)로 fallback.
+   */
+  categorySSOTVariables?: DocumentVariable[];
   collapsed: boolean;
   canEdit: boolean;
   projectId?: string;
@@ -63,6 +69,7 @@ export function CategoryVariablesSection({
   templateVariables,
   propagationSettings,
   globalVariables,
+  categorySSOTVariables,
   collapsed,
   canEdit,
   projectId,
@@ -128,29 +135,44 @@ export function CategoryVariablesSection({
             const currentScope = getVariableScope(firstTemplate.name, variable.name);
             const useCategory = hasCategoryScope;
             
-            // Get the current value based on the scope
+            // ✅ Issue B + D2 X2'' (2026-05-13) — SSOT 우선 조회
+            // useCategory=true 일 땐 categorySSOTVariables(=phase의 category_variables[category].variables)에서 직접 값 조회.
+            // SSOT 미스 시에만 legacy templateVariables 경로로 fallback.
+            // useCategory=false 일 땐 global SSOT는 부모(virtualProject.global_variables)가
+            // 이미 globalVariables prop으로 전달되므로 이를 우선 조회.
             let currentValue: any = '';
             if (useCategory) {
-              // Get category value (first non-empty value from templates using category mode)
-              for (const template of categoryTemplates) {
-                const scope = getVariableScope(template.name, variable.name);
-                if (scope === VariablePropagationScope.CATEGORY) {
-                  const variableObj = (templateVariables as any)[template.category]?.[template.name]?.variables?.find((v: DocumentVariable) => v.name === variable.name);
-                  if (variableObj && variableObj.value && variableObj.value !== '') {
-                    currentValue = variableObj.value;
-                    break;
+              const ssotEntry = (categorySSOTVariables ?? []).find((v) => v.name === variable.name);
+              if (ssotEntry && ssotEntry.value !== undefined && ssotEntry.value !== null && ssotEntry.value !== '') {
+                currentValue = ssotEntry.value;
+              } else {
+                // legacy fallback (마이그레이션 전 안전망)
+                for (const template of categoryTemplates) {
+                  const scope = getVariableScope(template.name, variable.name);
+                  if (scope === VariablePropagationScope.CATEGORY) {
+                    const variableObj = (templateVariables as any)[template.category]?.[template.name]?.variables?.find((v: DocumentVariable) => v.name === variable.name);
+                    if (variableObj && variableObj.value && variableObj.value !== '') {
+                      currentValue = variableObj.value;
+                      break;
+                    }
                   }
                 }
               }
             } else {
-              // Get global value (first non-empty value from templates using global mode)
-              for (const template of categoryTemplates) {
-                const scope = getVariableScope(template.name, variable.name);
-                if (scope === VariablePropagationScope.GLOBAL) {
-                  const variableObj = (templateVariables as any)[template.category]?.[template.name]?.variables?.find((v: DocumentVariable) => v.name === variable.name);
-                  if (variableObj && variableObj.value && variableObj.value !== '') {
-                    currentValue = variableObj.value;
-                    break;
+              // GLOBAL scope 표시 — global SSOT 우선
+              const globalEntry = globalVariables.find((v) => v.name === variable.name);
+              if (globalEntry && globalEntry.value !== undefined && globalEntry.value !== null && globalEntry.value !== '') {
+                currentValue = globalEntry.value;
+              } else {
+                // legacy fallback
+                for (const template of categoryTemplates) {
+                  const scope = getVariableScope(template.name, variable.name);
+                  if (scope === VariablePropagationScope.GLOBAL) {
+                    const variableObj = (templateVariables as any)[template.category]?.[template.name]?.variables?.find((v: DocumentVariable) => v.name === variable.name);
+                    if (variableObj && variableObj.value && variableObj.value !== '') {
+                      currentValue = variableObj.value;
+                      break;
+                    }
                   }
                 }
               }

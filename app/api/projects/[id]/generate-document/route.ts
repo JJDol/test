@@ -249,19 +249,33 @@ async function generateDocumentHandler(
       }
     });
 
-    // Add common project variables ONLY if not already provided by user
-    if (!allVariables['project_name']) {
-      allVariables['project_name'] = project.name;
-    }
-    if (!allVariables['project_location']) {
-      allVariables['project_location'] = project.location;
-    }
-    if (!allVariables['project_deadline']) {
-      allVariables['project_deadline'] = new Date(project.deadline).toLocaleDateString();
-    }
-    if (!allVariables['project_leader']) {
-      allVariables['project_leader'] = project.leader?.name || 'Unassigned';
-    }
+    // ✅ Issue 14 fix — D5 정책 (project.global_variables = SSOT)
+    // 우선순위: 1) 클라이언트 변수(이미 allVariables에 set됨) > 2) project.global_variables > 3) projects.{name,...}
+    // 기존 `!allVariables[key]` 체크는 빈 문자열/0을 falsy로 취급해 의도치 않은 fallback이 트리거되어
+    // GLOBAL 변수 입력값이 무시되는 회귀를 일으켰음. 명시적 `=== undefined` 체크로 변경.
+    type GlobalVar = { name: string; value?: unknown; type?: string };
+    const globalVarsArr = ((project.global_variables as { variables?: GlobalVar[] } | null | undefined)?.variables ?? []) as GlobalVar[];
+    const lookupGlobal = (key: string): unknown => {
+      const norm = normalizeVariableName(key);
+      const found = globalVarsArr.find((v) => normalizeVariableName(v.name) === norm);
+      if (!found) return undefined;
+      // text/단순 스칼라는 value만, 이외(image, dropdown 등)는 객체 통째로 (downstream processor가 type 인식)
+      return found.type === 'text' ? (found.value ?? undefined) : found;
+    };
+    const setFallback = (key: string, fallbackValue: unknown) => {
+      if (allVariables[key] !== undefined) return;
+      const globalValue = lookupGlobal(key);
+      const finalValue = globalValue !== undefined ? globalValue : fallbackValue;
+      allVariables[key] = finalValue;
+      if (tagNameMapping[key]) {
+        allVariables[tagNameMapping[key]] = finalValue;
+      }
+    };
+
+    setFallback('project_name', project.name);
+    setFallback('project_location', project.location);
+    setFallback('project_deadline', project.deadline ? new Date(project.deadline).toLocaleDateString() : '');
+    setFallback('project_leader', project.leader?.name || 'Unassigned');
 
     console.log(`Template ${template.name} - Final variables count: ${Object.keys(allVariables).length}`);
 

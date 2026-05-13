@@ -63,6 +63,9 @@ export interface UseProjectPhasesReturn {
       deadline?: string | null;
       is_current?: boolean;
       is_locked?: boolean;
+      // ✅ D2 X2'' (2026-05-13) — phase-scoped category SSOT
+      // shape: { [category]: { variables: DocumentVariable[] } }
+      category_variables?: Record<string, unknown>;
     }
   ) => Promise<void>;
 
@@ -111,6 +114,21 @@ export interface UseProjectPhasesReturn {
     }>,
     options?: { optimistic?: boolean; localOnly?: boolean; skipResponseMerge?: boolean }
   ) => Promise<ProjectPhaseDocument | null>;
+
+  /**
+   * ✅ D2 X2'' (2026-05-13) — phase-scoped category variables 전용 PATCH.
+   *
+   * - 옵티미스틱 머지(local state 즉시 갱신) + silent PATCH (loading/refresh 미발생)
+   * - typing UX 보호 — 입력 시마다 스피너/리렌더 폭증 방지
+   * - 실패 시 toast 발생 + previous state 롤백
+   * - optimisticOnly: true → React state만 즉시 머지하고 PATCH는 보내지 않음
+   *                  (디바운스된 PATCH와 분리해서 호출할 때 사용 — typing lag 방지)
+   */
+  patchPhaseCategoryVariables: (
+    phaseId: string,
+    nextCategoryVariables: Record<string, { variables: unknown[] }>,
+    options?: { optimisticOnly?: boolean }
+  ) => Promise<void>;
 }
 
 export function useProjectPhases(
@@ -488,6 +506,74 @@ export function useProjectPhases(
     return data.phases.find((p) => p.is_current) ?? null;
   }, [data]);
 
+  // ✅ D2 X2'' (2026-05-13) — phase-scoped category SSOT 전용 silent PATCH
+  // 옵티미스틱 머지 후 PATCH. fetchPhases 호출하지 않아 loading 스피너 미발생.
+  // optimisticOnly: true → React state만 즉시 머지, PATCH 미전송 (디바운스 분리용)
+  const patchPhaseCategoryVariables = useCallback<
+    UseProjectPhasesReturn["patchPhaseCategoryVariables"]
+  >(
+    async (phaseId, nextCategoryVariables, options) => {
+      if (!projectId) return;
+      // (1) optimistic merge — 항상 즉시
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              phases: prev.phases.map((p) =>
+                p.id === phaseId
+                  ? ({
+                      ...p,
+                      category_variables: nextCategoryVariables as unknown as ProjectPhaseFull["category_variables"],
+                    } as ProjectPhaseFull)
+                  : p
+              ),
+            }
+          : prev
+      );
+      if (options?.optimisticOnly) return;
+      // (2) silent PATCH (no fetchPhases, no toast on success)
+      const previous = data;
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/phases/${phaseId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category_variables: nextCategoryVariables }),
+          }
+        );
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || "Failed to update category variables");
+        }
+        // 응답 row를 머지해 정합성 유지 (definition도 함께 옴)
+        const updated = (await response.json()) as ProjectPhaseFull;
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                phases: prev.phases.map((p) =>
+                  p.id === phaseId
+                    ? { ...p, ...updated, documents: p.documents }
+                    : p
+                ),
+              }
+            : prev
+        );
+      } catch (err) {
+        if (previous) setData(previous);
+        const message =
+          err instanceof Error ? err.message : "Failed to update category variables";
+        toast({
+          title: "Category variable save failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
+    },
+    [projectId, data, toast]
+  );
+
   return {
     phases: data?.phases ?? [],
     catalog: data?.catalog ?? [],
@@ -509,5 +595,6 @@ export function useProjectPhases(
     addPhaseDocument,
     removePhaseDocument,
     patchPhaseDocument,
+    patchPhaseCategoryVariables,
   };
 }

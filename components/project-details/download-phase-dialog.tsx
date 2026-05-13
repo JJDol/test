@@ -30,13 +30,25 @@ export function DownloadPhaseDialog({
 }: DownloadPhaseDialogProps) {
   const [selectedPhaseIds, setSelectedPhaseIds] = useState<Set<string>>(new Set());
 
-  const activePhases = useMemo(
-    () => phases.filter((p) => p.documents && p.documents.length > 0),
+  // ✅ D9: 모든 active phase 표시 + 0개 phase는 disabled + "0 documents" 라벨
+  // (이전 동작: documents.length > 0인 phase만 표시 → 빈 phase가 보이지 않아 사용자 혼란)
+  const sortedPhases = useMemo(
+    () =>
+      [...phases].sort(
+        (a, b) =>
+          (a.definition?.display_order ?? 0) - (b.definition?.display_order ?? 0)
+      ),
     [phases]
   );
 
+  const selectablePhases = useMemo(
+    () => sortedPhases.filter((p) => (p.documents?.length ?? 0) > 0),
+    [sortedPhases]
+  );
+
   const allSelected =
-    activePhases.length > 0 && selectedPhaseIds.size === activePhases.length;
+    selectablePhases.length > 0 &&
+    selectedPhaseIds.size === selectablePhases.length;
 
   const handleTogglePhase = (phaseId: string) => {
     setSelectedPhaseIds((prev) => {
@@ -54,7 +66,7 @@ export function DownloadPhaseDialog({
     if (allSelected) {
       setSelectedPhaseIds(new Set());
     } else {
-      setSelectedPhaseIds(new Set(activePhases.map((p) => p.id)));
+      setSelectedPhaseIds(new Set(selectablePhases.map((p) => p.id)));
     }
   };
 
@@ -83,33 +95,44 @@ export function DownloadPhaseDialog({
           Select phases to include in the download.
         </p>
 
-        {activePhases.length === 0 ? (
+        {sortedPhases.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No phases with documents found.
+            No active phases found.
           </p>
         ) : (
           <div className="space-y-3 max-h-[300px] overflow-y-auto py-2">
-            {/* Select All */}
-            <label className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer border-b pb-3">
+            {/* Select All — 선택 가능한 phase만 대상 (0 docs phase는 제외) */}
+            <label
+              className={`flex items-center gap-3 px-2 py-1.5 rounded-md border-b pb-3 ${
+                selectablePhases.length === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-muted cursor-pointer"
+              }`}
+            >
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={handleToggleAll}
-                disabled={loading}
+                disabled={loading || selectablePhases.length === 0}
               />
               <span className="text-sm font-medium">Select All</span>
             </label>
 
-            {activePhases.map((phase) => {
+            {sortedPhases.map((phase) => {
               const docCount = phase.documents?.length ?? 0;
+              const isEmpty = docCount === 0;
               return (
                 <label
                   key={phase.id}
-                  className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer"
+                  className={`flex items-center gap-3 px-2 py-1.5 rounded-md ${
+                    isEmpty
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-muted cursor-pointer"
+                  }`}
                 >
                   <Checkbox
                     checked={selectedPhaseIds.has(phase.id)}
                     onCheckedChange={() => handleTogglePhase(phase.id)}
-                    disabled={loading}
+                    disabled={loading || isEmpty}
                   />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium">
