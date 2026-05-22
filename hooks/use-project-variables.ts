@@ -924,6 +924,10 @@ export function useProjectVariables(
     const value = docVariable.value;
     const type = docVariable.type;
 
+    if (typeof value === 'object' && value !== null && type === 'image') {
+      return !!((value as { value?: string }).value);
+    }
+
     if (typeof value === 'string') {
       return value.trim() !== '';
     }

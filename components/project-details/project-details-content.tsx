@@ -23,14 +23,18 @@ import { useToast } from "@/components/ui/toast";
 function isVariableValueFilled(docVariable: DocumentVariable): boolean {
   const value = docVariable.value;
   const type = docVariable.type;
+  if (typeof value === "object" && value !== null && type === "image") {
+    return !!((value as { value?: string }).value);
+  }
   if (typeof value === "string") return value.trim() !== "";
   if (typeof value === "number") return value !== undefined && value !== null;
   if (typeof value === "boolean") return value !== undefined && value !== null;
   switch (type) {
     case "dropdown":
     case "date":
-    case "image":
     case "text":
+      return false;
+    case "image":
       return false;
     case "checkbox":
       return value !== false;
