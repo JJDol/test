@@ -983,6 +983,7 @@ export function ProjectDetailsContent({
               canAssignWorkers={permissions.canAssignWorkers()}
               canDownloadProject={permissions.canDownloadProject()}
               phases={phasesState.phases}
+              activePhase={activePhase}
               onBackToDashboard={actions.handleBackToDashboard}
               onDownloadProject={actions.handleDownloadProject}
               onArchiveProject={actions.handleArchiveProject}
