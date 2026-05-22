@@ -197,7 +197,7 @@ export function DashboardContent({
                   project={project} 
                   onProjectDeleted={onRefreshProjects}
                   onProjectUpdated={onRefreshProjects}
-                  isAdmin={isAdmin}
+                  isAdmin={isAdmin || isCompanyAdmin}
                   currentUser={currentUser}
                 />
               ))}

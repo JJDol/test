@@ -336,9 +336,12 @@ export function ProjectOverview({
         />
       )}
 
-      {showDeleteDialog && (
-        <DeleteProject project={project} onDeleted={onProjectDeleted} />
-      )}
+      <DeleteProject
+        project={project}
+        onDeleted={onProjectDeleted}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+      />
 
       <DownloadPhaseDialog
         open={showDownloadDialog}

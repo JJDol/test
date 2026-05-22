@@ -20,10 +20,16 @@ import { useToast } from "@/components/ui/toast";
 interface DeleteProjectProps {
   project: Project;
   onDeleted: () => void;
+  // controlled mode: provide open+onOpenChange to use as a dialog-only (no DropdownMenuItem trigger)
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DeleteProject({ project, onDeleted }: DeleteProjectProps) {
-  const [open, setOpen] = useState(false);
+export function DeleteProject({ project, onDeleted, open: controlledOpen, onOpenChange }: DeleteProjectProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (v: boolean) => onOpenChange?.(v) : setInternalOpen;
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -66,14 +72,16 @@ export function DeleteProject({ project, onDeleted }: DeleteProjectProps) {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <DropdownMenuItem 
-        className="text-red-700 cursor-pointer" 
-        onSelect={(e) => e.preventDefault()}
-        onClick={() => setOpen(true)}
-      >
-        <Trash2 className="h-4 w-4 mr-2" />
-        Delete Project
-      </DropdownMenuItem>
+      {!isControlled && (
+        <DropdownMenuItem
+          className="text-red-700 cursor-pointer"
+          onSelect={(e) => e.preventDefault()}
+          onClick={() => setOpen(true)}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete Project
+        </DropdownMenuItem>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>

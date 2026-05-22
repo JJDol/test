@@ -213,6 +213,7 @@ export function DocumentListView({
                       key={variable.name}
                       variable={variable}
                       projectId={project.id}
+                      templateName={template.name}
                       disabled={isLocked || !canEditVariables(template.name)}
                       onChange={(value) =>
                         onVariableChange(
