@@ -409,7 +409,7 @@ function applyContractPrefillToVariables(
         return { ...v, value } as DocumentVariable;
       }
     }
-    return { ...v, value: '' } as DocumentVariable;
+    return { ...v, value: v.value ?? '' } as DocumentVariable;
   });
 }
 

@@ -443,6 +443,42 @@ async function updateProjectHandler(
     if (error) throw error;
     if (!project) return NextResponse.json({ message: 'Project not found' }, { status: 404 });
 
+    // Sync project name / address into global_variables
+    if ('name' in updates || 'location' in updates) {
+      try {
+        const { data: freshProject } = await supabase
+          .from('projects')
+          .select('global_variables')
+          .eq('id', id)
+          .single();
+        if (freshProject) {
+          const gv: { variables?: Array<{ name: string; type: string; value?: unknown }> } =
+            (freshProject.global_variables as { variables?: Array<{ name: string; type: string; value?: unknown }> }) ?? { variables: [] };
+          const vars: Array<{ name: string; type: string; value?: unknown }> = Array.isArray(gv.variables) ? [...gv.variables] : [];
+          const syncFields: Array<{ key: string; fieldName: keyof typeof updates }> = [
+            { key: 'project_name', fieldName: 'name' },
+            { key: 'project_address', fieldName: 'location' },
+          ];
+          for (const { key, fieldName } of syncFields) {
+            if (!(fieldName in updates)) continue;
+            const newValue = updates[fieldName];
+            const idx = vars.findIndex((v) => v.name === key);
+            if (idx >= 0) {
+              vars[idx] = { ...vars[idx], value: newValue };
+            } else {
+              vars.push({ name: key, type: 'text', value: newValue });
+            }
+          }
+          await supabase
+            .from('projects')
+            .update({ global_variables: { ...gv, variables: vars } })
+            .eq('id', id);
+        }
+      } catch (syncError) {
+        console.error('Failed to sync global_variables after project update:', syncError);
+      }
+    }
+
     // Trigger recalculation of general variables if any template arrays were changed
     const templateArraysChanged = templateFields.some(field => field in updates);
     if (templateArraysChanged) {

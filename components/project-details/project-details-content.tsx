@@ -23,14 +23,18 @@ import { useToast } from "@/components/ui/toast";
 function isVariableValueFilled(docVariable: DocumentVariable): boolean {
   const value = docVariable.value;
   const type = docVariable.type;
+  if (typeof value === "object" && value !== null && type === "image") {
+    return !!((value as { value?: string }).value);
+  }
   if (typeof value === "string") return value.trim() !== "";
   if (typeof value === "number") return value !== undefined && value !== null;
   if (typeof value === "boolean") return value !== undefined && value !== null;
   switch (type) {
     case "dropdown":
     case "date":
-    case "image":
     case "text":
+      return false;
+    case "image":
       return false;
     case "checkbox":
       return value !== false;
@@ -439,7 +443,7 @@ export function ProjectDetailsContent({
         toast({ title: "Already added", description: `${template.name} is already in this phase.`, variant: "destructive" });
         return;
       }
-      const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type }));
+      const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type, ...(v.value !== undefined && v.value !== null && v.value !== "" ? { value: v.value } : {}) }));
       const seedProp: Record<string, unknown> = {};
       for (const v of template.variables) {
         const scopes: VariablePropagationScope[] = [VariablePropagationScope.LOCAL];
@@ -485,7 +489,7 @@ export function ProjectDetailsContent({
       }
       toast({ title: "Adding package", description: `Adding ${newTemplates.length} template(s) to ${activePhase.definition.name}…` });
       for (const template of newTemplates) {
-        const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type }));
+        const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type, ...(v.value !== undefined && v.value !== null && v.value !== "" ? { value: v.value } : {}) }));
         const seedProp: Record<string, unknown> = {};
         for (const v of template.variables) {
           const scopes: VariablePropagationScope[] = [VariablePropagationScope.LOCAL];
@@ -966,7 +970,7 @@ export function ProjectDetailsContent({
           </div>
         )}
 
-        <div className="flex gap-6 items-start">
+        <div className="flex gap-6 items-start" style={{ marginTop: "2rem" }}>
           {/* Left Sidebar - Project Overview */}
           <div className="w-64 flex-shrink-0">
             <ProjectOverview
@@ -983,6 +987,7 @@ export function ProjectDetailsContent({
               canAssignWorkers={permissions.canAssignWorkers()}
               canDownloadProject={permissions.canDownloadProject()}
               phases={phasesState.phases}
+              activePhase={activePhase}
               onBackToDashboard={actions.handleBackToDashboard}
               onDownloadProject={actions.handleDownloadProject}
               onArchiveProject={actions.handleArchiveProject}

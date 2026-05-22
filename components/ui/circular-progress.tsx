@@ -34,7 +34,7 @@ export function CircularProgress({
   // Get color based on progress value
   const getProgressColor = () => {
     if (value >= 100) return "#22c55e"; // green-500
-    if (value >= 50) return "#d4a017"; // amber/golden color matching the design
+    if (value >= 50) return "#eab308"; // yellow-500 (matches sidebar Variables Progress)
     return "#ef4444"; // red-500
   };
 

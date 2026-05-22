@@ -21,7 +21,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
-import { RefreshCw, Plus, LayoutGrid, List } from "lucide-react";
+import { RefreshCw, Plus, LayoutGrid, List, ArrowUpDown, Check } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } from "@/lib/types/types";
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
@@ -134,6 +135,7 @@ export function ProjectDocumentsSection({
   onDropdownOptionsChange,
 }: ProjectDocumentsSectionProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "completion-high" | "completion-low">("name-asc");
 
   if (!project) {
     return null;
@@ -231,6 +233,16 @@ export function ProjectDocumentsSection({
           {Object.values(DocumentCategory).map((category) => {
             const categoryTemplates = allTemplates.filter(t => t.category === category);
             const templateNames = project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || [];
+            const filteredTemplates = categoryTemplates.filter(t => templateNames.includes(t.name));
+            const sortedCategoryTemplates = [...filteredTemplates].sort((a, b) => {
+              if (sortMode === "name-asc") return a.name.localeCompare(b.name);
+              if (sortMode === "name-desc") return b.name.localeCompare(a.name);
+              const pa = calculateTemplateProgress(a.name, a);
+              const pb = calculateTemplateProgress(b.name, b);
+              if (sortMode === "completion-high") return pb - pa;
+              if (sortMode === "completion-low") return pa - pb;
+              return 0;
+            });
             // ✅ D2 X2'' (2026-05-13): project.category_variables는 virtualProject가
             // phase-aware로 합성한 결과(activePhase.category_variables[category]가 우선,
             // legacy fallback 포함). 본 컴포넌트는 그 결과를 그대로 사용.
@@ -318,26 +330,53 @@ export function ProjectDocumentsSection({
                             </Button>
                           </div>
 
-                          {!project.is_archived && (
-                            <TemplateSelectorDialog
-                              category={category}
-                              onTemplateSelected={onTemplateSelected}
-                              onProjectTemplateSelected={onProjectTemplateSelected}
-                              existingTemplates={project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || []}
-                              trigger={
-                                <Button size="sm" className="gap-2" disabled={isLocked}>
-                                  <Plus className="h-4 w-4" />
-                                  Add {getCategoryDisplayName(category)} Document
+                          <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2">
+                                  <ArrowUpDown className="h-4 w-4" />
+                                  Sort
                                 </Button>
-                              }
-                            />
-                          )}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {([
+                                  { value: "name-asc", label: "Name (A → Z)" },
+                                  { value: "name-desc", label: "Name (Z → A)" },
+                                  { value: "completion-high", label: "Completion (High → Low)" },
+                                  { value: "completion-low", label: "Completion (Low → High)" },
+                                ] as const).map((opt) => (
+                                  <DropdownMenuItem
+                                    key={opt.value}
+                                    onClick={() => setSortMode(opt.value)}
+                                    className={sortMode === opt.value ? "bg-accent" : ""}
+                                  >
+                                    <Check className={`h-4 w-4 mr-2 ${sortMode === opt.value ? "opacity-100" : "opacity-0"}`} />
+                                    {opt.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            {!project.is_archived && (
+                              <TemplateSelectorDialog
+                                category={category}
+                                onTemplateSelected={onTemplateSelected}
+                                onProjectTemplateSelected={onProjectTemplateSelected}
+                                existingTemplates={project?.[`${category.toLowerCase()}_templates` as keyof Project] as string[] || []}
+                                trigger={
+                                  <Button size="sm" className="gap-2" disabled={isLocked}>
+                                    <Plus className="h-4 w-4" />
+                                    Add {getCategoryDisplayName(category)} Document
+                                  </Button>
+                                }
+                              />
+                            )}
+                          </div>
                         </div>
 
                         {/* List View */}
                         {viewMode === "list" ? (
                           <DocumentListView
-                            templates={categoryTemplates.filter(t => templateNames.includes(t.name))}
+                            templates={sortedCategoryTemplates}
                             project={project}
                             currentUser={currentUser}
                             templateVariables={templateVariables}
@@ -363,8 +402,7 @@ export function ProjectDocumentsSection({
                         ) : (
                           /* Card View (Grid) — responsive: 2 / 3 / 4 / 5 cols by viewport */
                           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                            {categoryTemplates
-                              .filter(t => templateNames.includes(t.name))
+                            {sortedCategoryTemplates
                               .map((template) => {
                                 const isExpanded = !(collapsedTemplates[template.name] ?? true);
                                 return (

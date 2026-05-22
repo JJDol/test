@@ -51,6 +51,7 @@ interface ProjectOverviewProps {
   canAssignWorkers: boolean;
   canDownloadProject: boolean;
   phases: ProjectPhaseFull[];
+  activePhase?: ProjectPhaseFull | null;
   onBackToDashboard: () => void;
   onDownloadProject: (phaseIds?: string[]) => Promise<void>;
   onArchiveProject: () => Promise<void>;
@@ -75,6 +76,7 @@ export function ProjectOverview({
   canAssignWorkers,
   canDownloadProject,
   phases,
+  activePhase,
   onBackToDashboard: _onBackToDashboard,
   onDownloadProject,
   onArchiveProject,
@@ -109,11 +111,8 @@ export function ProjectOverview({
     }
   };
 
-  // Issue 15 (D3 옵션 B): the sidebar now distinguishes
-  //   * Start Date  ← project.start_date (raw, plain colour)
-  //   * Phase Deadline ← current phase deadline (drives the relative
-  //     "X days left / overdue" hint and the colour signal)
   const currentPhaseDeadline =
+    activePhase?.deadline ??
     phases.find((p) => p.is_current)?.deadline ??
     project.current_phase_deadline ??
     null;
@@ -273,13 +272,6 @@ export function ProjectOverview({
           <h2 className="text-sm font-semibold mb-1">Control Progress</h2>
           <Progress value={controlProgress} className="mb-1 h-2" />
           <p className="text-xs text-gray-600">{controlProgress}% Complete</p>
-        </Card>
-
-        <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Start Date</h2>
-          <p className="text-sm font-medium text-gray-700">
-            {project.start_date ? formatDate(project.start_date) : "—"}
-          </p>
         </Card>
 
         <Card className="p-3">
