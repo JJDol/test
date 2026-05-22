@@ -966,7 +966,7 @@ export function ProjectDetailsContent({
           </div>
         )}
 
-        <div className="flex gap-6 items-start">
+        <div className="flex gap-6 items-start" style={{ marginTop: "2rem" }}>
           {/* Left Sidebar - Project Overview */}
           <div className="w-64 flex-shrink-0">
             <ProjectOverview

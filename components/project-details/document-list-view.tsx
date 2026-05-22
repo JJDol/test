@@ -88,10 +88,9 @@ export function DocumentListView({
   };
 
   const getProgressColor = (value: number) => {
-    if (value === 0) return "bg-red-400";
-    if (value < 50) return "bg-orange-400";
-    if (value < 100) return "bg-yellow-400";
-    return "bg-green-500";
+    if (value >= 100) return "bg-green-500";
+    if (value >= 50) return "bg-yellow-500";
+    return "bg-red-500";
   };
 
   return (
