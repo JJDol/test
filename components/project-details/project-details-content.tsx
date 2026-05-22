@@ -443,7 +443,7 @@ export function ProjectDetailsContent({
         toast({ title: "Already added", description: `${template.name} is already in this phase.`, variant: "destructive" });
         return;
       }
-      const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type }));
+      const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type, ...(v.value !== undefined && v.value !== null && v.value !== "" ? { value: v.value } : {}) }));
       const seedProp: Record<string, unknown> = {};
       for (const v of template.variables) {
         const scopes: VariablePropagationScope[] = [VariablePropagationScope.LOCAL];
@@ -489,7 +489,7 @@ export function ProjectDetailsContent({
       }
       toast({ title: "Adding package", description: `Adding ${newTemplates.length} template(s) to ${activePhase.definition.name}…` });
       for (const template of newTemplates) {
-        const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type }));
+        const seedVars = template.variables.map((v) => ({ name: v.name, type: v.type, ...(v.value !== undefined && v.value !== null && v.value !== "" ? { value: v.value } : {}) }));
         const seedProp: Record<string, unknown> = {};
         for (const v of template.variables) {
           const scopes: VariablePropagationScope[] = [VariablePropagationScope.LOCAL];
