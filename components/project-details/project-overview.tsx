@@ -228,7 +228,19 @@ export function ProjectOverview({
             <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
             {project.leaderName ? (
               <div className="mt-1">
-                <UserAvatar user={{ id: project.leader_id, name: project.leaderName }} size="sm" />
+                <div className="group relative inline-block transition-transform duration-150 ease-out hover:scale-110">
+                  <UserAvatar
+                    user={{ id: project.leader_id, name: project.leaderName }}
+                    size="sm"
+                    noTitle
+                  />
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-1/2 bottom-full z-40 mb-2 -translate-x-1/2 scale-95 whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-popover-foreground opacity-0 shadow-md transition-all duration-150 group-hover:scale-100 group-hover:opacity-100"
+                  >
+                    <div className="text-xs font-medium">{project.leaderName}</div>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-gray-700">Unassigned</p>
