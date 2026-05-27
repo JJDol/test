@@ -187,11 +187,12 @@ export function DocumentAssignDialog({
       const supervisor = projectUsers.find(u => u.id === supervisorId);
       
       // Call the parent's assignment update function
+      // name 이 null 이면 email 을 표시 이름으로 사용
       await onAssignmentUpdate(templateName, {
         assignee_id: assigneeId || undefined,
-        assignee_name: assignee?.name || undefined,
+        assignee_name: assignee ? (assignee.name || assignee.email) : undefined,
         supervisor_id: supervisorId || undefined,
-        supervisor_name: supervisor?.name || undefined,
+        supervisor_name: supervisor ? (supervisor.name || supervisor.email) : undefined,
       });
       
       setOpen(false)
