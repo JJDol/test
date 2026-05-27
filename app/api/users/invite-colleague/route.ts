@@ -54,18 +54,37 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
       }, { status: 400 });
     }
 
-    // Check if user with this email already exists
-    const { data: existingUser } = await supabase
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                    process.env.SITE_URL || 
+                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                    'http://localhost:3000';
+
+    // Get company name for the email
+    const { data: company } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', currentUser.company_id)
+      .single();
+    const companyName = company?.name || 'Your Company';
+
+    // --- Pre-flight checks (before creating any DB records) ---
+
+    // 1) Check if user already exists in public.users
+    const { data: existingAppUser } = await supabase
       .from('users')
-      .select('id')
+      .select('id, company_id')
       .eq('email', email)
       .single();
 
-    if (existingUser) {
+    if (existingAppUser) {
       return NextResponse.json({ message: "User with this email already exists" }, { status: 400 });
     }
 
-    // Check if there's already a pending invitation for this email
+    // 2) Check if user already exists in auth.users
+    const { data: authUserList } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const existingAuthUser = authUserList?.users?.find(u => u.email === email);
+
+    // 3) Check for active (non-expired) pending invitation
     const { data: existingInvitation } = await supabase
       .from('user_invitations')
       .select('id, created_at')
@@ -75,10 +94,8 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
       .single();
 
     if (existingInvitation) {
-      // Check if invitation is still valid (less than 7 days old)
       const invitationAge = Date.now() - new Date(existingInvitation.created_at).getTime();
       const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-      
       if (invitationAge < sevenDaysInMs) {
         return NextResponse.json({ 
           message: "An invitation has already been sent to this email address. Please wait for them to accept or try again later." 
@@ -86,11 +103,42 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
       }
     }
 
+    // --- Handle case: auth account exists but not in public.users (previously deleted user) ---
+    if (existingAuthUser) {
+      console.log('ℹ️ User exists in auth but not in public.users — adding directly:', email);
+      const { error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: existingAuthUser.id,
+          email,
+          name: name || existingAuthUser.user_metadata?.full_name || '',
+          role,
+          company_id: currentUser.company_id,
+        });
+
+      if (insertError) {
+        console.error('Error adding existing auth user to public.users:', insertError);
+        return NextResponse.json({ 
+          message: "Failed to add user",
+          error: insertError.message 
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        message: "User added successfully. They can log in with their existing account.",
+        user: { email, name: name || '', role, company_id: currentUser.company_id },
+        note: "This user already had an account and has been added to your company directly."
+      });
+    }
+
+    // --- Normal invitation flow (new user, no auth account) ---
+
     // Generate invitation token
     const invitationToken = randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+    const invitationUrl = `${baseUrl}/invite?token=${invitationToken}`;
 
-    // Use service role client to bypass RLS (API middleware already verified ADMIN/COMPANY_ADMIN role)
+    // Create invitation record
     const { error: invitationError } = await supabaseAdmin
       .from('user_invitations')
       .insert({
@@ -112,103 +160,16 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
       }, { status: 500 });
     }
 
-    // Send invitation email using Supabase Email Templates
-    // Use your existing environment variables
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                    process.env.SITE_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-                    'http://localhost:3000';
-    
-    const invitationUrl = `${baseUrl}/invite?token=${invitationToken}`;
-    
-    console.log('🔍 Debug URL generation:', {
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-      SITE_URL: process.env.SITE_URL,
-      VERCEL_URL: process.env.VERCEL_URL,
-      baseUrl: baseUrl,
-      invitationUrl: invitationUrl
-    });
-    
+    // Send invitation email
     try {
-      // Get company name for the email
-      const { data: company } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('id', currentUser.company_id)
-        .single();
-
-      const companyName = company?.name || 'Your Company';
-
-      // Create admin client first for all admin operations
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      
-      console.log('🔍 Debug env vars:', {
-        hasServiceRoleKey: !!serviceRoleKey,
-        serviceRoleKeyLength: serviceRoleKey?.length || 0,
-        serviceRoleKeyPrefix: serviceRoleKey?.substring(0, 20) + '...',
-        supabaseUrl: supabaseUrl
-      });
-
-      if (!serviceRoleKey) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is missing');
-      }
-
-      // Create admin client with service role key for admin operations
-      const supabaseAdmin = createSupabaseAdmin(
-        supabaseUrl!,
-        serviceRoleKey, // Service role key required for admin operations
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        }
-      );
-
-      // Check if user already exists (either in auth.users or public.users)
-      console.log('🔍 Checking if user already exists:', email);
-      
-      // Check if user exists in auth.users
-      const { data: existingAuthUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000 // Adjust as needed
-      });
-
-      const existingAuthUser = existingAuthUsers?.users?.find(user => user.email === email);
-      
-      // Check if user exists in public.users table
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('id, email, role, company_id')
-        .eq('email', email)
-        .single();
-
-      if (existingAuthUser) {
-        console.log('❌ User already exists in auth.users:', { email, id: existingAuthUser.id });
-        return NextResponse.json({ 
-          error: `User with email ${email} already has an account. They cannot be invited again.` 
-        }, { status: 400 });
-      }
-
-      if (existingUser && !userCheckError) {
-        console.log('❌ User already exists in public.users:', { email, id: existingUser.id, company_id: existingUser.company_id });
-        return NextResponse.json({ 
-          error: `User with email ${email} already exists in your system.` 
-        }, { status: 400 });
-      }
-
-      console.log('✅ User does not exist, proceeding with invitation');
-
       const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: {
-          role: role,
+          role,
           company_id: currentUser.company_id,
           invited_by: currentUser.id,
           invited_by_name: currentUser.name || 'Your administrator',
           company_name: companyName,
           invitation_token: invitationToken,
-          // Add data that email template can use
           inviter_name: currentUser.name || 'Your administrator',
           company: companyName,
           user_role: role,
@@ -218,58 +179,22 @@ async function inviteColleagueHandler(request: AuthenticatedRequest) {
       });
 
       if (inviteError) {
-        console.error('❌ Error sending invitation email:', {
-          error: inviteError,
-          errorMessage: inviteError.message,
-          errorCode: inviteError.code,
-          errorStatus: inviteError.status,
-          email: email,
-          hasServiceRoleKey: !!serviceRoleKey,
-          serviceRoleKeyLength: serviceRoleKey?.length || 0
-        });
-        
-        // Still log the invitation details for manual fallback
-        console.log('📧 Invitation created (email failed):', {
-          email,
-          invitationUrl,
-          invitedByName: currentUser.name || 'Your administrator',
-          companyName,
-          role,
-          expiresAt: expiresAt.toISOString()
-        });
+        console.error('❌ Error sending invitation email:', inviteError);
       } else {
-        console.log('✅ Invitation email sent successfully to:', email);
-        console.log('📧 Invite data:', inviteData);
+        console.log('✅ Invitation email sent successfully to:', email, inviteData);
       }
 
-      // In development, always log the invitation URL for testing
       if (process.env.NODE_ENV === 'development') {
         console.log('🔗 Invitation URL (DEV):', invitationUrl);
       }
-      
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);
-      // Fallback: log invitation details for manual sending
-      console.log('📧 Invitation created (email failed):', {
-        email,
-        invitationUrl,
-        invitedByName: currentUser.name || 'Your administrator',
-        role,
-        expiresAt: expiresAt.toISOString()
-      });
     }
-    
+
     return NextResponse.json({
       message: "Invitation created successfully!",
-      user: {
-        email: email,
-        name: name || '',
-        role: role,
-        company_id: currentUser.company_id
-      },
+      user: { email, name: name || '', role, company_id: currentUser.company_id },
       note: "The user will receive an email with a secure link to create their account.",
-      devNote: process.env.NODE_ENV === 'development' ? 
-        `Development mode: Check console for invitation URL: ${invitationUrl}` : undefined
     });
 
   } catch (error: any) {
