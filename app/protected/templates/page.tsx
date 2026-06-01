@@ -25,13 +25,16 @@
 
 "use client";
 
+import { Suspense } from "react";
 import { TemplatesContent } from "@/components/templates/templates-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function TemplatesPage() {
   return (
     <ProtectedPageWrapper loadingMessage="Loading templates...">
-      <TemplatesContent />
+      <Suspense>
+        <TemplatesContent />
+      </Suspense>
     </ProtectedPageWrapper>
   );
 }
