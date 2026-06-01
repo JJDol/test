@@ -15,7 +15,7 @@
 
 "use client";
 
-import { use } from "react";
+import { Suspense, use } from "react";
 import { useProjectDetails } from "@/hooks/use-project-details";
 import { ProjectDetailsContent } from "@/components/project-details/project-details-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
@@ -30,10 +30,12 @@ export default function ProjectDetailsPage({ params }: ProjectDetailsPageProps) 
   const { id } = use(params);
   const projectDetails = useProjectDetails(id);
 
-    return (
+  return (
     <ProtectedPageWrapper loadingMessage="Loading project details...">
       <div className="container mx-auto p-6">
-        <ProjectDetailsContent {...projectDetails} />
+        <Suspense>
+          <ProjectDetailsContent {...projectDetails} />
+        </Suspense>
       </div>
     </ProtectedPageWrapper>
   );

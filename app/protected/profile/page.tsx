@@ -184,6 +184,7 @@ export default function ProfilePage() {
                 onResendInvitation={resendInvitation}
                 canDeleteColleague={canDeleteColleague}
                 getDeletionBlockReason={getDeletionBlockReason}
+                onColleagueRoleUpdated={onColleagueAdded}
               />
             </TabsContent>
           )}

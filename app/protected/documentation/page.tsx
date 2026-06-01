@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 import { 
   Card, 
@@ -34,6 +34,14 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function DocumentationPage() {
+  return (
+    <Suspense>
+      <DocumentationContent />
+    </Suspense>
+  );
+}
+
+function DocumentationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentTab = (searchParams?.get('tab') as 'getting-started' | 'projects' | 'templates' | 'ai-search' | 'team') || 'getting-started';

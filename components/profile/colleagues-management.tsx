@@ -1,11 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { LoadingState } from "@/components/ui/loading-state";
 import { AddColleagueForm } from "@/components/ui/add-colleague-form";
 import { DeleteColleagueDialog } from "@/components/ui/delete-colleague-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +35,9 @@ import {
   Search,
   LogOut,
   UserMinus,
+  Pencil,
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import type { Colleague, Invitation } from "@/hooks/use-colleagues";
 
 interface ColleaguesManagementProps {
@@ -36,6 +52,7 @@ interface ColleaguesManagementProps {
   onResendInvitation: (invitationId: string) => Promise<boolean>;
   canDeleteColleague: (colleague: Colleague, currentUserId: string) => boolean;
   getDeletionBlockReason: (colleague: Colleague, currentUserId: string) => string | null;
+  onColleagueRoleUpdated?: () => void;
 }
 
 type MemberRow =
@@ -54,11 +71,13 @@ export function ColleaguesManagement({
   onResendInvitation,
   canDeleteColleague,
   getDeletionBlockReason,
+  onColleagueRoleUpdated,
 }: ColleaguesManagementProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colleagueToDelete, setColleagueToDelete] = useState<Colleague | null>(null);
   const [pendingInvitationId, setPendingInvitationId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
+  const [editRoleColleague, setEditRoleColleague] = useState<Colleague | null>(null);
 
   const handleDeleteColleague = (colleague: Colleague) => {
     setColleagueToDelete(colleague);
@@ -175,6 +194,7 @@ export function ColleaguesManagement({
                   isCurrentUser={row.data.id === currentUserId}
                   canDelete={canDeleteColleague(row.data, currentUserId)}
                   onDelete={() => handleDeleteColleague(row.data)}
+                  onEditRole={() => setEditRoleColleague(row.data)}
                 />
               ) : (
                 <InvitationRow
@@ -210,6 +230,16 @@ export function ColleaguesManagement({
           }}
         />
       )}
+
+      <EditRoleDialog
+        colleague={editRoleColleague}
+        open={!!editRoleColleague}
+        onClose={() => setEditRoleColleague(null)}
+        onSaved={() => {
+          setEditRoleColleague(null);
+          onColleagueRoleUpdated?.();
+        }}
+      />
     </>
   );
 }
@@ -221,9 +251,10 @@ interface ColleagueRowProps {
   isCurrentUser: boolean;
   canDelete: boolean;
   onDelete: () => void;
+  onEditRole: () => void;
 }
 
-function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete }: ColleagueRowProps) {
+function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRole }: ColleagueRowProps) {
   return (
     <div className="grid grid-cols-[1fr_160px_auto] items-center px-4 py-3.5 border-b last:border-b-0 hover:bg-muted/20 transition-colors">
       {/* Member */}
@@ -263,6 +294,10 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete }: Colleag
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="cursor-pointer" onClick={onEditRole}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit role
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive cursor-pointer"
                 onClick={onDelete}
@@ -287,6 +322,116 @@ interface InvitationRowProps {
   isActionPending: boolean;
   onRevoke: () => void;
   onResend: () => void;
+}
+
+/* ─────────── Edit Role dialog ─────────── */
+
+interface EditRoleDialogProps {
+  colleague: Colleague | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogProps) {
+  const [selectedRole, setSelectedRole] = useState(colleague?.role ?? "USER");
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  const currentRole = colleague?.role ?? "USER";
+  const isAdminRole = ["ADMIN", "COMPANY_ADMIN"].includes(currentRole);
+
+  useEffect(() => {
+    if (open && colleague) setSelectedRole(colleague.role);
+  }, [open, colleague]);
+
+  // Radix Dialog sets pointer-events:none on body when modal opens.
+  // On close it sometimes fails to clean up, blocking all page interactions.
+  useEffect(() => {
+    if (!open) {
+      const id = setTimeout(() => {
+        document.body.style.pointerEvents = "";
+      }, 300);
+      return () => clearTimeout(id);
+    }
+  }, [open]);
+
+  const handleSave = async () => {
+    if (!colleague) return;
+    if (selectedRole === colleague.role) {
+      onClose();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/users/update-role", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: colleague!.id, role: selectedRole }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to update role");
+      }
+
+      toast({ title: `Role updated to ${selectedRole}` });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to update role", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>Edit Role</DialogTitle>
+        </DialogHeader>
+
+        <div className="py-4 space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {colleague?.name || colleague?.email}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="role-select">Role</Label>
+            <Select
+              value={selectedRole}
+              onValueChange={setSelectedRole}
+              disabled={isAdminRole}
+            >
+              <SelectTrigger id="role-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="MANAGER">Manager</SelectItem>
+              </SelectContent>
+            </Select>
+            {isAdminRole && (
+              <p className="text-xs text-muted-foreground">Admin roles cannot be changed here.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving || isAdminRole || selectedRole === currentRole}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: InvitationRowProps) {
