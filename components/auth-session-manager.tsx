@@ -11,6 +11,7 @@ export function AuthSessionManager() {
   const isValidating = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivity = useRef<number>(Date.now());
+  const lastValidation = useRef<number>(Date.now());
   const supabaseRef = useRef(
     createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,17 +66,19 @@ export function AuthSessionManager() {
       // auto-refresh was the main cause of spurious page reloads.
     });
 
-    const validateSession = async () => {
+    const validateSession = async (force = false) => {
       if (isValidating.current || isSigningOut.current) return;
+
+      // Skip if validated recently (within 5 min) unless forced
+      const MIN_VALIDATION_INTERVAL = 5 * 60 * 1000;
+      if (!force && Date.now() - lastValidation.current < MIN_VALIDATION_INTERVAL) return;
+
       isValidating.current = true;
 
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error || !session) {
-          // getSession() reads from storage and can miss the session
-          // during an auto-refresh race. Fall back to the authoritative
-          // server check before deciding to redirect.
           const { data: { user }, error: userError } = await supabase.auth.getUser();
 
           if (userError || !user) {
@@ -92,19 +95,17 @@ export function AuthSessionManager() {
 
           if (timeUntilExpiry < 300) {
             await supabase.auth.refreshSession();
-            // Don't redirect on refresh failure — the session may still
-            // be valid until it actually expires. Next interval will retry.
           }
         }
       } catch (error) {
         console.error('Error validating session:', error);
-        // Network errors are transient — don't redirect, retry next interval
       } finally {
+        lastValidation.current = Date.now();
         isValidating.current = false;
       }
     };
 
-    const sessionCheckInterval = setInterval(validateSession, 2 * 60 * 1000);
+    const sessionCheckInterval = setInterval(() => validateSession(true), 2 * 60 * 1000);
 
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
     activityEvents.forEach(event => {
