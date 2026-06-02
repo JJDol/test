@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -13,186 +13,179 @@ interface UserProfile {
 
 interface UseAuthReturn {
   currentUser: UserProfile | null;
-  user: User | null; // Raw Supabase user for compatibility
+  user: User | null;
   isAdmin: boolean;
   isCompanyAdmin: boolean;
-  isAuthenticated: boolean; // For compatibility with useAuthCheck
+  isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   refreshAuth: () => Promise<void>;
-  checkAuth: () => Promise<boolean>; // For compatibility with useAuthCheck
+  checkAuth: () => Promise<boolean>;
+}
+
+// ── Module-level shared auth state ──
+// All useAuth() instances share the same cached state so that remounts
+// (e.g. after tab-switch) don't flash a loading screen.
+
+interface AuthState {
+  user: User | null;
+  currentUser: UserProfile | null;
+  isAdmin: boolean;
+  isCompanyAdmin: boolean;
+  isLoading: boolean;
+  isProfileLoading: boolean;
+  error: string | null;
+}
+
+let _state: AuthState = {
+  user: null,
+  currentUser: null,
+  isAdmin: false,
+  isCompanyAdmin: false,
+  isLoading: true,
+  isProfileLoading: false,
+  error: null,
+};
+let _initialized = false;
+let _checking = false;
+const _listeners = new Set<() => void>();
+
+function _getSnapshot(): AuthState {
+  return _state;
+}
+
+function _subscribe(cb: () => void) {
+  _listeners.add(cb);
+  return () => { _listeners.delete(cb); };
+}
+
+function _emit(patch: Partial<AuthState>) {
+  _state = { ..._state, ...patch };
+  _listeners.forEach((l) => l());
+}
+
+async function _checkAuth(): Promise<boolean> {
+  if (_checking) return false;
+  _checking = true;
+
+  try {
+    if (!_initialized) _emit({ isLoading: true });
+    _emit({ error: null });
+
+    const supabase = createClient();
+    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+
+    if (userError) {
+      const isMissingSession = userError.message?.includes('Auth session missing');
+      _emit({
+        user: null, currentUser: null, isAdmin: false, isCompanyAdmin: false,
+        error: isMissingSession ? null : 'Authentication error',
+      });
+      if (!isMissingSession) console.error('Error getting user:', userError);
+      return false;
+    }
+
+    if (!authUser) {
+      _emit({ user: null, currentUser: null, isAdmin: false, isCompanyAdmin: false });
+      return false;
+    }
+
+    // Only fetch profile if user changed
+    if (_state.user?.id !== authUser.id || !_state.currentUser) {
+      _emit({ user: authUser, isProfileLoading: true });
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('id, role, name, assigned_projects, company_id')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          _emit({ error: 'Failed to fetch user profile', isProfileLoading: false });
+        } else {
+          _emit({
+            currentUser: profile,
+            isAdmin: profile?.role === 'ADMIN',
+            isCompanyAdmin: profile?.role === 'COMPANY_ADMIN',
+            isProfileLoading: false,
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching profile:', e);
+        _emit({ error: 'Failed to fetch user profile', isProfileLoading: false });
+      }
+    } else {
+      _emit({ user: authUser });
+    }
+    return true;
+  } catch (e) {
+    console.error('Error checking authentication:', e);
+    _emit({ error: 'Failed to check authentication' });
+    return false;
+  } finally {
+    _emit({ isLoading: false });
+    _checking = false;
+    _initialized = true;
+  }
+}
+
+// Set up global auth state listener once
+let _subscriptionSetUp = false;
+function _setupSubscription() {
+  if (_subscriptionSetUp || typeof window === 'undefined') return;
+  _subscriptionSetUp = true;
+
+  const supabase = createClient();
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      if (_state.user?.id !== session.user.id) {
+        _emit({ user: session.user });
+        _checkAuth();
+      }
+    } else if (event === 'SIGNED_OUT') {
+      _emit({
+        user: null, currentUser: null, isAdmin: false, isCompanyAdmin: false,
+        isLoading: false, error: null,
+      });
+      _initialized = false;
+    }
+  });
 }
 
 export function useAuth(): UseAuthReturn {
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [user, setUser] = useState<User | null>(null); // Raw Supabase user
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isCheckingAuth = useRef(false);
+  const state = useSyncExternalStore(_subscribe, _getSnapshot, _getSnapshot);
 
-  // Check if we're on an auth page where we shouldn't run auth checks
-  const isAuthPage = pathname?.startsWith('/sign-in') || 
-                    pathname?.startsWith('/sign-up') || 
-                    pathname?.startsWith('/forgot-password') || 
-                    pathname?.startsWith('/reset-password') ||
-                    pathname?.startsWith('/auth/');
-
-  const checkAuth = useCallback(async (): Promise<boolean> => {
-    // Don't run auth checks on auth pages
-    if (isAuthPage) {
-      setIsLoading(false);
-      return false;
-    }
-
-    // Prevent multiple simultaneous auth checks
-    if (isCheckingAuth.current) {
-      return false;
-    }
-    
-    isCheckingAuth.current = true;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const supabase = createClient();
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        // "Auth session missing" is the expected state for unauthenticated visitors.
-        // Treat it as an informational signal rather than an error to keep the
-        // browser console clean in production.
-        const isMissingSession = userError.message?.includes('Auth session missing');
-
-        if (isMissingSession) {
-          setUser(null);
-          setCurrentUser(null);
-          setIsAdmin(false);
-          setIsCompanyAdmin(false);
-          setError(null);
-          return false;
-        }
-
-        console.error("Error getting user:", userError);
-        setUser(null);
-        setCurrentUser(null);
-        setIsAdmin(false);
-        setIsCompanyAdmin(false);
-        setError("Authentication error");
-        return false;
-      }
-      
-      if (!authUser) {
-        setUser(null);
-        setCurrentUser(null);
-        setIsAdmin(false);
-        setIsCompanyAdmin(false);
-        return false;
-      }
-
-      setUser(authUser);
-      return true;
-      
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      setError("Failed to check authentication");
-      return false;
-    } finally {
-      setIsLoading(false);
-      isCheckingAuth.current = false;
-    }
-  }, [isAuthPage, pathname]);
-
-  const refreshAuth = useCallback(async () => {
-    await checkAuth();
-  }, [checkAuth]);
+  const isAuthPage = pathname?.startsWith('/sign-in') ||
+    pathname?.startsWith('/sign-up') ||
+    pathname?.startsWith('/forgot-password') ||
+    pathname?.startsWith('/reset-password') ||
+    pathname?.startsWith('/auth/');
 
   useEffect(() => {
-    // Check auth immediately on mount, but only if not on auth page
-    if (!isAuthPage) {
-      checkAuth();
-    } else {
-      setIsLoading(false);
+    _setupSubscription();
+    if (!isAuthPage && !_initialized) {
+      _checkAuth();
+    } else if (isAuthPage) {
+      _emit({ isLoading: false });
     }
-  }, [isAuthPage, checkAuth]);
+  }, [isAuthPage]);
 
-  // Fetch profile when user changes (from auth state changes)
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user || isCheckingAuth.current || isAuthPage) {
-        return;
-      }
+  const refreshAuth = useCallback(async () => { await _checkAuth(); }, []);
+  const checkAuth = useCallback(async () => _checkAuth(), []);
 
-      try {
-        setIsProfileLoading(true);
-        const supabase = createClient();
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('id, role, name, assigned_projects, company_id')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error("Error fetching user profile:", profileError);
-          setError("Failed to fetch user profile");
-          return;
-        }
-
-        setCurrentUser(profile);
-        setIsAdmin(profile?.role === 'ADMIN');
-        setIsCompanyAdmin(profile?.role === 'COMPANY_ADMIN');
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        setError("Failed to fetch user profile");
-      } finally {
-        setIsProfileLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user, isAuthPage]);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN') {
-          setUser(session?.user ?? null);
-          // Don't call checkAuth here to avoid loops - just update the user state
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setCurrentUser(null);
-          setIsAdmin(false);
-          setIsCompanyAdmin(false);
-          setIsLoading(false);
-        }
-        // TOKEN_REFRESHED / INITIAL_SESSION: no-op. Re-setting the user would
-        // trigger unnecessary re-renders and profile re-fetches.
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Combined loading state: true until both auth check AND profile fetch complete
-  const combinedLoading = isLoading || isProfileLoading || (!!user && !currentUser);
+  const combinedLoading = state.isLoading || state.isProfileLoading || (!!state.user && !state.currentUser);
 
   return {
-    currentUser,
-    user, // Raw Supabase user for compatibility
-    isAdmin,
-    isCompanyAdmin,
-    isAuthenticated: !!user, // For compatibility with useAuthCheck
-    isLoading: combinedLoading,
-    error,
+    currentUser: state.currentUser,
+    user: state.user,
+    isAdmin: state.isAdmin,
+    isCompanyAdmin: state.isCompanyAdmin,
+    isAuthenticated: !!state.user,
+    isLoading: isAuthPage ? false : combinedLoading,
+    error: state.error,
     refreshAuth,
-    checkAuth // For compatibility with useAuthCheck
+    checkAuth,
   };
 }
