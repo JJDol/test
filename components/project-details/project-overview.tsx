@@ -111,11 +111,7 @@ export function ProjectOverview({
     }
   };
 
-  const currentPhaseDeadline =
-    activePhase?.deadline ??
-    phases.find((p) => p.is_current)?.deadline ??
-    project.current_phase_deadline ??
-    null;
+  const currentPhaseDeadline = activePhase?.deadline ?? null;
 
   const phaseDeadlineRelativeText = (() => {
     if (!currentPhaseDeadline) return null;
