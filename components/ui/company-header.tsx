@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslations } from "next-intl";
 
 interface Company {
   id: string;
@@ -16,6 +17,7 @@ interface CompanyHeaderProps {
 }
 
 export default function CompanyHeader({ className = "" }: CompanyHeaderProps) {
+  const t = useTranslations("company");
   const [company, setCompany] = useState<Company | null>(null);
   const [userRole, setUserRole] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +91,7 @@ export default function CompanyHeader({ className = "" }: CompanyHeaderProps) {
   if (error) {
     return (
       <div className={`flex items-center gap-2 text-red-500 ${className}`}>
-        <span className="text-xs">Company Error: {error}</span>
+        <span className="text-xs">{t("error", { error })}</span>
       </div>
     );
   }
@@ -97,7 +99,7 @@ export default function CompanyHeader({ className = "" }: CompanyHeaderProps) {
   if (!company) {
     return (
       <div className={`flex items-center gap-2 text-yellow-600 ${className}`}>
-        <span className="text-xs">No Company Assigned</span>
+        <span className="text-xs">{t("noCompanyAssigned")}</span>
       </div>
     );
   }

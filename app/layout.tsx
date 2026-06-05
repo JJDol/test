@@ -1,8 +1,11 @@
 import HeaderAuth from "@/components/header-auth";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { Toaster } from "@/components/ui/toaster";
 import CompanyHeader from "@/components/ui/company-header";
 import { AuthSessionManager } from "@/components/auth-session-manager";
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Link from "next/link";
@@ -31,9 +34,13 @@ export default async function RootLayout({
   // Simple UI decision: always link to dashboard
   const titleHref = "/protected/dashboard";
 
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={geistSans.className} suppressHydrationWarning>
+    <html lang={locale} className={geistSans.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
+        <NextIntlClientProvider messages={messages}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -51,7 +58,8 @@ export default async function RootLayout({
                   {/* CompanyHeader will handle its own auth check client-side */}
                   <CompanyHeader />
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
+                  <LanguageSwitcher />
                   <HeaderAuth />
                 </div>
               </nav>
@@ -80,6 +88,7 @@ export default async function RootLayout({
           <Toaster />
           <AuthSessionManager />
         </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

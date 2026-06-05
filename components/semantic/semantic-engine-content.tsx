@@ -17,6 +17,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChatSection } from "./chat-section";
 import { SourcesSection } from "./sources-section"
 import { IngestionOverlay } from "./ingestion-overlay";

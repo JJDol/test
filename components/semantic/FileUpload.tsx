@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,6 +17,8 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ onUploadComplete, disabled = false }: FileUploadProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -95,20 +98,20 @@ export function FileUpload({ onUploadComplete, disabled = false }: FileUploadPro
         size="icon"
         disabled={isUploading || disabled}
         onClick={() => !disabled && setIsDialogOpen(true)}
-        title={disabled ? "Document processing in progress" : "Upload files"}
+        title={disabled ? t("processingDocuments") : t("uploadDocument")}
       >
         {isUploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Paperclip className="h-4 w-4" />
         )}
-        <span className="sr-only">Upload files</span>
+        <span className="sr-only">{t("uploadDocument")}</span>
       </Button>
 
       <Dialog open={isDialogOpen && !disabled} onOpenChange={(open) => !disabled && setIsDialogOpen(open)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Upload Documents</DialogTitle>
+            <DialogTitle>{t("uploadDocument")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -136,7 +139,7 @@ export function FileUpload({ onUploadComplete, disabled = false }: FileUploadPro
               />
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium">
-                  {dragActive ? "Drop files here" : "Drag and drop files here or click to browse"}
+                  {dragActive ? t("uploadDocument") : t("uploadDescription")}
                 </p>
                 <p className="mt-1">Supported formats: PDF, DOCX</p>
               </div>
@@ -194,7 +197,7 @@ export function FileUpload({ onUploadComplete, disabled = false }: FileUploadPro
                 onClick={() => setIsDialogOpen(false)}
                 disabled={isUploading}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button
                 onClick={handleUpload}
@@ -203,10 +206,10 @@ export function FileUpload({ onUploadComplete, disabled = false }: FileUploadPro
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
+                    {tc("loading")}...
                   </>
                 ) : (
-                  'Upload'
+                  tc("upload")
                 )}
               </Button>
             </div>

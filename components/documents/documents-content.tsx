@@ -17,6 +17,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { LoadingState } from '@/components/ui/loading-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -118,13 +119,15 @@ export function DocumentsContent({
   onSetFilterType,
   onRetryError,
 }: DocumentsContentProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
 
   // Show loading state for initial page load
   if (loading.overall && documents.length === 0) {
     return (
       <LoadingState 
-        title="Loading Documents"
-        message="Please wait while we load your documents..."
+        title={t("loadingDocuments")}
+        message={t("loadingMessage")}
         variant="page"
       />
     );
@@ -153,7 +156,7 @@ export function DocumentsContent({
               disabled={loading.overall}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${loading.overall ? 'animate-spin' : ''}`} />
-              Retry
+              {tc("retry")}
             </Button>
           </div>
         </div>

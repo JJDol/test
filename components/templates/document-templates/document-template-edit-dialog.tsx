@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,9 @@ export function DocumentTemplateEditDialog({
   onCancel,
   loading,
 }: DocumentTemplateEditDialogProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
+
   const handleSave = async () => {
     await onSave();
   };
@@ -58,14 +62,14 @@ export function DocumentTemplateEditDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Edit Template</DialogTitle>
+          <DialogTitle>{t("editTemplate")}</DialogTitle>
           <DialogDescription>
-            Change the template details. File and variables cannot be changed here.
+            {t("editDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 pb-6">
           <div className="grid gap-2">
-            <Label htmlFor="edit-name">Name</Label>
+            <Label htmlFor="edit-name">{tc("name")}</Label>
             <Input 
               id="edit-name" 
               value={editName} 
@@ -74,7 +78,7 @@ export function DocumentTemplateEditDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="edit-description">Description</Label>
+            <Label htmlFor="edit-description">{tc("description")}</Label>
             <Textarea 
               id="edit-description" 
               value={editDescription} 
@@ -84,14 +88,14 @@ export function DocumentTemplateEditDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label>Category</Label>
+            <Label>{t("category")}</Label>
             <Select 
               value={editCategory} 
               onValueChange={(v) => onCategoryChange(v as DocumentCategory)}
               disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t("selectCategory")} />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(DocumentCategory).map((cat) => (
@@ -105,10 +109,10 @@ export function DocumentTemplateEditDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={loading}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? 'Saving...' : 'Save changes'}
+            {loading ? tc("updatingEllipsis") : tc("saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>

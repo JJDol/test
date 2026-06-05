@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,8 @@ export function DownloadPhaseDialog({
   onDownload,
   loading = false,
 }: DownloadPhaseDialogProps) {
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
   const [selectedPhaseIds, setSelectedPhaseIds] = useState<Set<string>>(new Set());
 
   // ✅ D9: 모든 active phase 표시 + 0개 phase는 disabled + "0 documents" 라벨
@@ -88,11 +91,11 @@ export function DownloadPhaseDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Download Project Documents</DialogTitle>
+          <DialogTitle>{t("downloadPhase")}</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
-          Select phases to include in the download.
+          {t("downloadPhaseDescription")}
         </p>
 
         {sortedPhases.length === 0 ? (
@@ -154,7 +157,7 @@ export function DownloadPhaseDialog({
             onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button
             onClick={handleDownload}
@@ -165,7 +168,7 @@ export function DownloadPhaseDialog({
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            {loading ? "Downloading…" : "Download"}
+            {loading ? `${tc("loading")}…` : tc("download")}
           </Button>
         </DialogFooter>
       </DialogContent>

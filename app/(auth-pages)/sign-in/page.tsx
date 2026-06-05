@@ -17,6 +17,7 @@ import { Message } from "@/components/form-message";
 import { SignInContainer } from "@/components/auth/sign-in-container";
 import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { AuthContentLayout } from "@/components/auth/auth-content-layout";
+import { getTranslations } from "next-intl/server";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -25,9 +26,9 @@ type SearchParams = {
 };
 
 export default async function Login(props: { searchParams: Promise<SearchParams> }) {
+  const t = await getTranslations("auth");
   const searchParams = await props.searchParams;
   
-  // Extract the message from searchParams if it exists
   let message: Message | undefined;
   if (searchParams.message) {
     if (typeof searchParams.message === 'string') {
@@ -40,8 +41,8 @@ export default async function Login(props: { searchParams: Promise<SearchParams>
   return (
     <>
       <AuthPageHeader
-        title="Sign In"
-        description="Welcome back! Please sign in to your account"
+        title={t("signInTitle")}
+        description={t("signInDescription")}
       />
       
       <AuthContentLayout>

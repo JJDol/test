@@ -7,6 +7,9 @@
  * - Reusable across different document views
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,10 +32,12 @@ export function DocumentSearchFilter({
   onFilterChange,
   className = ""
 }: DocumentSearchFilterProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Search & Filter</CardTitle>
+        <CardTitle>{tc("search")} & {tc("filter")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex gap-4">
@@ -40,7 +45,7 @@ export function DocumentSearchFilter({
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search documents..."
+                placeholder={t("searchDocuments")}
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10"
@@ -49,7 +54,7 @@ export function DocumentSearchFilter({
           </div>
           <Select value={filterType} onValueChange={onFilterChange}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by type" />
+              <SelectValue placeholder={tc("filter")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Documents</SelectItem>

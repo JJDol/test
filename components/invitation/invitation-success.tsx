@@ -1,4 +1,5 @@
 import { SuccessCard } from "@/components/ui/success-card";
+import { useTranslations } from "next-intl";
 
 /**
  * Invitation Success Component
@@ -9,11 +10,12 @@ import { SuccessCard } from "@/components/ui/success-card";
  * - Professional success messaging
  */
 export function InvitationSuccess() {
+  const t = useTranslations("invite");
   return (
     <SuccessCard
-      title="Welcome to the Team!"
-      message="Your account has been created successfully. You'll be redirected to the sign-in page shortly."
-      buttonText="Sign In Now"
+      title={t("welcomeToTeam")}
+      message={t("accountCreated")}
+      buttonText={t("signInNow")}
       redirectPath="/sign-in"
       autoRedirect={true}
       autoRedirectDelay={3000}

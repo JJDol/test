@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from "next-intl";
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useEffect, useState, ChangeEvent } from 'react';
 import { Suspense } from 'react';
@@ -28,6 +29,7 @@ export default function Search({
     placeholder: string;
     query: string | undefined;
 }) {
+    const tc = useTranslations("common");
     const [searchTerm, setSearchTerm] = useState<string | undefined>(query);
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -39,7 +41,7 @@ export default function Search({
         <div className="w-full max-w-5xl mx-auto space-y-8">
             <div className="relative">
                 <label htmlFor="search" className="sr-only">
-                    Search
+                    {tc("search")}
                 </label>
                 <div className="relative">
                     <input

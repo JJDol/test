@@ -8,8 +8,10 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslations } from "next-intl";
 
 export default function NavigationBar() {
+  const t = useTranslations("nav");
   const [navWidth, setNavWidth] = useState("w-64");
   const [widthValue, setWidthValue] = useState("16rem"); // 64 / 4 = 16rem
   const { currentUser } = useAuth();
@@ -92,7 +94,7 @@ export default function NavigationBar() {
               <AccordionTrigger className="px-2">
                 <span className="flex items-center gap-2 text-sm">
                   <FolderKanban className="h-4 w-4" />
-                  Projects
+                  {t("projects")}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-2 pt-0">
@@ -104,7 +106,7 @@ export default function NavigationBar() {
                         aria-current={isActive('/protected/dashboard') ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", isActive('/protected/dashboard') && "bg-accent text-accent-foreground")}
                       >
-                        Dashboard
+                        {t("dashboard")}
                       </Button>
                     </Link>
                   </li>
@@ -115,7 +117,7 @@ export default function NavigationBar() {
                         aria-current={isActive('/protected/kanban') ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", isActive('/protected/kanban') && "bg-accent text-accent-foreground")}
                       >
-                        Kanban board
+                        {t("kanbanBoard")}
                       </Button>
                     </Link>
                   </li>
@@ -128,7 +130,7 @@ export default function NavigationBar() {
               <AccordionTrigger className="px-2">
                 <span className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4" />
-                  Templates
+                  {t("templates")}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-2 pt-0">
@@ -143,7 +145,7 @@ export default function NavigationBar() {
                           activeTemplatesTab === 'document-templates' && "bg-accent text-accent-foreground"
                         )}
                       >
-                        Document templates
+                        {t("documentTemplates")}
                       </Button>
                     </Link>
                   </li>
@@ -157,7 +159,7 @@ export default function NavigationBar() {
                           activeTemplatesTab === 'project-templates' && "bg-accent text-accent-foreground"
                         )}
                       >
-                        Project templates
+                        {t("projectTemplates")}
                       </Button>
                     </Link>
                   </li>
@@ -168,7 +170,7 @@ export default function NavigationBar() {
                         aria-current={isActive('/protected/variables') ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", isActive('/protected/variables') && "bg-accent text-accent-foreground")}
                       >
-                        Variables
+                        {t("variables")}
                       </Button>
                     </Link>
                   </li>
@@ -181,7 +183,7 @@ export default function NavigationBar() {
               <AccordionTrigger className="px-2">
                 <span className="flex items-center gap-2 text-sm">
                   <Users className="h-4 w-4" />
-                  Resources
+                  {t("resources")}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-2 pt-0">
@@ -196,7 +198,7 @@ export default function NavigationBar() {
                           isActive('/protected/team') && "bg-accent text-accent-foreground"
                         )}
                       >
-                        Team
+                        {t("team")}
                       </Button>
                     </Link>
                   </li>
@@ -209,7 +211,7 @@ export default function NavigationBar() {
               <AccordionTrigger className="px-2">
                 <span className="flex items-center gap-2 text-sm">
                   <MessageSquare className="h-4 w-4" />
-                  AI Chatbot
+                  {t("aiChatbot")}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-2 pt-0">
@@ -221,7 +223,7 @@ export default function NavigationBar() {
                         aria-current={isActive('/protected/semantic-engine') ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", isActive('/protected/semantic-engine') && "bg-accent text-accent-foreground")}
                       >
-                        Semantic engine
+                        {t("semanticEngine")}
                       </Button>
                     </Link>
                   </li>
@@ -232,7 +234,7 @@ export default function NavigationBar() {
                         aria-current={isActive('/protected/documents') ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", isActive('/protected/documents') && "bg-accent text-accent-foreground")}
                       >
-                        Documents
+                        {t("documents")}
                       </Button>
                     </Link>
                   </li>
@@ -245,7 +247,7 @@ export default function NavigationBar() {
               <AccordionTrigger className="px-2">
                 <span className="flex items-center gap-2 text-sm">
                   <HelpCircle className="h-4 w-4" />
-                  User manual
+                  {t("userManual")}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-2 pt-0">
@@ -257,7 +259,7 @@ export default function NavigationBar() {
                         aria-current={activeManualTab === 'getting-started' ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", activeManualTab === 'getting-started' && "bg-accent text-accent-foreground")}
                       >
-                        Getting started
+                        {t("gettingStarted")}
                       </Button>
                     </Link>
                   </li>
@@ -268,7 +270,7 @@ export default function NavigationBar() {
                         aria-current={activeManualTab === 'projects' ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", activeManualTab === 'projects' && "bg-accent text-accent-foreground")}
                       >
-                        Projects
+                        {t("projects")}
                       </Button>
                     </Link>
                   </li>
@@ -279,7 +281,7 @@ export default function NavigationBar() {
                         aria-current={activeManualTab === 'templates' ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", activeManualTab === 'templates' && "bg-accent text-accent-foreground")}
                       >
-                        Templates
+                        {t("templates")}
                       </Button>
                     </Link>
                   </li>
@@ -290,7 +292,7 @@ export default function NavigationBar() {
                         aria-current={activeManualTab === 'ai-search' ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", activeManualTab === 'ai-search' && "bg-accent text-accent-foreground")}
                       >
-                        AI assistant
+                        {t("aiAssistant")}
                       </Button>
                     </Link>
                   </li>
@@ -301,7 +303,7 @@ export default function NavigationBar() {
                         aria-current={activeManualTab === 'team' ? 'page' : undefined}
                         className={cn("w-full justify-start text-sm", activeManualTab === 'team' && "bg-accent text-accent-foreground")}
                       >
-                        Team management
+                        {t("teamManagement")}
                       </Button>
                     </Link>
                   </li>
@@ -316,9 +318,9 @@ export default function NavigationBar() {
               <Link href="/subscription">
                 <Button variant="ghost" className="w-full text-left font-medium text-sm truncate flex items-center gap-2">
                   <Crown className="w-4 h-4 text-purple-500" />
-                  Subscription
+                  {t("subscription")}
                   <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
-                    Admin
+                    {t("admin")}
                   </span>
                 </Button>
               </Link>

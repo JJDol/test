@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -135,6 +136,7 @@ export function ProjectTemplatesTab({
   documentViewMode,
   onDocumentViewModeChange,
 }: ProjectTemplatesTabProps) {
+  const t = useTranslations("templates");
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const toggleCategory = (category: string) => {
@@ -152,7 +154,7 @@ export function ProjectTemplatesTab({
   return (
     <>
       <div className="flex justify-between items-center mb-6 mt-16">
-        <h2 className="text-3xl font-bold">Project Templates</h2>
+        <h2 className="text-3xl font-bold">{t("projectTemplates")}</h2>
         <div className="flex gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -184,7 +186,7 @@ export function ProjectTemplatesTab({
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Project Template
+                {t("createProjectTemplate")}
               </Button>
             </DialogTrigger>
           </Dialog>
@@ -200,7 +202,7 @@ export function ProjectTemplatesTab({
       {/* Error state */}
       {error.overall && (
         <ErrorState
-          title="Error loading project templates"
+          title={t("errorLoadingProjectTemplates")}
           message={error.overall}
           onRetry={actions.retryOnError}
         />
@@ -208,7 +210,7 @@ export function ProjectTemplatesTab({
 
       {/* Loading state */}
       {loading.projectTemplates && projectTemplates.length === 0 && (
-        <LoadingStateInline message="Loading project templates..." />
+        <LoadingStateInline message={t("loadingProjectTemplates")} />
       )}
 
       {/* Project templates grid */}
@@ -260,7 +262,7 @@ export function ProjectTemplatesTab({
       {/* No project templates message */}
       {!loading.projectTemplates && projectTemplates.length === 0 && !error.overall && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No project templates found. Create your first project template to get started.</p>
+          <p className="text-muted-foreground">{t("noProjectTemplatesFound")}</p>
         </div>
       )}
 

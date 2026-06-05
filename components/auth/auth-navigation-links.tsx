@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AuthNavigationLinksProps {
   showBackToSignIn?: boolean;
@@ -27,6 +28,7 @@ export function AuthNavigationLinks({
   backToSignInHref = "/sign-in",
   signUpHref = "/sign-up",
 }: AuthNavigationLinksProps) {
+  const t = useTranslations("auth");
   return (
     <div className="mt-6 space-y-3">
       {showBackToSignIn && (
@@ -36,7 +38,7 @@ export function AuthNavigationLinks({
             className="text-primary hover:text-primary/80 transition-colors text-sm flex items-center justify-center gap-1"
           >
             <ArrowLeft className="h-3 w-3" />
-            Back to Sign In
+            {t("backToSignIn")}
           </Link>
         </div>
       )}
@@ -44,13 +46,13 @@ export function AuthNavigationLinks({
       {showSignUp && (
         <div className="text-center">
           <span className="text-muted-foreground text-sm">
-            Don't have an account?{" "}
+            {t("dontHaveAccount")}{" "}
           </span>
           <Link 
             href={signUpHref}
             className="text-primary hover:text-primary/80 transition-colors text-sm"
           >
-            Sign up
+            {t("signUp")}
           </Link>
         </div>
       )}

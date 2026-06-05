@@ -18,6 +18,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
@@ -136,6 +137,8 @@ export function ProjectDocumentsSection({
 }: ProjectDocumentsSectionProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "completion-high" | "completion-low">("name-asc");
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
 
   if (!project) {
     return null;
@@ -215,7 +218,7 @@ export function ProjectDocumentsSection({
           <div className="mt-8 mb-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-3xl font-bold tracking-tight">
-                {getCategoryDisplayName(activeCategory)} Documents
+                {t("categoryDocuments", { category: getCategoryDisplayName(activeCategory) })}
               </h1>
               <Button 
                 variant="outline" 
@@ -266,7 +269,7 @@ export function ProjectDocumentsSection({
                     <div className="flex items-center justify-center py-8">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Loading templates...</span>
+                        <span>{t("loadingTemplatesEllipsis")}</span>
                       </div>
                     </div>
                   ) : (
@@ -315,7 +318,7 @@ export function ProjectDocumentsSection({
                               size="sm"
                               className="h-8 w-8 p-0 rounded-r-none"
                               onClick={() => setViewMode("grid")}
-                              title="Card View"
+                              title={tc("cardView")}
                             >
                               <LayoutGrid className="h-4 w-4" />
                             </Button>
@@ -324,7 +327,7 @@ export function ProjectDocumentsSection({
                               size="sm"
                               className="h-8 w-8 p-0 rounded-l-none"
                               onClick={() => setViewMode("list")}
-                              title="List View"
+                              title={tc("listView")}
                             >
                               <List className="h-4 w-4" />
                             </Button>
@@ -335,15 +338,15 @@ export function ProjectDocumentsSection({
                               <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className="gap-2">
                                   <ArrowUpDown className="h-4 w-4" />
-                                  Sort
+                                  {tc("sort")}
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {([
-                                  { value: "name-asc", label: "Name (A → Z)" },
-                                  { value: "name-desc", label: "Name (Z → A)" },
-                                  { value: "completion-high", label: "Completion (High → Low)" },
-                                  { value: "completion-low", label: "Completion (Low → High)" },
+                                  { value: "name-asc", label: tc("nameAZ") },
+                                  { value: "name-desc", label: tc("nameZA") },
+                                  { value: "completion-high", label: tc("completionHigh") },
+                                  { value: "completion-low", label: tc("completionLow") },
                                 ] as const).map((opt) => (
                                   <DropdownMenuItem
                                     key={opt.value}
@@ -365,7 +368,7 @@ export function ProjectDocumentsSection({
                                 trigger={
                                   <Button size="sm" className="gap-2" disabled={isLocked}>
                                     <Plus className="h-4 w-4" />
-                                    Add {getCategoryDisplayName(category)} Document
+                                    {t("addCategoryDocument", { category: getCategoryDisplayName(category) })}
                                   </Button>
                                 }
                               />
@@ -413,9 +416,9 @@ export function ProjectDocumentsSection({
                                     <ErrorBoundary
                                       fallback={
                                         <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
-                                          <p className="text-destructive text-sm">
-                                            Error loading template: {template.name}
-                                          </p>
+                          <p className="text-destructive text-sm">
+                            {t("errorLoadingTemplate")}: {template.name}
+                          </p>
                                         </div>
                                       }
                                       onError={(error) => {
@@ -463,10 +466,10 @@ export function ProjectDocumentsSection({
                       {templateNames.length === 0 && (
                         <div className="text-center py-8">
                           <p className="text-gray-500">
-                            No {getCategoryDisplayName(category)} documents added to this project yet.
+                            {t("noDocumentsYet")}
                           </p>
                           <p className="text-sm text-gray-400 mt-2">
-                            Click "Add {getCategoryDisplayName(category)} Document" to get started.
+                            {t("clickAddToStart")}
                           </p>
                         </div>
                       )}

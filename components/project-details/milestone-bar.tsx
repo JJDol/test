@@ -17,6 +17,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -498,6 +499,7 @@ function AddPhaseForm({
 }) {
   const [deadline, setDeadline] = React.useState<string>("");
   const [submitting, setSubmitting] = React.useState(false);
+  const tc = useTranslations("common");
 
   return (
     <div className="space-y-3">
@@ -515,7 +517,7 @@ function AddPhaseForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="milestone-add-deadline" className="text-xs">
-          Deadline (optional)
+          {tc("deadline")} (optional)
         </Label>
         <Input
           id="milestone-add-deadline"
@@ -533,7 +535,7 @@ function AddPhaseForm({
           onClick={onCancel}
           disabled={submitting}
         >
-          Cancel
+          {tc("cancel")}
         </Button>
         <Button
           type="button"
@@ -548,7 +550,7 @@ function AddPhaseForm({
           }}
           disabled={submitting}
         >
-          {submitting ? "Adding…" : "Add to project"}
+          {submitting ? `${tc("loading")}…` : tc("add")}
         </Button>
       </div>
     </div>

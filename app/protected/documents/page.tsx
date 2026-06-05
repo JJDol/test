@@ -25,11 +25,13 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useDocuments } from "@/hooks/use-documents";
 import { DocumentsContent } from "@/components/documents/documents-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function DocumentsPage() {
+  const t = useTranslations("documents");
   const {
     // State
     documents,
@@ -52,7 +54,7 @@ export default function DocumentsPage() {
   } = useDocuments();
 
   return (
-    <ProtectedPageWrapper loadingMessage="Loading documents...">
+    <ProtectedPageWrapper loadingMessage={t("loadingDocuments")}>
       <DocumentsContent
         // State
         documents={documents}

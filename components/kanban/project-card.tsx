@@ -11,6 +11,9 @@
 
 // TODO: We are using progress bar in multiple places, consider if we can use the same component
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import Link from 'next/link';
 import { Project } from '@/lib/types/types';
 
@@ -29,6 +32,9 @@ export function ProjectCard({
   className = "",
   isLoading = false
 }: ProjectCardProps) {
+  const tc = useTranslations("common");
+  const td = useTranslations("dashboard");
+
   const cardClasses = `bg-white p-4 rounded-md shadow mb-2 cursor-pointer w-full ${
     project.is_archived ? 'bg-white/5 border border-gray-500' : ''
   } ${className}`;
@@ -82,14 +88,14 @@ export function ProjectCard({
     <div className={cardClasses}>
       <h3 className="font-medium text-black">{project.name}</h3>
       <p className="text-sm text-gray-600">
-        Location: {project.location || 'Not specified'}
+        {tc("location")}: {project.location || tc("notSpecified")}
       </p>
       <p className="text-sm text-gray-600">
-        Leader: {project.leader?.name || project.leader?.email || 'Unassigned'}
+        {td("projectLeader")}: {project.leader?.name || project.leader?.email || tc("unassigned")}
       </p>
       {/* Issue 15 (D3 옵션 B): show current phase deadline. */}
       <p className="text-sm text-gray-600">
-        Deadline:{" "}
+        {tc("deadline")}:{" "}
         {project.current_phase_deadline
           ? new Date(project.current_phase_deadline).toLocaleDateString()
           : "—"}
@@ -98,7 +104,7 @@ export function ProjectCard({
       {/* Progress Bar */}
       <div className="mt-2">
         <div className="text-xs text-gray-500">
-          Progress: {project.progress}%
+          {tc("progress")}: {project.progress}%
         </div>
         <div className="w-full bg-gray-200 rounded-full h-1.5">
           <div
@@ -116,7 +122,7 @@ export function ProjectCard({
       {project.is_archived && (
         <div className="mt-2">
           <span className="text-sm text-gray-500 bg-gray-200/10 px-2 py-1 rounded">
-            Archived
+            {tc("archived")}
           </span>
         </div>
       )}

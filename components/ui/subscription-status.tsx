@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FolderOpen, Crown, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SubscriptionData {
   company: {
@@ -38,6 +39,9 @@ interface SubscriptionStatusProps {
 }
 
 export default function SubscriptionStatus({ companyId }: SubscriptionStatusProps) {
+  const t = useTranslations("subscription");
+  const tc = useTranslations("common");
+  const tn = useTranslations("nav");
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,10 +103,10 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Subscription Status</CardTitle>
+          <CardTitle className="text-sm">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{tc("loading")}</p>
         </CardContent>
       </Card>
     );
@@ -112,7 +116,7 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Subscription Status</CardTitle>
+          <CardTitle className="text-sm">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-red-500">Error: {error}</p>
@@ -127,14 +131,14 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
     <Card>
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
-          Subscription Status
+          {t("title")}
           {getTierIcon(data.company.subscription_tier)}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Subscription Tier */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Plan</span>
+          <span className="text-sm font-medium">{tc("plan")}</span>
           <Badge className={getTierColor(data.company.subscription_tier)}>
             {data.company.subscription_tier.toUpperCase()}
           </Badge>
@@ -145,7 +149,7 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              <span>Users</span>
+              <span>{t("users")}</span>
               {data.limits_reached.users && (
                 <AlertTriangle className="w-4 h-4 text-red-500" />
               )}
@@ -167,7 +171,7 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <FolderOpen className="w-4 h-4" />
-              <span>Projects</span>
+              <span>{tn("projects")}</span>
               {data.limits_reached.projects && (
                 <AlertTriangle className="w-4 h-4 text-red-500" />
               )}
@@ -190,11 +194,11 @@ export default function SubscriptionStatus({ companyId }: SubscriptionStatusProp
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-red-800">Subscription Limit Reached</p>
+                <p className="font-medium text-red-800">{t("limitReached")}</p>
                 <p className="text-red-600">
-                  {data.limits_reached.users && "Cannot add more users. "}
-                  {data.limits_reached.projects && "Cannot create more projects. "}
-                  Please upgrade your plan.
+                  {data.limits_reached.users && `${t("cannotAddUsers")} `}
+                  {data.limits_reached.projects && `${t("cannotCreateProjects")} `}
+                  {t("pleaseUpgrade")}
                 </p>
               </div>
             </div>

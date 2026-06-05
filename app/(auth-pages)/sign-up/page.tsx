@@ -23,10 +23,12 @@ import { ContactMessage } from "../contact-company";
 import { Button } from "@/components/ui/button";
 import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { AuthContentLayout } from "@/components/auth/auth-content-layout";
+import { getTranslations } from "next-intl/server";
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
 }) {
+  const t = await getTranslations("auth");
   const searchParams = await props.searchParams;
   
   // Handle message display with consistent layout
@@ -34,8 +36,8 @@ export default async function Signup(props: {
     return (
       <>
         <AuthPageHeader
-          title="Sign Up"
-          description="Account creation"
+          title={t("signUpTitle")}
+          description={t("signUpDescription")}
         />
         
         <AuthContentLayout>
@@ -50,8 +52,8 @@ export default async function Signup(props: {
   return (
     <>
       <AuthPageHeader
-        title="Sign Up"
-        description="Contact your company administrator to create an account"
+        title={t("signUpTitle")}
+        description={t("accountCreationDescription")}
       />
       
       <AuthContentLayout>
@@ -63,13 +65,13 @@ export default async function Signup(props: {
         {/* Navigation section */}
         <div className="w-full space-y-4">
           <Button asChild size="sm" variant="default" className="w-full">
-            <Link href="/sign-in">Back to Sign In</Link>
+            <Link href="/sign-in">{t("backToSignIn")}</Link>
           </Button>
           
           {/* Additional info for enterprise users */}
           <div className="text-center space-y-2">
             <p className="text-xs text-muted-foreground">
-              Need help? Contact your IT department
+              {t("contactIT")}
             </p>
           </div>
         </div>

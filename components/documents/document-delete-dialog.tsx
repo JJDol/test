@@ -8,6 +8,9 @@
  * - Reusable across different document contexts
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2, AlertCircle, Loader2 } from 'lucide-react';
@@ -33,16 +36,18 @@ export function DocumentDeleteDialog({
   onConfirm,
   onCancel
 }: DocumentDeleteDialogProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   return (
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-red-500" />
-            Delete Document
+            {t("deleteDocument")}
           </DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{document?.name}"? This action cannot be undone.
+            {t("deleteConfirm", { name: document?.name ?? "" })}
             {document?.company_id === 'public' && (
               <span className="block mt-2 text-amber-600 font-medium">
                 ⚠️ This is a public document. Deleting it will affect all users.
@@ -72,7 +77,7 @@ export function DocumentDeleteDialog({
               onClick={onCancel}
               disabled={isDeleting}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -84,7 +89,7 @@ export function DocumentDeleteDialog({
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
-              Delete Document
+              {t("deleteDocument")}
             </Button>
           </div>
         </div>

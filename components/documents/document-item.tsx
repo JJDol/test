@@ -9,6 +9,9 @@
  * - Reusable across different document lists
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -42,6 +45,8 @@ interface DocumentItemProps {
 }
 
 export function DocumentItem({ document, onDelete, isDeleting = false, className = "" }: DocumentItemProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   // Utility functions
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -107,7 +112,7 @@ export function DocumentItem({ document, onDelete, isDeleting = false, className
           
           {/* Description */}
           <p className="text-sm text-muted-foreground truncate">
-            {document.description || 'No description'}
+            {document.description || tc("noResults")}
           </p>
           
           {/* Metadata */}
@@ -136,7 +141,7 @@ export function DocumentItem({ document, onDelete, isDeleting = false, className
             <div className="mt-2">
               <Progress value={document.ingestion_progress} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                Processing... {document.ingestion_progress}%
+                {t("processingDocuments")}... {document.ingestion_progress}%
               </p>
             </div>
           )}
@@ -144,7 +149,7 @@ export function DocumentItem({ document, onDelete, isDeleting = false, className
           {/* Error Display */}
           {document.ingestion_status === 'failed' && document.ingestion_error && (
             <p className="text-xs text-red-600 mt-1">
-              Error: {document.ingestion_error}
+              {tc("error")}: {document.ingestion_error}
             </p>
           )}
         </div>

@@ -24,6 +24,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useTemplates } from "@/hooks/use-templates";
@@ -32,6 +33,7 @@ import { DocumentTemplatesTab } from "./document-templates/document-templates-ta
 import { ProjectTemplatesTab } from "./project-templates/project-templates-tab";
 
 export function TemplatesContent() {
+  const t = useTranslations("templates");
   // Router + search params for tab synchronization
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,8 +66,8 @@ export function TemplatesContent() {
   if (isLoading && documentTemplatesHook.templates.length === 0 && projectTemplatesHook.projectTemplates.length === 0) {
     return (
       <LoadingState 
-        title="Loading Templates"
-        message="Please wait while we load your templates..."
+        title={t("loadingTemplates")}
+        message={t("loadingMessage")}
         variant="page"
       />
     );
@@ -75,8 +77,8 @@ export function TemplatesContent() {
     <div className="container mx-auto py-10">
       <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="document-templates">Document Templates</TabsTrigger>
-          <TabsTrigger value="project-templates">Project Templates</TabsTrigger>
+          <TabsTrigger value="document-templates">{t("documentTemplates")}</TabsTrigger>
+          <TabsTrigger value="project-templates">{t("projectTemplates")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="document-templates">

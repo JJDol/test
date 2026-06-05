@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+
 /**
  * Password Reset Instructions Component
  * 
@@ -7,16 +9,18 @@
  * - Improves user experience with clear next steps
  */
 export function PasswordResetInstructions() {
+  const t = useTranslations("auth");
+
   const instructions = [
-    "Check your email inbox (and spam folder)",
-    "Click the reset link in the email",
-    "Create a new strong password",
+    t("checkEmail"),
+    t("clickResetLink"),
+    t("createNewPassword"),
   ];
 
   return (
     <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950 dark:border-blue-800">
       <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-3">
-        What happens next?
+        {t("whatHappensNext")}
       </h4>
       <div className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
         {instructions.map((instruction, index) => (

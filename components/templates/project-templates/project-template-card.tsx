@@ -17,6 +17,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -40,6 +41,7 @@ export function ProjectTemplateCard({
   onDownload,
   className = ""
 }: ProjectTemplateCardProps) {
+  const tc = useTranslations("common");
   return (
     <Card
       className={`relative cursor-pointer transition-colors hover:bg-muted/10 ${className}`}
@@ -71,7 +73,7 @@ export function ProjectTemplateCard({
                   onEdit(projectTemplate);
                 }}
               >
-                Edit
+                {tc("edit")}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="text-red-600 focus:text-red-600" 
@@ -80,7 +82,7 @@ export function ProjectTemplateCard({
                   onDelete(projectTemplate);
                 }}
               >
-                Delete
+                {tc("delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

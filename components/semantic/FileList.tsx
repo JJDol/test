@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,8 @@ interface FileListProps {
 }
 
 export function FileList({ onUpdate, onNewChat }: FileListProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +143,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Uploaded Documents</h3>
+        <h3 className="font-semibold">{t("title")}</h3>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -160,7 +163,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
             size="sm"
             onClick={handleReingest}
             disabled={isRemoving || isReingesting}
-            title={isReingesting ? "Document processing in progress" : "Reingest all documents"}
+            title={isReingesting ? t("processingDocuments") : t("title")}
           >
             {isReingesting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -176,7 +179,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
         <Card className="bg-muted">
           <CardContent className="flex items-center justify-center py-6">
             <p className="text-sm text-muted-foreground">
-              No files uploaded yet
+              {t("noDocuments")}
             </p>
           </CardContent>
         </Card>
@@ -228,7 +231,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                     disabled={isReingesting}
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete file</span>
+                    <span className="sr-only">{tc("delete")}</span>
                   </Button>
                 </div>
               </CardContent>

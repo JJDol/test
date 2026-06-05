@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProjectTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
@@ -26,6 +27,7 @@ export function ProjectTemplateViewDialog({
   viewProjectTemplate,
   onClose,
 }: ProjectTemplateViewDialogProps) {
+  const tc = useTranslations("common");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -47,7 +49,7 @@ export function ProjectTemplateViewDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={onClose}>{tc("close")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

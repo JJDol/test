@@ -6,6 +6,7 @@ import { Project } from "@/lib/types/types";
 import { MoreVertical } from "lucide-react";
 import { Button } from "./button";
 import { toast } from "@/components/ui/toast";
+import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,8 @@ interface ProjectBoxProps {
 }
 
 export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated, isAdmin, currentUser }: ProjectBoxProps) {
+    const t = useTranslations("dashboard");
+    const tc = useTranslations("common");
     const router = useRouter();
 
     const handleClick = (e: React.MouseEvent) => {
@@ -57,7 +60,7 @@ export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 <div className="px-2 py-1.5 text-sm font-semibold text-white-900">
-                                    Project Actions
+                                    {t("projectActions")}
                                 </div>
                                 {isAdmin && (
                                     <ArchiveProject 
@@ -83,9 +86,9 @@ export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated
                     </div>
                 )}
             </div>
-            <p className="text-sm text-gray-600">Location: {project.location || 'Not specified'}</p>
+            <p className="text-sm text-gray-600">{tc("location")}: {project.location || tc("notSpecified")}</p>
             <div className="mt-2">
-                <div className="text-sm text-gray-500">Progress</div>
+                <div className="text-sm text-gray-500">{tc("progress")}</div>
                 <div className="w-full bg-gray-200 h-2 rounded">
                     <div
                         className={`h-2 rounded ${
@@ -105,7 +108,7 @@ export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated
                 removed `projects.deadline` column. */}
             {project.current_phase_deadline ? (
                 <p className="text-sm mt-2">
-                    Deadline:{" "}
+                    {tc("deadline")}:{" "}
                     <span
                         className={`font-bold ${
                             new Date(project.current_phase_deadline) < new Date()
@@ -117,12 +120,12 @@ export default function ProjectBox({ project, onProjectDeleted, onProjectUpdated
                     </span>
                 </p>
             ) : (
-                <p className="text-sm mt-2 text-gray-500">No phase deadline set</p>
+                <p className="text-sm mt-2 text-gray-500">{t("noPhaseDeadline")}</p>
             )}
-            <p className="text-sm mt-2">Project Leader: {project.leader?.name || project.leader?.email || 'Unassigned'}</p>
+            <p className="text-sm mt-2">{t("projectLeader")}: {project.leader?.name || project.leader?.email || tc("unassigned")}</p>
             {project.is_archived && (
                 <div className="mt-2">
-                    <span className="text-sm text-gray-500 bg-gray-200/10 px-2 py-1 rounded">Archived</span>
+                    <span className="text-sm text-gray-500 bg-gray-200/10 px-2 py-1 rounded">{tc("archived")}</span>
                 </div>
             )}
         </div>

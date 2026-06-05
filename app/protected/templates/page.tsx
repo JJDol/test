@@ -26,12 +26,14 @@
 "use client";
 
 import { Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { TemplatesContent } from "@/components/templates/templates-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function TemplatesPage() {
+  const t = useTranslations("templates");
   return (
-    <ProtectedPageWrapper loadingMessage="Loading templates...">
+    <ProtectedPageWrapper loadingMessage={t("loadingMessage")}>
       <Suspense>
         <TemplatesContent />
       </Suspense>

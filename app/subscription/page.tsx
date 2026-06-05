@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,6 +112,8 @@ interface Company {
 }
 
 export default function SubscriptionPage() {
+  const t = useTranslations("subscription");
+  const tc = useTranslations("common");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -191,9 +194,9 @@ export default function SubscriptionPage() {
 
   const getTierBadge = (tier: string) => {
     switch (tier) {
-      case 'pro': return <Badge className="bg-blue-500 text-white">Most Popular</Badge>;
-      case 'enterprise': return <Badge className="bg-purple-500 text-white flex items-center gap-1"><Crown className="w-3 h-3" /> Premium</Badge>;
-      case 'custom': return <Badge className="bg-gray-500 text-white">Custom</Badge>;
+      case 'pro': return <Badge className="bg-blue-500 text-white">{t("mostPopular")}</Badge>;
+      case 'enterprise': return <Badge className="bg-purple-500 text-white flex items-center gap-1"><Crown className="w-3 h-3" /> {t("premium")}</Badge>;
+      case 'custom': return <Badge className="bg-gray-500 text-white">{t("custom")}</Badge>;
       default: return null;
     }
   };
@@ -213,7 +216,7 @@ export default function SubscriptionPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <p className="text-red-500 mb-4">Error: {error}</p>
-          <Button onClick={fetchUserAndCompany}>Retry</Button>
+          <Button onClick={fetchUserAndCompany}>{tc("retry")}</Button>
         </div>
       </div>
     );
@@ -227,9 +230,9 @@ export default function SubscriptionPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Subscription Plans</h1>
+          <h1 className="text-4xl font-bold mb-4">{t("subscriptionPlans")}</h1>
           <p className="text-xl text-muted-foreground">
-            Choose the perfect plan for your architecture firm
+            {t("choosePlan")}
           </p>
         </div>
 
@@ -239,9 +242,9 @@ export default function SubscriptionPage() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
               <div>
-                <h3 className="font-medium text-yellow-800">Contact Your Company Administrator</h3>
+                <h3 className="font-medium text-yellow-800">{t("contactAdmin")}</h3>
                 <p className="text-yellow-700 mt-1">
-                  Only company administrators can manage subscription plans. Please contact your company admin to upgrade your subscription or make changes to your plan.
+                  {t("contactAdminForPlans")}
                 </p>
               </div>
             </div>
@@ -254,7 +257,7 @@ export default function SubscriptionPage() {
             <div className="flex-1">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Current Plan: {company.name}</CardTitle>
+                  <CardTitle className="text-lg">{t("currentPlan")}: {company.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2 mb-4">
@@ -268,7 +271,7 @@ export default function SubscriptionPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    You are currently on the {company.subscription_tier} plan. Upgrade to access more features and increase your limits.
+                    {t("currentPlanDescription", { plan: company.subscription_tier })}
                   </p>
                 </CardContent>
               </Card>
@@ -297,7 +300,7 @@ export default function SubscriptionPage() {
                   <div className="text-4xl font-bold text-primary">
                     {tier.price}
                     {tier.tier !== 'custom' && (
-                      <span className="text-lg font-normal text-muted-foreground">/month</span>
+                      <span className="text-lg font-normal text-muted-foreground">/{t("perMonth")}</span>
                     )}
                   </div>
                   <p className="text-muted-foreground">{tier.description}</p>
@@ -309,13 +312,13 @@ export default function SubscriptionPage() {
                     <div className="flex items-center gap-3">
                       <Users className="w-4 h-4 text-blue-500" />
                       <span className="text-sm">
-                        {tier.tier === 'custom' ? 'Unlimited users' : `Up to ${tier.features.max_users} users`}
+                        {tier.tier === 'custom' ? t("unlimitedUsers") : t("upToNUsers", { count: tier.features.max_users })}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <FolderOpen className="w-4 h-4 text-green-500" />
                       <span className="text-sm">
-                        {tier.tier === 'custom' ? 'Unlimited projects' : `Up to ${tier.features.max_projects} projects`}
+                        {tier.tier === 'custom' ? t("unlimitedProjects") : t("upToNProjects", { count: tier.features.max_projects })}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -331,25 +334,25 @@ export default function SubscriptionPage() {
                     <div className="flex items-center gap-3">
                       <Check className={`w-4 h-4 ${tier.features.ai_chatbot ? 'text-green-500' : 'text-gray-300'}`} />
                       <span className={`text-sm ${!tier.features.ai_chatbot ? 'text-gray-400' : ''}`}>
-                        AI Chatbot Assistant
+                        {t("aiChatbot")}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Check className={`w-4 h-4 ${tier.features.advanced_analytics ? 'text-green-500' : 'text-gray-300'}`} />
                       <span className={`text-sm ${!tier.features.advanced_analytics ? 'text-gray-400' : ''}`}>
-                        Advanced Analytics
+                        {t("advancedAnalytics")}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Check className={`w-4 h-4 ${tier.features.api_access ? 'text-green-500' : 'text-gray-300'}`} />
                       <span className={`text-sm ${!tier.features.api_access ? 'text-gray-400' : ''}`}>
-                        API Access
+                        {t("apiAccess")}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Check className={`w-4 h-4 ${tier.features.custom_integrations ? 'text-green-500' : 'text-gray-300'}`} />
                       <span className={`text-sm ${!tier.features.custom_integrations ? 'text-gray-400' : ''}`}>
-                        Custom Integrations
+                        {t("customIntegrations")}
                       </span>
                     </div>
                   </div>
@@ -376,7 +379,7 @@ export default function SubscriptionPage() {
                   <div className="pt-4">
                     {isCurrentPlan ? (
                       <Button variant="outline" className="w-full" disabled>
-                        Current Plan
+                        {t("currentPlanBadge")}
                       </Button>
                     ) : hasAccess ? (
                       <Button 
@@ -384,14 +387,14 @@ export default function SubscriptionPage() {
                         onClick={() => handleUpgrade(tier.tier)}
                         variant={tier.tier === 'pro' ? 'default' : tier.tier === 'custom' ? 'secondary' : 'outline'}
                       >
-                        {tier.tier === 'custom' ? 'Contact Us' : 
-                         company && subscriptionTiers.findIndex(t => t.tier === company.subscription_tier) < subscriptionTiers.findIndex(t => t.tier === tier.tier) 
-                          ? 'Upgrade' 
-                          : 'Switch Plan'}
+                        {tier.tier === 'custom' ? t("contactUs") : 
+                         company && subscriptionTiers.findIndex(st => st.tier === company.subscription_tier) < subscriptionTiers.findIndex(st => st.tier === tier.tier) 
+                          ? t("upgrade") 
+                          : t("switchPlan")}
                       </Button>
                     ) : (
                       <Button variant="outline" className="w-full" disabled>
-                        Contact Admin
+                        {t("contactAdmin")}
                       </Button>
                     )}
                   </div>
@@ -403,12 +406,12 @@ export default function SubscriptionPage() {
 
         {/* FAQ Section */}
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Need Help Choosing?</h2>
+          <h2 className="text-2xl font-bold mb-4">{t("needHelpChoosing")}</h2>
           <p className="text-muted-foreground mb-6">
-            Our team is here to help you find the perfect plan for your architecture firm.
+            {t("helpDescription")}
           </p>
           <Button variant="outline" size="lg">
-            Contact Sales
+            {t("contactSales")}
           </Button>
         </div>
       </div>

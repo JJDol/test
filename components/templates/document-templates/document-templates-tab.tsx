@@ -17,6 +17,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -136,6 +137,8 @@ export function DocumentTemplatesTab({
   templateStats,
   actions,
 }: DocumentTemplatesTabProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const archivedSectionRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to archived section when showing archived templates
@@ -155,7 +158,7 @@ export function DocumentTemplatesTab({
     <>
       <div className="flex justify-between items-center mb-10 mt-10">
         <div>
-          <h2 className="text-3xl font-bold">Document Templates</h2>
+          <h2 className="text-3xl font-bold">{t("documentTemplates")}</h2>
           <ViewModeSelector
             viewMode={viewMode}
             onViewModeChange={actions.setViewMode}
@@ -205,12 +208,12 @@ export function DocumentTemplatesTab({
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Upload Template
+                {t("uploadTemplate")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
               <DialogHeader>
-                <DialogTitle>Upload Template</DialogTitle>
+                <DialogTitle>{t("uploadTemplate")}</DialogTitle>
               </DialogHeader>
               <div className="pr-2">
                 <TemplateUploadForm onUploadComplete={actions.handleUploadComplete} />
@@ -229,7 +232,7 @@ export function DocumentTemplatesTab({
       {/* Error state */}
       {error.overall && (
         <ErrorState
-          title="Error loading templates"
+          title={t("errorLoadingTemplates")}
           message={error.overall}
           onRetry={actions.retryOnError}
         />
@@ -237,7 +240,7 @@ export function DocumentTemplatesTab({
 
       {/* Loading state */}
       {loading.templates && templates.length === 0 && (
-        <LoadingStateInline message="Loading templates..." />
+        <LoadingStateInline message={t("loadingTemplates")} />
       )}
 
       {/* Templates accordion */}
@@ -276,7 +279,7 @@ export function DocumentTemplatesTab({
       {/* No templates message */}
       {!loading.templates && templates.length === 0 && !error.overall && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No templates found. Upload your first template to get started.</p>
+          <p className="text-muted-foreground">{t("noTemplatesFound")}</p>
         </div>
       )}
 
@@ -285,16 +288,16 @@ export function DocumentTemplatesTab({
         <div ref={archivedSectionRef} className="mt-8 border-t pt-8">
           <div className="flex items-center gap-2 mb-4">
             <Archive className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-xl font-semibold text-muted-foreground">Archived Templates</h2>
+            <h2 className="text-xl font-semibold text-muted-foreground">{t("archivedTemplates")}</h2>
           </div>
 
           {loading.archivedTemplates && (
-            <LoadingStateInline message="Loading archived templates..." />
+            <LoadingStateInline message={t("loadingArchivedTemplates")} />
           )}
 
           {!loading.archivedTemplates && archivedTemplates.length === 0 && (
             <div className="text-center py-8 bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">No archived templates found.</p>
+              <p className="text-muted-foreground">{t("noArchivedTemplates")}</p>
             </div>
           )}
 
@@ -311,7 +314,7 @@ export function DocumentTemplatesTab({
                       {getCategoryDisplayName(template.category)}
                       {template.archived_at && (
                         <span className="ml-2">
-                          • Archived {new Date(template.archived_at).toLocaleDateString()}
+                          • {t("archivedDate")} {new Date(template.archived_at).toLocaleDateString()}
                         </span>
                       )}
                     </p>
@@ -327,7 +330,7 @@ export function DocumentTemplatesTab({
                     ) : (
                       <RotateCcw className="mr-2 h-4 w-4" />
                     )}
-                    Restore
+                    {tc("restore")}
                   </Button>
                 </div>
               ))}

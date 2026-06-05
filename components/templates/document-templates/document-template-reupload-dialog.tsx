@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,6 +62,8 @@ export function DocumentTemplateReuploadDialog({
   template,
   onReuploadComplete,
 }: DocumentTemplateReuploadDialogProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractingVariables, setExtractingVariables] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -217,7 +220,7 @@ export function DocumentTemplateReuploadDialog({
       setStep("review");
 
       toast({
-        title: "Variables Extracted",
+        title: tc("success"),
         description: `Found ${extractedVariables.length} variables in the new file`,
       });
     } catch (error) {
@@ -226,7 +229,7 @@ export function DocumentTemplateReuploadDialog({
         error instanceof Error ? error.message : "Failed to extract variables"
       );
       toast({
-        title: "Error",
+        title: tc("error"),
         description:
           error instanceof Error ? error.message : "Failed to extract variables",
         variant: "destructive",
@@ -246,7 +249,7 @@ export function DocumentTemplateReuploadDialog({
   const handleConfirmUpload = async () => {
     if (!selectedFile && !blobUrl) {
       toast({
-        title: "Error",
+        title: tc("error"),
         description: "No file selected",
         variant: "destructive",
       });
@@ -289,7 +292,7 @@ export function DocumentTemplateReuploadDialog({
       const result = await response.json();
 
       toast({
-        title: "Success",
+        title: tc("success"),
         description: `Template updated to version ${result.version}`,
       });
 
@@ -298,7 +301,7 @@ export function DocumentTemplateReuploadDialog({
     } catch (error) {
       console.error("Error uploading new version:", error);
       toast({
-        title: "Error",
+        title: tc("error"),
         description:
           error instanceof Error ? error.message : "Failed to upload new version",
         variant: "destructive",
@@ -322,7 +325,7 @@ export function DocumentTemplateReuploadDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Update Template: {template.name}</DialogTitle>
+          <DialogTitle>{t("reuploadTemplate")}: {template.name}</DialogTitle>
           <DialogDescription>
             Upload a new version of this template. Variables will be compared and you
             can map renamed variables to preserve project data.
@@ -558,7 +561,7 @@ export function DocumentTemplateReuploadDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-            Cancel
+            {tc("cancel")}
           </Button>
           {step === "review" && (
             <Button onClick={handleConfirmUpload} disabled={isUploading}>

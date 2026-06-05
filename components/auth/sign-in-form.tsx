@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { signInAction } from "@/app/(auth-pages)/actions";
 import Link from "next/link";
 import { AuthContentLayout } from "./auth-content-layout";
+import { useTranslations } from "next-intl";
 
 /**
  * Sign-In Form Component
@@ -21,15 +22,17 @@ import { AuthContentLayout } from "./auth-content-layout";
  * - Form validation feedback
  */
 export function SignInForm() {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   return (
     <form className="w-full">
       <AuthContentLayout>
       {/* Header section - Full width */}
       <div className="w-full text-center">
         <p className="text-sm text-foreground">
-          Don't have an account?{" "}
+          {t("dontHaveAccount")}{" "}
           <Link className="text-foreground font-medium underline" href="/sign-up">
-            Sign up
+            {t("signUp")}
           </Link>
         </p>
       </div>
@@ -37,21 +40,21 @@ export function SignInForm() {
       {/* Form fields section - Full width */}
       <div className="w-full space-y-4">
         <div className="w-full space-y-2">
-          <Label htmlFor="email" className="w-full">Email</Label>
+          <Label htmlFor="email" className="w-full">{t("email")}</Label>
           <Input 
             name="email" 
-            placeholder="you@example.com" 
+            placeholder={t("emailPlaceholder")} 
             required 
             className="w-full"
           />
         </div>
         
         <div className="w-full space-y-2">
-          <Label htmlFor="password" className="w-full">Password</Label>
+          <Label htmlFor="password" className="w-full">{t("password")}</Label>
           <Input
             type="password"
             name="password"
-            placeholder="Your password"
+            placeholder={t("passwordPlaceholder")}
             required
             className="w-full"
           />
@@ -62,19 +65,19 @@ export function SignInForm() {
             className="text-xs text-foreground underline"
             href="/forgot-password"
           >
-            Forgot Password?
+            {t("forgotPassword")}
           </Link>
         </div>
       </div>
       
       {/* Action buttons section - Full width */}
       <div className="w-full space-y-3">
-        <SubmitButton pendingText="Signing In..." formAction={signInAction} className="w-full">
-          Sign in
+        <SubmitButton pendingText={t("signingIn")} formAction={signInAction} className="w-full">
+          {t("signIn")}
         </SubmitButton>
         
         <Button asChild size="sm" variant="default" className="w-full opacity-50">
-          <Link href="/sign-up">Sign up</Link>
+          <Link href="/sign-up">{t("signUp")}</Link>
         </Button>
       </div>
       
@@ -83,13 +86,13 @@ export function SignInForm() {
         
         {/* Quick actions */}
         <div className="w-full text-center space-y-2">
-          <p className="text-xs text-muted-foreground">Need help?</p>
+          <p className="text-xs text-muted-foreground">{tc("needHelp")}</p>
           <div className="flex justify-center space-x-4 text-xs">
             <Link href="/forgot-password" className="text-primary hover:underline">
-              Reset Password
+              {t("resetPassword")}
             </Link>
             <Link href="/contact" className="text-primary hover:underline">
-              Contact Support
+              {t("contactSupport")}
             </Link>
           </div>
         </div>

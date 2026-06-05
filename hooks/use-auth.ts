@@ -9,6 +9,7 @@ interface UserProfile {
   name?: string;
   assigned_projects?: string[];
   company_id?: string;
+  preferred_locale?: string;
 }
 
 interface UseAuthReturn {
@@ -96,7 +97,7 @@ async function _checkAuth(): Promise<boolean> {
       try {
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select('id, role, name, assigned_projects, company_id')
+          .select('id, role, name, assigned_projects, company_id, preferred_locale')
           .eq('id', authUser.id)
           .single();
 
@@ -110,6 +111,17 @@ async function _checkAuth(): Promise<boolean> {
             isCompanyAdmin: profile?.role === 'COMPANY_ADMIN',
             isProfileLoading: false,
           });
+
+          if (profile?.preferred_locale && typeof document !== 'undefined') {
+            const currentCookie = document.cookie
+              .split('; ')
+              .find((row) => row.startsWith('NEXT_LOCALE='))
+              ?.split('=')[1];
+            if (currentCookie !== profile.preferred_locale) {
+              document.cookie = `NEXT_LOCALE=${profile.preferred_locale}; path=/; max-age=${60 * 60 * 24 * 365}`;
+              window.location.reload();
+            }
+          }
         }
       } catch (e) {
         console.error('Error fetching profile:', e);

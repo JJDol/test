@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ArrowDownTrayIcon, ArrowTopRightOnSquareIcon, HandThumbDownIcon, HandThumbUpIcon } from "@heroicons/react/24/outline";
 
 export default function PdfSourceCard({
@@ -40,6 +41,7 @@ export default function PdfSourceCard({
             })
         });
     };
+    const t = useTranslations("documents");
     const startText = text.slice(0, 100);
     const fileUrl = `/api/uploads/${fileName}`;
     

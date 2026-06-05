@@ -15,6 +15,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import {
   CalendarClock,
   Flag,
@@ -98,11 +99,12 @@ function HoldBanner({
   canManage: boolean;
   onResume: () => Promise<void> | void;
 }) {
+  const t = useTranslations("projectDetails");
   return (
     <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-100">
       <PauseCircle className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="flex-1 min-w-[180px]">
-        <div className="text-sm font-semibold">Project is on hold</div>
+        <div className="text-sm font-semibold">{t("putOnHold")}</div>
         {hold.on_hold_note && (
           <div className="mt-0.5 text-xs opacity-90">{hold.on_hold_note}</div>
         )}
@@ -147,6 +149,8 @@ function PhaseMetaRow({
   ) => Promise<void>;
 }) {
   const isCurrent = activePhase.is_current;
+  const tc = useTranslations("common");
+  const t = useTranslations("projectDetails");
   const isViewingPast =
     currentPhase != null &&
     activePhase.definition.display_order < currentPhase.definition.display_order;
@@ -250,6 +254,7 @@ function DeadlineField({
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState<string>(value ?? "");
   const [saving, setSaving] = React.useState(false);
+  const tc = useTranslations("common");
 
   // Reset draft whenever the phase/value changes (navigating between phases).
   React.useEffect(() => {
@@ -310,7 +315,7 @@ function DeadlineField({
           }
         }}
       >
-        {saving ? "Saving…" : "Save"}
+        {saving ? `${tc("loading")}…` : tc("save")}
       </Button>
       <Button
         type="button"
@@ -322,7 +327,7 @@ function DeadlineField({
           setEditing(false);
         }}
       >
-        Cancel
+        {tc("cancel")}
       </Button>
     </div>
   );

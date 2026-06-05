@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentTemplate } from "@/lib/types/types";
@@ -35,6 +36,8 @@ export function DocumentTemplateCard({
   onDelete,
   onReupload,
 }: DocumentTemplateCardProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -87,13 +90,13 @@ export function DocumentTemplateCard({
       console.log('Template download completed successfully');
       // TODO: This toast doesnt show
       toast({
-        title: "Success",
+        title: tc("success"),
         description: "Template downloaded successfully",
       });
     } catch (error) {
       console.error('Error downloading template:', error);
       toast({
-        title: "Error",
+        title: tc("error"),
         description: error instanceof Error ? error.message : "Failed to download template",
         variant: "destructive",
       });
@@ -137,7 +140,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title={isDownloading ? "Downloading..." : "Download"}
+              title={isDownloading ? tc("loading") : tc("download")}
               onClick={handleDownload}
               disabled={isDownloading}
             >
@@ -151,7 +154,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title="Upload New Version"
+              title={t("reuploadTemplate")}
               onClick={onReupload}
             >
               <UploadCloud className="h-4 w-4" />
@@ -160,7 +163,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title="Edit"
+              title={tc("edit")}
               onClick={onEdit}
             >
               <Pencil className="h-4 w-4" />
@@ -169,7 +172,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-red-400 hover:text-red-500"
-              title="Delete"
+              title={tc("delete")}
               onClick={onDelete}
             >
               <Trash2 className="h-4 w-4" />

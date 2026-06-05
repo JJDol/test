@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ export function GeneralVariablesSection({
   onToggleCollapse,
   onVariableChange,
 }: GeneralVariablesSectionProps) {
+  const t = useTranslations("projectDetails");
   // Helper function to get all template names assigned to this project
   const getProjectTemplateNames = (): string[] => {
     const templateNames: string[] = [];
@@ -76,7 +78,7 @@ export function GeneralVariablesSection({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            Global Variables
+            {t("generalVariables")}
             <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-200 rounded px-2 min-w-[1.5rem] justify-center">
               {globalVariables.length}
             </Badge>

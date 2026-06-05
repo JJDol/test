@@ -8,6 +8,9 @@
  * - Reusable across different kanban views
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Button } from '@/components/ui/button';
 
 interface KanbanHeaderProps {
@@ -25,7 +28,7 @@ interface KanbanHeaderProps {
 }
 
 export function KanbanHeader({
-  title = "Projects Kanban Board",
+  title,
   projectStats,
   showArchived,
   onToggleArchived,
@@ -33,19 +36,22 @@ export function KanbanHeader({
   isCompanyAdmin,
   className = ""
 }: KanbanHeaderProps) {
+  const t = useTranslations("kanban");
+  const tc = useTranslations("common");
+
   return (
     <div className={`flex justify-between items-center mb-6 ${className}`}>
       <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <h1 className="text-2xl font-bold">{title ?? t("title")}</h1>
         <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-          <span>Total: <span className="font-medium">{projectStats.total}</span></span>
+          <span>{t("total")}: <span className="font-medium">{projectStats.total}</span></span>
           {Object.entries(projectStats.byStage).map(([stage, count]) => (
             <span key={stage}>
               {stage.replace('_', ' ')}: <span className="font-medium">{count}</span>
             </span>
           ))}
           {projectStats.archived > 0 && (
-            <span>Archived: <span className="font-medium">{projectStats.archived}</span></span>
+            <span>{t("archivedCount")}: <span className="font-medium">{projectStats.archived}</span></span>
           )}
         </div>
       </div>
