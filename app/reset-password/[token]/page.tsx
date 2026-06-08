@@ -52,7 +52,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
           console.log('Token validation failed');
           setMessage({ 
             type: 'error', 
-            text: data.message || t("invalidResetLinkDescription")
+            text: t("invalidResetLinkDescription")
           });
         }
       } catch (error) {

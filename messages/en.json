@@ -538,7 +538,13 @@
     "validationError": "Validation Error",
     "emailAndRoleRequired": "Email and role are required",
     "invalidEmail": "Please enter a valid email address",
-    "failedToInvite": "Failed to invite colleague"
+    "failedToInvite": "Failed to invite colleague",
+    "invalidInvitationLink": "Invalid invitation link. Please check your email for the correct link.",
+    "invalidOrExpiredInvitation": "Invalid or expired invitation",
+    "failedToValidateInvitation": "Failed to validate invitation. Please try again.",
+    "accountCreatedSuccess": "Account Created Successfully!",
+    "canNowLogIn": "You can now log in with your email and password.",
+    "failedToAcceptInvitation": "Failed to accept invitation"
   },
   "subscription": {
     "title": "Subscription Status",
@@ -605,6 +611,11 @@
     "title": "Language",
     "english": "English",
     "danish": "Dansk"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "The page you are looking for does not exist or has been moved.",
+    "goHome": "Go to Home"
   },
   "manual": {
     "title": "User Manual",

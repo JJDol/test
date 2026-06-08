@@ -538,7 +538,13 @@
     "validationError": "Valideringsfejl",
     "emailAndRoleRequired": "E-mail og rolle er påkrævet",
     "invalidEmail": "Indtast venligst en gyldig e-mailadresse",
-    "failedToInvite": "Kunne ikke invitere kollega"
+    "failedToInvite": "Kunne ikke invitere kollega",
+    "invalidInvitationLink": "Ugyldigt invitationslink. Tjek venligst din e-mail for det korrekte link.",
+    "invalidOrExpiredInvitation": "Ugyldig eller udløbet invitation",
+    "failedToValidateInvitation": "Kunne ikke validere invitation. Prøv venligst igen.",
+    "accountCreatedSuccess": "Konto oprettet!",
+    "canNowLogIn": "Du kan nu logge ind med din e-mail og adgangskode.",
+    "failedToAcceptInvitation": "Kunne ikke acceptere invitation"
   },
   "subscription": {
     "title": "Abonnementsstatus",
@@ -605,6 +611,11 @@
     "title": "Sprog",
     "english": "English",
     "danish": "Dansk"
+  },
+  "notFound": {
+    "title": "Side ikke fundet",
+    "description": "Siden du leder efter eksisterer ikke eller er blevet flyttet.",
+    "goHome": "Gå til startsiden"
   },
   "manual": {
     "title": "Brugermanual",

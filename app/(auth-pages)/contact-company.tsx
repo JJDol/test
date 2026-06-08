@@ -16,24 +16,27 @@
  * - Follows auth component design standards
  * - Maintains visual consistency across auth pages
  */
+"use client";
+
+import { useTranslations } from "next-intl";
 import { InfoIcon } from "lucide-react";
 
 export function ContactMessage() {
+  const t = useTranslations("auth");
   return (
     <div className="w-full bg-muted/50 px-5 py-4 border rounded-lg flex gap-4 items-start">
       <InfoIcon size={20} className="mt-0.5 text-primary flex-shrink-0" />
       <div className="flex flex-col gap-2">
         <h4 className="font-medium text-foreground">
-          Account Creation Required
+          {t("accountCreationRequired")}
         </h4>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Please contact your company administrator to create your account. 
-          Self-registration is disabled for security and control purposes.
+          {t("accountCreationDescription")}
         </p>
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>• Your company admin will create your account</p>
-          <p>• You'll receive an email invitation to join</p>
-          <p>• Contact your IT department if you need assistance</p>
+          <p>• {t("adminWillCreate")}</p>
+          <p>• {t("receiveInvitation")}</p>
+          <p>• {t("contactIT")}</p>
         </div>
       </div>
     </div>
