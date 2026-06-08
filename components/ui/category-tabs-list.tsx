@@ -1,4 +1,7 @@
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CategoryTabsListProps {
@@ -14,6 +17,7 @@ export function CategoryTabsList({
   templateCounts,
   gridCols = 4,
 }: CategoryTabsListProps) {
+  const tc = useTranslations("common");
   return (
     <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground gap-1">
       <div className={`grid grid-cols-${gridCols} gap-1 w-full`}>
@@ -27,7 +31,7 @@ export function CategoryTabsList({
               value={category}
               className="group whitespace-nowrap relative gap-1.5"
             >
-              <span>{getCategoryDisplayName(category)}</span>
+              <span>{tc(getCategoryTranslationKey(category))}</span>
               {templateCounts && totalCount > 0 && (
                 <span
                   className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${

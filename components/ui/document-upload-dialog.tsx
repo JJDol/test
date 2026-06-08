@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,12 +25,14 @@ export function DocumentUploadDialog({
   onUploadComplete,
   disabled = false,
   trigger,
-  title = "Upload Document",
-  description = "Upload a document to add it to your AI knowledge base",
+  title,
+  description,
   showCompanyWideToggle = true,
   allowedFileTypes = [".pdf", ".doc", ".docx", ".txt", ".md"],
   maxFileSize = 50 * 1024 * 1024 // 50MB default
 }: DocumentUploadDialogProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState("");
@@ -44,7 +47,7 @@ export function DocumentUploadDialog({
     if (file) {
       // Validate file size
       if (file.size > maxFileSize) {
-        setError(`File size exceeds ${(maxFileSize / (1024 * 1024)).toFixed(0)}MB limit`);
+        setError(t("fileSizeExceeds", { size: (maxFileSize / (1024 * 1024)).toFixed(0) }));
         setSelectedFile(null);
         return;
       }
@@ -52,7 +55,7 @@ export function DocumentUploadDialog({
       // Validate file type
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       if (!allowedFileTypes.includes(fileExtension)) {
-        setError(`File type not supported. Allowed: ${allowedFileTypes.join(', ')}`);
+        setError(t("fileTypeNotSupported"));
         setSelectedFile(null);
         return;
       }
@@ -102,7 +105,7 @@ export function DocumentUploadDialog({
       
     } catch (error) {
       console.error('Upload error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to upload document');
+      setError(error instanceof Error ? error.message : t("failedToUpload"));
     } finally {
       setUploading(false);
     }
@@ -134,7 +137,7 @@ export function DocumentUploadDialog({
         {trigger || (
           <Button disabled={disabled}>
             <Upload className="h-4 w-4 mr-2" />
-            Upload Document
+            {t("uploadDocument")}
           </Button>
         )}
       </DialogTrigger>
@@ -145,15 +148,15 @@ export function DocumentUploadDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title || t("uploadDocument")}</DialogTitle>
           <DialogDescription>
-            {description}
+            {description || t("uploadDescription")}
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           <div>
-            <Label htmlFor="file">Document File</Label>
+            <Label htmlFor="file">{t("documentFile")}</Label>
             <Input
               id="file"
               type="file"
@@ -161,11 +164,11 @@ export function DocumentUploadDialog({
               onChange={handleFileChange}
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Supported formats: {allowedFileTypes.join(', ').replace(/\./g, '').toUpperCase()}
+              {t("supportedFormats")}: {allowedFileTypes.join(', ').replace(/\./g, '').toUpperCase()}
             </p>
             {selectedFile && (
               <p className="text-sm text-green-600 mt-1">
-                Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                {t("selected")}: {selectedFile.name} ({formatFileSize(selectedFile.size)})
               </p>
             )}
             {error && (
@@ -176,20 +179,20 @@ export function DocumentUploadDialog({
           </div>
           
           <div>
-            <Label htmlFor="description">Description (Optional)</Label>
+            <Label htmlFor="description">{t("descriptionOptional")}</Label>
             <Textarea
               id="description"
-              placeholder="Describe what this document contains..."
+              placeholder={t("descriptionPlaceholder")}
               value={uploadDescription}
               onChange={(e) => setUploadDescription(e.target.value)}
             />
           </div>
           
           <div>
-            <Label htmlFor="tags">Tags (Optional)</Label>
+            <Label htmlFor="tags">{t("tagsOptional")}</Label>
             <Input
               id="tags"
-              placeholder="Enter tags separated by commas"
+              placeholder={t("tagsPlaceholder")}
               value={uploadTags}
               onChange={(e) => setUploadTags(e.target.value)}
             />
@@ -202,7 +205,7 @@ export function DocumentUploadDialog({
                 checked={isCompanyWide}
                 onCheckedChange={setIsCompanyWide}
               />
-              <Label htmlFor="company-wide">Make available company-wide</Label>
+              <Label htmlFor="company-wide">{t("makeCompanyWide")}</Label>
             </div>
           )}
           
@@ -212,7 +215,7 @@ export function DocumentUploadDialog({
               onClick={() => handleOpenChange(false)}
               disabled={uploading}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               onClick={handleUpload}
@@ -221,12 +224,12 @@ export function DocumentUploadDialog({
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
+                  {t("uploadingEllipsis")}
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload
+                  {t("upload")}
                 </>
               )}
             </Button>

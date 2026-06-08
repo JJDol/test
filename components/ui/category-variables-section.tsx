@@ -15,6 +15,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,7 @@ export function CategoryVariablesSection({
   onVariableChange,
   onPropagationChange,
 }: CategoryVariablesSectionProps) {
+  const t = useTranslations("projectDetails");
   // Helper function to get the current scope for a variable in a template
   const getVariableScope = (templateName: string, variableName: string) => {
     return (propagationSettings as any)[category]?.[templateName]?.[variableName]?.currentScope;
@@ -87,13 +89,13 @@ export function CategoryVariablesSection({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            Category Variables
+            {t("categoryVariables")}
             <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-200 rounded px-2 min-w-[1.5rem] justify-center">
               {categoryVariables.length}
             </Badge>
           </h3>
           <p className="text-sm text-gray-600">
-            These variables appear in multiple templates within {category}
+            {t("categoryVariablesDescription", { category })}
           </p>
         </div>
         <Button
@@ -109,7 +111,7 @@ export function CategoryVariablesSection({
         <div className="grid gap-4">
           {categoryVariables.length === 0 && (
             <p className="text-sm text-gray-500 italic">
-              No category variables found. Category variables are shared across templates in this category.
+              {t("noCategoryVariablesFound")}
             </p>
           )}
           {categoryVariables.map((variable) => {
@@ -218,7 +220,7 @@ export function CategoryVariablesSection({
                         htmlFor={`use-category-${variable.name}`}
                         className="text-sm text-gray-600 cursor-pointer"
                       >
-                        Use category value
+                        {t("useCategoryValue")}
                       </label>
                     </div>
                   )}
@@ -226,13 +228,13 @@ export function CategoryVariablesSection({
                 
                 <div className="text-xs text-gray-600 space-y-1">
                   <p>
-                    Used in: {categoryTemplates.filter(template => 
+                    {t("usedIn")} {categoryTemplates.filter(template => 
                       template.variables.some(v => v.name === variable.name)
                     ).map(template => template.name).join(', ')}
                   </p>
                   {isGlobalVariable && (
                     <p className="text-blue-600">
-                      {useCategory ? 'Using category value' : 'Using global value'}
+                      {useCategory ? t("usingCategoryValue") : t("usingGlobalValue")}
                     </p>
                   )}
                 </div>

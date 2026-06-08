@@ -224,7 +224,7 @@ export function ProjectOverview({
       <div className="mb-4 pr-8">
         <div className="space-y-2 text-sm">
           <div>
-            <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">{t("projectLeader")}</p>
             {project.leaderName ? (
               <div className="mt-1">
                 <div className="group relative inline-block transition-transform duration-150 ease-out hover:scale-110">
@@ -270,19 +270,19 @@ export function ProjectOverview({
         <Card className="p-3">
           <h2 className="text-sm font-semibold mb-1">{t("variablesProgress")}</h2>
           <Progress value={overallProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{t("percentComplete", { value: overallProgress })}</p>
+          <p className="text-xs text-gray-600">{t("percentComplete", { percent: overallProgress })}</p>
         </Card>
 
         <Card className="p-3">
           <h2 className="text-sm font-semibold mb-1">{t("supervisorChecks")}</h2>
           <Progress value={checkedProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{t("percentChecked", { value: checkedProgress })}</p>
+          <p className="text-xs text-gray-600">{t("percentChecked", { percent: checkedProgress })}</p>
         </Card>
 
         <Card className="p-3">
           <h2 className="text-sm font-semibold mb-1">{t("controlProgress")}</h2>
           <Progress value={controlProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{t("percentComplete", { value: controlProgress })}</p>
+          <p className="text-xs text-gray-600">{t("percentComplete", { percent: controlProgress })}</p>
         </Card>
 
         <Card className="p-3">

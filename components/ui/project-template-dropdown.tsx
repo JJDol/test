@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronDown } from "lucide-react";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 
 interface ProjectTemplate {
   name: string;
@@ -33,6 +34,7 @@ export function ProjectTemplateDropdown({
   onTemplateSelect,
   onTemplateClear,
 }: ProjectTemplateDropdownProps) {
+  const tc = useTranslations("common");
   // Filter templates for this specific category
   const categoryTemplates = projectTemplates.filter(
     (template) => template.category === category
@@ -61,7 +63,7 @@ export function ProjectTemplateDropdown({
   return (
     <Select onValueChange={onTemplateSelect}>
       <SelectTrigger className="flex items-center justify-between">
-        <SelectValue placeholder={`Select ${getCategoryDisplayName(category).toLowerCase()} template`} />
+        <SelectValue placeholder={`Select ${tc(getCategoryTranslationKey(category)).toLowerCase()} template`} />
         <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
       </SelectTrigger>
       <SelectContent>

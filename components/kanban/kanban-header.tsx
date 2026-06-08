@@ -45,11 +45,19 @@ export function KanbanHeader({
         <h1 className="text-2xl font-bold">{title ?? t("title")}</h1>
         <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
           <span>{t("total")}: <span className="font-medium">{projectStats.total}</span></span>
-          {Object.entries(projectStats.byStage).map(([stage, count]) => (
-            <span key={stage}>
-              {stage.replace('_', ' ')}: <span className="font-medium">{count}</span>
-            </span>
-          ))}
+          {Object.entries(projectStats.byStage).map(([stage, count]) => {
+            const stageLabels: Record<string, string> = {
+              'TODO': t("toDo"),
+              'IN_PROGRESS': t("inProgress"),
+              'REVIEW': t("review"),
+              'COMPLETED': t("done"),
+            };
+            return (
+              <span key={stage}>
+                {stageLabels[stage] ?? stage.replace('_', ' ')}: <span className="font-medium">{count}</span>
+              </span>
+            );
+          })}
           {projectStats.archived > 0 && (
             <span>{t("archivedCount")}: <span className="font-medium">{projectStats.archived}</span></span>
           )}
@@ -61,7 +69,7 @@ export function KanbanHeader({
           variant="outline"
           onClick={onToggleArchived}
         >
-          {showArchived ? "Hide Archived" : "Show Archived"}
+          {showArchived ? t("hideArchived") : t("showArchived")}
         </Button>
       )}
     </div>

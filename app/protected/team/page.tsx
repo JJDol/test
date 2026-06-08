@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryDisplayName, getCategoryTranslationKey } from "@/lib/types/types";
 import {
   ALL_DISCIPLINE_FILTERS,
   DISCIPLINES,
@@ -61,6 +61,14 @@ export default function TeamPage() {
   const t = useTranslations("team");
   const tc = useTranslations("common");
   const { isCompanyAdmin } = useAuth();
+
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+    Unassigned: tc("unassigned"),
+  };
   const [members, setMembers] = useState<RawMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -237,7 +245,7 @@ export default function TeamPage() {
                     : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
                 )}
               >
-                {d}
+                {disciplineDisplayMap[d] ?? d}
                 <span
                   className={cn(
                     "inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold",
@@ -327,7 +335,14 @@ function MemberRow({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const t = useTranslations("team");
   const tc = useTranslations("common");
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+  };
   return (
     <button
       type="button"
@@ -364,7 +379,7 @@ function MemberRow({
               member.discipline ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            {member.discipline ?? tc("unassigned")}
+            {member.discipline ? (disciplineDisplayMap[member.discipline] ?? member.discipline) : tc("unassigned")}
           </span>
         </div>
 
@@ -500,6 +515,12 @@ function DisciplineEditor({
 }) {
   const t = useTranslations("team");
   const tc = useTranslations("common");
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+  };
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -545,7 +566,7 @@ function DisciplineEditor({
             discipline ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          {discipline ?? tc("unassigned")}
+          {discipline ? (disciplineDisplayMap[discipline] ?? discipline) : tc("unassigned")}
         </span>
         {canEdit && (
           <button
@@ -583,7 +604,7 @@ function DisciplineEditor({
               onClick={() => save(d)}
               className={selectorChipClass(active)}
             >
-              {d}
+              {disciplineDisplayMap[d] ?? d}
             </button>
           );
         })}
@@ -626,6 +647,7 @@ function AssignmentDocumentsToggle({
   assignment: ProjectAssignment;
 }) {
   const t = useTranslations("team");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const count = assignment.templates.length;
 
@@ -663,7 +685,7 @@ function AssignmentDocumentsToggle({
               className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-1.5 text-xs"
               title={
                 tmpl.category
-                  ? `${getCategoryDisplayName(tmpl.category)}${
+                  ? `${tc(getCategoryTranslationKey(tmpl.category))}${
                       tmpl.isSupervisor ? " · supervisor" : ""
                     }`
                   : tmpl.isSupervisor
@@ -675,7 +697,7 @@ function AssignmentDocumentsToggle({
               <span className="truncate flex-1">{tmpl.templateName}</span>
               {tmpl.category && (
                 <span className="rounded bg-muted px-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
-                  {getCategoryDisplayName(tmpl.category)}
+                  {tc(getCategoryTranslationKey(tmpl.category))}
                 </span>
               )}
               {tmpl.isSupervisor && (

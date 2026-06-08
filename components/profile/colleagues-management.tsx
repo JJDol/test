@@ -260,6 +260,12 @@ interface ColleagueRowProps {
 function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRole }: ColleagueRowProps) {
   const t = useTranslations("team");
   const tc = useTranslations("common");
+  const roleDisplayMap: Record<string, string> = {
+    USER: t("roleUser"),
+    MANAGER: t("roleManager"),
+    COMPANY_ADMIN: t("roleCompanyAdmin"),
+    ADMIN: t("roleAdmin"),
+  };
   return (
     <div className="grid grid-cols-[1fr_160px_auto] items-center px-4 py-3.5 border-b last:border-b-0 hover:bg-muted/20 transition-colors">
       {/* Member */}
@@ -281,7 +287,7 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
 
       {/* Role */}
       <div>
-        <span className="text-sm">{colleague.role}</span>
+        <span className="text-sm">{roleDisplayMap[colleague.role] ?? colleague.role}</span>
       </div>
 
       {/* Actions */}
@@ -313,7 +319,7 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <span className="text-xs text-muted-foreground italic">{tc("protected")}</span>
+          <span className="text-xs text-muted-foreground italic">{t("protected")}</span>
         )}
       </div>
     </div>
@@ -443,6 +449,12 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
 
 function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: InvitationRowProps) {
   const t = useTranslations("team");
+  const roleDisplayMap: Record<string, string> = {
+    USER: t("roleUser"),
+    MANAGER: t("roleManager"),
+    COMPANY_ADMIN: t("roleCompanyAdmin"),
+    ADMIN: t("roleAdmin"),
+  };
   const isExpired = invitation.status === "expired";
   const badgeClasses = isExpired
     ? "bg-red-100 text-red-700 border-red-200"
@@ -471,7 +483,7 @@ function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: Invi
 
       {/* Role */}
       <div>
-        <span className="text-sm">{invitation.role}</span>
+        <span className="text-sm">{roleDisplayMap[invitation.role] ?? invitation.role}</span>
       </div>
 
       {/* Actions */}

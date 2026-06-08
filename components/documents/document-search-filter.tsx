@@ -57,10 +57,10 @@ export function DocumentSearchFilter({
               <SelectValue placeholder={tc("filter")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Documents</SelectItem>
-              <SelectItem value="personal">Personal Only</SelectItem>
-              <SelectItem value="company">Company-wide</SelectItem>
-              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="all">{t("allDocuments")}</SelectItem>
+              <SelectItem value="personal">{t("personalOnly")}</SelectItem>
+              <SelectItem value="company">{t("companyWide")}</SelectItem>
+              <SelectItem value="public">{t("public")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

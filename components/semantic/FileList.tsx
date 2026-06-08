@@ -49,7 +49,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       setError(null);
     } catch (error) {
       console.error('Error loading files:', error);
-      setError('Failed to load files');
+      setError(t("failedToLoadFiles"));
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +92,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onUpdate?.();
     } catch (error) {
       console.error('Error deleting file:', error);
-      setError('Failed to delete file');
+      setError(t("failedToDeleteFile"));
     }
   };
 
@@ -105,7 +105,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onNewChat?.();
     } catch (error) {
       console.error('Error starting new chat:', error);
-      setError('Failed to start new chat');
+      setError(t("failedToStartNewChat"));
     } finally {
       setIsRemoving(false);
     }
@@ -119,7 +119,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onUpdate?.();
     } catch (error) {
       console.error('Error reingesting documents:', error);
-      setError('Failed to reingest documents');
+      setError(t("failedToReingest"));
       setIsReingesting(false);
     }
   };
@@ -156,7 +156,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
             ) : (
               <Plus className="h-5 w-5 mr-2" />
             )}
-            New Chat
+            {t("newChat")}
           </Button>
           <Button
             variant="outline"
@@ -170,7 +170,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Reingest All
+            {t("reingestAll")}
           </Button>
         </div>
       </div>
@@ -206,7 +206,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                       </p>
                       {file.isTemporary && (
                         <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">
-                          Temporary
+                          {t("temporary")}
                         </Badge>
                       )}
                       {file.ingestionStatus && file.ingestionStatus !== 'completed' && (
@@ -215,8 +215,8 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                           file.ingestionStatus === 'failed' && "text-red-600 border-red-300 bg-red-50",
                           file.ingestionStatus === 'pending' && "text-gray-600 border-gray-300 bg-gray-50",
                         )}>
-                          {file.ingestionStatus === 'processing' ? 'Processing...' : 
-                           file.ingestionStatus === 'failed' ? 'Failed' : 'Pending'}
+                          {file.ingestionStatus === 'processing' ? t("processing") : 
+                           file.ingestionStatus === 'failed' ? t("failed") : t("pending")}
                         </Badge>
                       )}
                     </div>

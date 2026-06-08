@@ -63,7 +63,7 @@ export function DocumentList({
   const resolvedTitle = title ?? t("title");
   const resolvedEmptyMessage = emptyMessage ?? t("noDocuments");
   const resolvedEmptySubMessage = emptySubMessage ?? t("uploadDescription");
-  const defaultDescription = `${documents.length} document${documents.length !== 1 ? 's' : ''} found`;
+  const defaultDescription = t("documentsFound", { count: documents.length });
 
   return (
     <Card className={className}>

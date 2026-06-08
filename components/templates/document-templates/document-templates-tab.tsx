@@ -27,7 +27,7 @@ import { LoadingStateInline } from "@/components/ui/loading-state-inline";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Archive, RotateCcw, Loader2, ChevronDown, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, CalendarArrowDown, CalendarArrowUp } from "lucide-react";
-import { DocumentTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentTemplate, DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import type { SortMode } from "@/hooks/use-templates";
 import { TemplateUploadForm } from "@/components/ui/template-upload-form";
 import { DocumentTemplateCard } from "./document-template-card";
@@ -170,25 +170,25 @@ export function DocumentTemplatesTab({
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                Sort
+                {tc("sort")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => actions.setSortMode('name-asc')} className={sortMode === 'name-asc' ? 'bg-accent' : ''}>
                 <ArrowDownAZ className="mr-2 h-4 w-4" />
-                Name (A → Z)
+                {tc("nameAZ")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('name-desc')} className={sortMode === 'name-desc' ? 'bg-accent' : ''}>
                 <ArrowUpAZ className="mr-2 h-4 w-4" />
-                Name (Z → A)
+                {tc("nameZA")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-newest')} className={sortMode === 'modified-newest' ? 'bg-accent' : ''}>
                 <CalendarArrowDown className="mr-2 h-4 w-4" />
-                Modified (Newest)
+                {tc("modifiedNewest")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-oldest')} className={sortMode === 'modified-oldest' ? 'bg-accent' : ''}>
                 <CalendarArrowUp className="mr-2 h-4 w-4" />
-                Modified (Oldest)
+                {tc("modifiedOldest")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -197,7 +197,7 @@ export function DocumentTemplatesTab({
             onClick={actions.toggleShowArchived}
           >
             <Archive className="mr-2 h-4 w-4" />
-            {showArchived ? "Hide Archived" : "Show Archived"}
+            {showArchived ? t("hideArchived") : t("showArchived")}
             {archivedTemplates.length > 0 && (
               <span className="ml-2 bg-muted px-2 py-0.5 rounded-full text-xs">
                 {archivedTemplates.length}
@@ -252,7 +252,7 @@ export function DocumentTemplatesTab({
             <AccordionItem key={category} value={category} className="border-0 mb-2">
               <AccordionTrigger className="bg-muted/50 hover:bg-muted px-4 py-4 rounded-lg hover:no-underline justify-start [&>svg]:order-first [&>svg]:mr-3 [&>svg]:ml-0">
                 <div className="flex items-center gap-3">
-                  <span className="font-bold uppercase tracking-wide">{category}</span>
+                  <span className="font-bold uppercase tracking-wide">{tc(getCategoryTranslationKey(category as DocumentCategory))}</span>
                   <span className="text-muted-foreground font-normal">{categoryTemplates.length}</span>
                 </div>
               </AccordionTrigger>
@@ -311,7 +311,7 @@ export function DocumentTemplatesTab({
                   <div>
                     <h3 className="font-medium">{template.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {getCategoryDisplayName(template.category)}
+                      {tc(getCategoryTranslationKey(template.category))}
                       {template.archived_at && (
                         <span className="ml-2">
                           • {t("archivedDate")} {new Date(template.archived_at).toLocaleDateString()}

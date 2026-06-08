@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateSelectorDialog } from "@/components/ui/template-selector-dialog";
 import { RefreshCw, Plus, LayoutGrid, List, ArrowUpDown, Check } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DocumentCategory, getCategoryDisplayName, VariablePropagationScope } from "@/lib/types/types";
+import { DocumentCategory, getCategoryDisplayName, getCategoryTranslationKey, VariablePropagationScope } from "@/lib/types/types";
 import { GeneralVariablesSection} from './general-variables-section';
 import { CategoryVariablesSection } from "@/components/ui/category-variables-section";
 import { DocumentTemplateCard } from './document-template-card';
@@ -199,7 +199,7 @@ export function ProjectDocumentsSection({
                   className="px-4 py-2"
                 >
                   <div className="flex items-center gap-2">
-                    {getCategoryDisplayName(category)}
+                    {tc(getCategoryTranslationKey(category))}
                     {count > 0 && (
                       <Badge 
                         variant="default" 
@@ -218,7 +218,7 @@ export function ProjectDocumentsSection({
           <div className="mt-8 mb-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-3xl font-bold tracking-tight">
-                {t("categoryDocuments", { category: getCategoryDisplayName(activeCategory) })}
+                {t("categoryDocuments", { category: tc(getCategoryTranslationKey(activeCategory)) })}
               </h1>
               <Button 
                 variant="outline" 
@@ -227,7 +227,7 @@ export function ProjectDocumentsSection({
                 className="gap-2"
               >
                 <RefreshCw className="h-4 w-4" />
-                Refresh
+                {t("refresh")}
               </Button>
             </div>
           </div>
@@ -368,7 +368,7 @@ export function ProjectDocumentsSection({
                                 trigger={
                                   <Button size="sm" className="gap-2" disabled={isLocked}>
                                     <Plus className="h-4 w-4" />
-                                    {t("addCategoryDocument", { category: getCategoryDisplayName(category) })}
+                                    {t("addCategoryDocument", { category: tc(getCategoryTranslationKey(category)) })}
                                   </Button>
                                 }
                               />
@@ -417,7 +417,7 @@ export function ProjectDocumentsSection({
                                       fallback={
                                         <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
                           <p className="text-destructive text-sm">
-                            {t("errorLoadingTemplate")}: {template.name}
+                            {t("errorLoadingTemplate", { name: template.name })}
                           </p>
                                         </div>
                                       }
@@ -466,10 +466,10 @@ export function ProjectDocumentsSection({
                       {templateNames.length === 0 && (
                         <div className="text-center py-8">
                           <p className="text-gray-500">
-                            {t("noDocumentsYet")}
+                            {t("noDocumentsYet", { category })}
                           </p>
                           <p className="text-sm text-gray-400 mt-2">
-                            {t("clickAddToStart")}
+                            {t("clickAddToStart", { category })}
                           </p>
                         </div>
                       )}

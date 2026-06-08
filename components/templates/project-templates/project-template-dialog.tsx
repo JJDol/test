@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
-import { DocumentCategory, getCategoryDisplayName, DocumentTemplate } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey, DocumentTemplate } from "@/lib/types/types";
 
 interface ProjectTemplateDialogProps {
   open: boolean;
@@ -121,7 +121,7 @@ export function ProjectTemplateDialog({
               <SelectContent>
                 {Object.values(DocumentCategory).map((category) => (
                   <SelectItem key={category} value={category}>
-                    {getCategoryDisplayName(category)}
+                    {tc(getCategoryTranslationKey(category))}
                   </SelectItem>
                 ))}
               </SelectContent>

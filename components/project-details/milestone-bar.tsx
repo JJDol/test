@@ -141,6 +141,7 @@ function ChevronColumn({
   canManagePhases,
 }: ChevronColumnProps) {
   const [addOpen, setAddOpen] = React.useState(false);
+  const t = useTranslations("projectDetails");
   const { definition, projectPhase, state, isLocked } = slot;
 
   const isCurrent = state === "current";
@@ -174,7 +175,7 @@ function ChevronColumn({
   // Display label — we render "Phase N" in the bar rather than the raw
   // short code (P1/P2/…) stored on the definition. Keeps the UI readable at
   // a glance without touching the DB schema.
-  const displayLabel = `Phase ${definition.display_order}`;
+  const displayLabel = t("phaseLabel", { number: definition.display_order });
 
   // Irrelevant slots get a *different* render path: instead of a filled,
   // CSS-clipped chevron we draw the chevron outline as dashed SVG strokes
@@ -223,7 +224,7 @@ function ChevronColumn({
   const currentBadge = isCurrent ? (
     <div className="pointer-events-none absolute left-1/2 -top-4 flex -translate-x-1/2 flex-col items-center">
       <span className="whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-sm">
-        Current phase
+        {t("currentPhase")}
       </span>
       <span className="h-1.5 w-px bg-primary/70" />
     </div>
@@ -241,7 +242,7 @@ function ChevronColumn({
     >
       {definition.name}
       {isIrrelevant && (
-        <span className="ml-1 opacity-70">· not in project</span>
+        <span className="ml-1 opacity-70">· {t("notInProject")}</span>
       )}
     </span>
   );

@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { CategorySelector } from "@/components/ui/category-selector";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import { BaseVariable } from "@/lib/types/variable-types";
 
 type DocumentTypeDefinition = {
@@ -1235,7 +1235,7 @@ export function VariablesContent() {
           <p className="text-sm font-semibold text-muted-foreground">{t("globalVariables")}</p>
         </div>
         <p className="text-xs text-muted-foreground/80">
-          {globalVariables.length} {t("globalDescription")}
+          {t("globalDescription", { count: globalVariables.length })}
         </p>
 
         {!isCollapsed && (
@@ -1474,7 +1474,7 @@ export function VariablesContent() {
 
   const renderCategoryPanel = (category: DocumentCategory) => {
     const categoryTypes = documentTypes[category] ?? [];
-    const displayName = getCategoryDisplayName(category);
+    const displayName = tc(getCategoryTranslationKey(category));
     const defaults = categoryDefaults[category] ?? [];
 
     return (
@@ -1576,7 +1576,7 @@ export function VariablesContent() {
               <DialogDescription>
                 {dialogState.mode === "edit"
                   ? `${t("updateDefinition")} ${dialogState.documentType.name}.`
-                  : `${t("addDefinition")} ${getCategoryDisplayName(dialogState.category)}.`}
+                  : `${t("addDefinition")} ${tc(getCategoryTranslationKey(dialogState.category))}.`}
               </DialogDescription>
             )}
           </DialogHeader>

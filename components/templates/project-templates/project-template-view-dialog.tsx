@@ -12,7 +12,7 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ProjectTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { ProjectTemplate, DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 
 interface ProjectTemplateViewDialogProps {
   open: boolean;
@@ -34,7 +34,7 @@ export function ProjectTemplateViewDialog({
         <DialogHeader>
           <DialogTitle>Project Template: {viewProjectTemplate?.name}</DialogTitle>
           <DialogDescription>
-            Category: {viewProjectTemplate ? getCategoryDisplayName(viewProjectTemplate.category as DocumentCategory) : ''}
+            Category: {viewProjectTemplate ? tc(getCategoryTranslationKey(viewProjectTemplate.category as DocumentCategory)) : ''}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 max-h-[420px] overflow-y-auto">

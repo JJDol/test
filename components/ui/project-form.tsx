@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory } from "@/lib/types/types";
 import {
   Select,
   SelectContent,

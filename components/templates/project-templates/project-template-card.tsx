@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
-import { ProjectTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { ProjectTemplate, DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 
 interface ProjectTemplateCardProps {
   projectTemplate: ProjectTemplate;
@@ -41,6 +41,7 @@ export function ProjectTemplateCard({
   onDownload,
   className = ""
 }: ProjectTemplateCardProps) {
+  const t = useTranslations("templates");
   const tc = useTranslations("common");
   return (
     <Card
@@ -52,7 +53,7 @@ export function ProjectTemplateCard({
           <div>
             <CardTitle className="text-base">{projectTemplate.name}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              {getCategoryDisplayName(projectTemplate.category as DocumentCategory)}
+              {tc(getCategoryTranslationKey(projectTemplate.category as DocumentCategory))}
             </p>
           </div>
           <DropdownMenu modal={false}>
@@ -90,13 +91,13 @@ export function ProjectTemplateCard({
       </CardHeader>
       <CardContent className="pt-0">
         <div className="text-sm text-muted-foreground">
-          {projectTemplate.templates.length} templates
+          {projectTemplate.templates.length === 1 ? t("oneTemplate") : t("nTemplates", { count: projectTemplate.templates.length })}
         </div>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
         <div className="flex items-center justify-between w-full">
-          <span>Last updated: {new Date(projectTemplate.updated_at).toLocaleDateString()}</span>
-          <span>Created by: —</span>
+          <span>{t("lastUpdated")}: {new Date(projectTemplate.updated_at).toLocaleDateString()}</span>
+          <span>{t("createdBy")}: —</span>
         </div>
       </CardFooter>
     </Card>

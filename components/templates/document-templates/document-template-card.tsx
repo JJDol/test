@@ -91,13 +91,13 @@ export function DocumentTemplateCard({
       // TODO: This toast doesnt show
       toast({
         title: tc("success"),
-        description: "Template downloaded successfully",
+        description: t("templateDownloaded"),
       });
     } catch (error) {
       console.error('Error downloading template:', error);
       toast({
         title: tc("error"),
-        description: error instanceof Error ? error.message : "Failed to download template",
+        description: error instanceof Error ? error.message : t("failedToDownload"),
         variant: "destructive",
       });
     } finally {
@@ -123,7 +123,7 @@ export function DocumentTemplateCard({
           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           <span className="text-base font-medium truncate">{template.name}</span>
           <Badge variant={template.is_public ? "default" : "secondary"} className="shrink-0">
-            {template.is_public ? "Public" : "Private"}
+            {template.is_public ? t("public") : t("private")}
           </Badge>
           <Badge variant="outline" className="text-xs shrink-0">
             v{template.current_version || 1}
@@ -133,7 +133,7 @@ export function DocumentTemplateCard({
         {/* Right: modified + actions */}
         <div className="flex items-center gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm text-muted-foreground hidden sm:inline whitespace-nowrap">
-            Modified {template.updated_at ? new Date(template.updated_at).toLocaleDateString() : 'Unknown'}
+            {t("lastUpdated")}: {template.updated_at ? new Date(template.updated_at).toLocaleDateString() : '—'}
           </span>
           <div className="flex items-center gap-1">
             <Button

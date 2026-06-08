@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -16,27 +17,22 @@ export function ProjectsList({
   projects, 
   isLoading, 
   error,
-  title = "My Projects",
-  description = "Projects assigned to you",
-  emptyMessage = "No projects assigned to you yet.",
   className = ""
 }: ProjectsListProps & {
-  title?: string;
-  description?: string;
-  emptyMessage?: string;
   className?: string;
 }) {
+  const t = useTranslations("profile");
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle>{t("myProjects")}</CardTitle>
+        <CardDescription>{t("projectsAssigned")}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <LoadingState 
             variant="inline" 
-            message="Loading your assigned projects..." 
+            message={t("loadingProjects")}
             size="sm"
           />
         ) : error ? (
@@ -51,7 +47,7 @@ export function ProjectsList({
           </div>
         ) : (
           <div className="text-center py-6">
-            <p className="text-muted-foreground">{emptyMessage}</p>
+            <p className="text-muted-foreground">{t("noProjectsAssigned")}</p>
           </div>
         )}
       </CardContent>
@@ -64,6 +60,7 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project }: ProjectCardProps) {
+  const t = useTranslations("profile");
   return (
     <div className="border rounded-lg p-4">
       <div className="flex justify-between items-center mb-2">
@@ -73,15 +70,15 @@ function ProjectCard({ project }: ProjectCardProps) {
         </span>
       </div>
       <div className="text-sm text-muted-foreground mb-4">
-        <p>Location: {project.location}</p>
+        <p>{t("location")}: {project.location}</p>
         <p>
-          Start Date:{" "}
+          {t("startDate")}:{" "}
           {project.start_date
             ? new Date(project.start_date).toLocaleDateString()
             : "—"}
         </p>
         <p>
-          Phase Deadline:{" "}
+          {t("phaseDeadline")}:{" "}
           {project.current_phase_deadline
             ? new Date(project.current_phase_deadline).toLocaleDateString()
             : "—"}
@@ -89,7 +86,7 @@ function ProjectCard({ project }: ProjectCardProps) {
       </div>
       <Button asChild variant="outline" size="sm">
         <Link href={`/protected/dashboard/project/${project.id}`}>
-          View Project
+          {t("viewProject")}
         </Link>
       </Button>
     </div>

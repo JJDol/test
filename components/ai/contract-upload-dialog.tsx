@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, FileText, Sparkles, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ContractData, contractExtractor } from "@/lib/services/ai/contract-extractor";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory } from "@/lib/types/types";
 import { ProjectTemplateDropdown } from "@/components/ui/project-template-dropdown";
 import { CategoryTabsList } from "@/components/ui/category-tabs-list";
 import { Tabs, TabsContent } from "@/components/ui/tabs";

@@ -84,7 +84,7 @@ export function GeneralVariablesSection({
             </Badge>
           </h3>
           <p className="text-sm text-gray-600">
-            These variables appear in multiple categories
+            {t("globalVariablesDescription")}
           </p>
         </div>
         <Button
@@ -100,7 +100,7 @@ export function GeneralVariablesSection({
         <div className="grid gap-4">
           {globalVariables.length === 0 && (
             <p className="text-sm text-gray-500 italic">
-              No global variables found. Global variables are shared across all categories.
+              {t("noGlobalVariablesFound")}
             </p>
           )}
           {globalVariables.map((variable) => {
@@ -169,7 +169,7 @@ export function GeneralVariablesSection({
                 />
                 <p className="text-xs text-gray-600">
                   
-                  Used in: {(() => {
+                  {t("usedIn")} {(() => {
                     const projectTemplateNames = getProjectTemplateNames();
                     const matchingTemplates = allTemplates.filter(template => 
                       template.variables.some(v => v.name === variable.name) &&

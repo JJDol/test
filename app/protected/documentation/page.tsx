@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense } from 'react';
+import { useTranslations } from "next-intl";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 import { 
   Card, 
@@ -10,7 +11,6 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { 
   BookOpen, 
   FileText, 
@@ -19,7 +19,6 @@ import {
   Users, 
   FileIcon, 
   Plus,
-  Download,
   Upload,
   MessageSquare,
   Settings,
@@ -28,7 +27,6 @@ import {
   Info,
   Lightbulb,
   Target,
-  Clock,
   UserCheck
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -44,6 +42,7 @@ export default function DocumentationPage() {
 function DocumentationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("manual");
   const currentTab = (searchParams?.get('tab') as 'getting-started' | 'projects' | 'templates' | 'ai-search' | 'team') || 'getting-started';
 
   const handleTabChange = (value: string) => {
@@ -53,24 +52,24 @@ function DocumentationContent() {
   };
 
   return (
-    <ProtectedPageWrapper loadingMessage="Loading documentation...">
+    <ProtectedPageWrapper loadingMessage={t("loadingDocumentation")}>
       <div className="container mx-auto py-8">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">User Manual</h1>
+            <h1 className="text-4xl font-bold mb-4">{t("title")}</h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Everything you need to know to effectively use Aticon for managing your architecture and construction projects
+              {t("subtitle")}
             </p>
           </div>
 
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="getting-started">Getting Started</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="ai-search">AI Assistant</TabsTrigger>
-            <TabsTrigger value="team">Team Management</TabsTrigger>
+            <TabsTrigger value="getting-started">{t("gettingStarted")}</TabsTrigger>
+            <TabsTrigger value="projects">{t("projects")}</TabsTrigger>
+            <TabsTrigger value="templates">{t("templates")}</TabsTrigger>
+            <TabsTrigger value="ai-search">{t("aiAssistant")}</TabsTrigger>
+            <TabsTrigger value="team">{t("teamManagement")}</TabsTrigger>
           </TabsList>
 
           {/* Getting Started Tab */}
@@ -80,37 +79,37 @@ function DocumentationContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BookOpen className="h-5 w-5" />
-                    Welcome to Aticon
+                    {t("welcomeToAticon")}
                   </CardTitle>
                   <CardDescription>
-                    Your complete platform for managing construction and architecture projects
+                    {t("welcomeDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <QuickStartCard 
                       icon={<FolderKanban className="h-8 w-8" />}
-                      title="Manage Projects"
-                      description="Create, organize, and track your construction and architecture projects from start to finish"
-                      features={["Project timelines", "Team assignments", "Progress tracking"]}
+                      title={t("manageProjects")}
+                      description={t("manageProjectsDescription")}
+                      features={[t("projectTimelines"), t("teamAssignments"), t("progressTracking")]}
                     />
                     <QuickStartCard 
                       icon={<FileIcon className="h-8 w-8" />}
-                      title="Generate Documents"
-                      description="Use professional templates to create consistent, high-quality project documents"
-                      features={["Pre-built templates", "Custom variables", "Instant generation"]}
+                      title={t("generateDocuments")}
+                      description={t("generateDocumentsDescription")}
+                      features={[t("preBuiltTemplates"), t("customVariables"), t("instantGeneration")]}
                     />
                     <QuickStartCard 
                       icon={<MessageSquare className="h-8 w-8" />}
-                      title="AI Assistant"
-                      description="Get instant answers about building regulations and project requirements"
-                      features={["Danish BR18 regulations", "Project context", "Smart search"]}
+                      title={t("aiAssistantTitle")}
+                      description={t("aiAssistantDescription")}
+                      features={[t("danishBR18"), t("projectContext"), t("smartSearch")]}
                     />
                     <QuickStartCard 
                       icon={<Users className="h-8 w-8" />}
-                      title="Team Collaboration"
-                      description="Work together with your team members and manage permissions"
-                      features={["Role-based access", "Task assignments", "Progress updates"]}
+                      title={t("teamCollaboration")}
+                      description={t("teamCollaborationDescription")}
+                      features={[t("roleBasedAccess"), t("taskAssignments"), t("progressUpdates")]}
                     />
                   </div>
                 </CardContent>
@@ -118,29 +117,29 @@ function DocumentationContent() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Setup Checklist</CardTitle>
+                  <CardTitle>{t("quickSetupChecklist")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <ChecklistItem 
                       icon={<UserCheck className="h-4 w-4" />}
-                      title="Complete your profile"
-                      description="Add your name and company information"
+                      title={t("completeProfile")}
+                      description={t("completeProfileDescription")}
                     />
                     <ChecklistItem 
                       icon={<Users className="h-4 w-4" />}
-                      title="Invite team members"
-                      description="Add colleagues to your company workspace"
+                      title={t("inviteTeamMembers")}
+                      description={t("inviteTeamMembersDescription")}
                     />
                     <ChecklistItem 
                       icon={<FolderKanban className="h-4 w-4" />}
-                      title="Create your first project"
-                      description="Set up a project to start organizing your work"
+                      title={t("createFirstProject")}
+                      description={t("createFirstProjectDescription")}
                     />
                     <ChecklistItem 
                       icon={<FileIcon className="h-4 w-4" />}
-                      title="Explore templates"
-                      description="Browse available document templates for your projects"
+                      title={t("exploreTemplates")}
+                      description={t("exploreTemplatesDescription")}
                     />
                   </div>
                 </CardContent>
@@ -155,52 +154,36 @@ function DocumentationContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FolderKanban className="h-5 w-5" />
-                    Project Management
+                    {t("projectManagement")}
                   </CardTitle>
                   <CardDescription>
-                    Create, organize, and track your construction and architecture projects
+                    {t("projectManagementDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     <StepSection
-                      title="Creating a New Project"
+                      title={t("creatingNewProject")}
                       icon={<Plus className="h-5 w-5" />}
-                      steps={[
-                        "Navigate to the Dashboard and click 'Create New Project'",
-                        "Enter project details: name, project address, client information",
-                        "Set project start date and select the project stage",
-                        "Assign a project leader from your team",
-                        "Choose which document templates you'll need",
-                        "Save the project to start working"
-                      ]}
-                      tip="Choose templates carefully - you can always add more later, but it's easier to select them upfront."
+                      steps={[t("creatingStep1"), t("creatingStep2"), t("creatingStep3"), t("creatingStep4"), t("creatingStep5"), t("creatingStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("creatingTip")}
                     />
 
                     <StepSection
-                      title="Managing Project Progress"
+                      title={t("managingProgress")}
                       icon={<Target className="h-5 w-5" />}
-                      steps={[
-                        "Use the Kanban board to track project stages: To Do, In Progress, Review, Done",
-                        "Update project status as work progresses",
-                        "Assign specific documents to team members",
-                        "Monitor deadlines and progress on the dashboard",
-                        "Archive completed projects to keep your workspace organized"
-                      ]}
-                      tip="Regular status updates help keep everyone on the same page and ensure deadlines are met."
+                      steps={[t("managingStep1"), t("managingStep2"), t("managingStep3"), t("managingStep4"), t("managingStep5")]}
+                      tipLabel={t("tip")}
+                      tip={t("managingTip")}
                     />
 
                     <StepSection
-                      title="Working with Project Variables"
+                      title={t("workingWithVariables")}
                       icon={<Settings className="h-5 w-5" />}
-                      steps={[
-                        "Access project variables from the project detail page",
-                        "Fill in general variables that apply to all documents (client name, address, etc.)",
-                        "Set specific variables for individual templates",
-                        "Use the 'General Variables' tab to manage shared information",
-                        "Generate documents with pre-filled project information"
-                      ]}
-                      tip="Setting up general variables saves time when generating multiple documents for the same project."
+                      steps={[t("variablesStep1"), t("variablesStep2"), t("variablesStep3"), t("variablesStep4"), t("variablesStep5")]}
+                      tipLabel={t("tip")}
+                      tip={t("variablesTip")}
                     />
                   </div>
                 </CardContent>
@@ -215,84 +198,73 @@ function DocumentationContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileIcon className="h-5 w-5" />
-                    Document Templates
+                    {t("documentTemplates")}
                   </CardTitle>
                   <CardDescription>
-                    Professional templates for all your project documentation needs
+                    {t("documentTemplatesDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <TemplateCategory 
-                        title="Architecture"
-                        description="Building design and planning documents"
-                        count="12 templates"
+                        title={t("architecture")}
+                        description={t("architectureDescription")}
+                        count={t("nTemplates", { count: 12 })}
                         color="bg-blue-100 text-blue-700"
                       />
                       <TemplateCategory 
-                        title="Constructions"
-                        description="Construction planning and execution"
-                        count="8 templates"
+                        title={t("constructions")}
+                        description={t("constructionsDescription")}
+                        count={t("nTemplates", { count: 8 })}
                         color="bg-orange-100 text-orange-700"
                       />
                       <TemplateCategory 
-                        title="Fire Safety"
-                        description="Fire safety plans and documentation"
-                        count="6 templates"
+                        title={t("fireSafety")}
+                        description={t("fireSafetyDescription")}
+                        count={t("nTemplates", { count: 6 })}
                         color="bg-red-100 text-red-700"
                       />
                       <TemplateCategory 
-                        title="Authority Processing"
-                        description="Municipal and authority documentation"
-                        count="4 templates"
+                        title={t("authorityProcessing")}
+                        description={t("authorityProcessingDescription")}
+                        count={t("nTemplates", { count: 4 })}
                         color="bg-purple-100 text-purple-700"
                       />
                       <TemplateCategory 
-                        title="Energy"
-                        description="Energy efficiency and sustainability"
-                        count="7 templates"
+                        title={t("energy")}
+                        description={t("energyDescription")}
+                        count={t("nTemplates", { count: 7 })}
                         color="bg-yellow-100 text-yellow-700"
                       />
                       <TemplateCategory 
-                        title="HVAC"
-                        description="Heating, ventilation, and air conditioning"
-                        count="10 templates"
+                        title={t("hvac")}
+                        description={t("hvacDescription")}
+                        count={t("nTemplates", { count: 10 })}
                         color="bg-green-100 text-green-700"
                       />
                       <TemplateCategory 
-                        title="Execution Control"
-                        description="Quality control and execution monitoring"
-                        count="5 templates"
+                        title={t("executionControl")}
+                        description={t("executionControlDescription")}
+                        count={t("nTemplates", { count: 5 })}
                         color="bg-indigo-100 text-indigo-700"
                       />
                     </div>
 
                     <StepSection
-                      title="Using Templates"
+                      title={t("usingTemplates")}
                       icon={<FileText className="h-5 w-5" />}
-                      steps={[
-                        "Browse templates by category or search by name",
-                        "Select a template that matches your project needs",
-                        "Review the required variables and information needed",
-                        "Fill in project-specific information in the variable fields",
-                        "Generate the document and download or save to your project",
-                        "Edit the generated document as needed for your specific requirements"
-                      ]}
-                      tip="Templates are designed to be starting points - feel free to customize the generated documents for your specific needs."
+                      steps={[t("usingTemplatesStep1"), t("usingTemplatesStep2"), t("usingTemplatesStep3"), t("usingTemplatesStep4"), t("usingTemplatesStep5"), t("usingTemplatesStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("usingTemplatesTip")}
                     />
 
                     <StepSection
-                      title="Managing Template Variables"
+                      title={t("managingTemplateVariables")}
                       icon={<Settings className="h-5 w-5" />}
-                      steps={[
-                        "Each template has predefined variables (placeholders for information)",
-                        "Variables can be text, numbers, dates, or even images",
-                        "Some variables are marked as 'general' and can be shared across templates",
-                        "Fill in variables at the project level to speed up document generation",
-                        "Use the Enhanced Variables tab to see all variables across templates"
-                      ]}
-                      tip="Setting up project-level variables once saves time when generating multiple documents."
+                      steps={[t("templateVariablesStep1"), t("templateVariablesStep2"), t("templateVariablesStep3"), t("templateVariablesStep4"), t("templateVariablesStep5")]}
+                      tipLabel={t("tip")}
+                      tip={t("templateVariablesTip")}
                     />
                   </div>
                 </CardContent>
@@ -307,10 +279,10 @@ function DocumentationContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5" />
-                    AI Assistant
+                    {t("aiAssistant")}
                   </CardTitle>
                   <CardDescription>
-                    Get instant answers about building regulations, project requirements, and uploaded documents
+                    {t("aiAssistantPageDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -318,60 +290,48 @@ function DocumentationContent() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <AIFeatureCard 
                         icon={<Search className="h-6 w-6" />}
-                        title="Smart Search"
-                        description="Ask questions in natural language and get relevant answers from your documents"
+                        title={t("smartSearchTitle")}
+                        description={t("smartSearchDescription")}
                       />
                       <AIFeatureCard 
                         icon={<BookOpen className="h-6 w-6" />}
-                        title="BR18 Regulations"
-                        description="Access Danish building regulations with instant explanations and references"
+                        title={t("br18Regulations")}
+                        description={t("br18RegulationsDescription")}
                       />
                       <AIFeatureCard 
                         icon={<Target className="h-6 w-6" />}
-                        title="Project Context"
-                        description="Get answers specific to your current projects and their requirements"
+                        title={t("projectContextTitle")}
+                        description={t("projectContextDescription")}
                       />
                     </div>
 
                     <StepSection
-                      title="Using the AI Assistant"
+                      title={t("usingAIAssistant")}
                       icon={<MessageSquare className="h-5 w-5" />}
-                      steps={[
-                        "Navigate to the 'Semantic Engine' section",
-                        "Type your question in natural language (e.g., 'What are the fire safety requirements for office buildings?')",
-                        "The AI will search through building regulations and your uploaded documents",
-                        "Review the answer and check the source references provided",
-                        "Click on source links to view the original documents",
-                        "Start a new chat for different topics or continue the conversation"
-                      ]}
-                      tip="Be specific in your questions for better results. Include context like building type, location, or specific requirements."
+                      steps={[t("aiStep1"), t("aiStep2"), t("aiStep3"), t("aiStep4"), t("aiStep5"), t("aiStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("aiTip")}
                     />
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
                         <Lightbulb className="h-4 w-4" />
-                        Example Questions
+                        {t("exampleQuestions")}
                       </h4>
                       <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• "What are the minimum ceiling heights for residential buildings?"</li>
-                        <li>• "Show me fire safety requirements for this project"</li>
-                        <li>• "What ventilation standards apply to office spaces?"</li>
-                        <li>• "Find information about accessibility requirements"</li>
+                        <li>• {t("exampleQ1")}</li>
+                        <li>• {t("exampleQ2")}</li>
+                        <li>• {t("exampleQ3")}</li>
+                        <li>• {t("exampleQ4")}</li>
                       </ul>
                     </div>
 
                     <StepSection
-                      title="Uploading Documents"
+                      title={t("uploadingDocuments")}
                       icon={<Upload className="h-5 w-5" />}
-                      steps={[
-                        "In the AI Assistant, click the upload button (paperclip icon)",
-                        "Select PDF or Word documents from your computer",
-                        "Choose whether files are temporary (deleted after session) or permanent",
-                        "Wait for the documents to be processed and indexed",
-                        "Ask questions about the uploaded content",
-                        "Use 'New Chat' to remove temporary files and start fresh"
-                      ]}
-                      tip="Upload project-specific documents to get more relevant answers about your particular requirements."
+                      steps={[t("uploadStep1"), t("uploadStep2"), t("uploadStep3"), t("uploadStep4"), t("uploadStep5"), t("uploadStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("uploadTip")}
                     />
                   </div>
                 </CardContent>
@@ -386,79 +346,67 @@ function DocumentationContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Team Management
+                    {t("teamManagement")}
                   </CardTitle>
                   <CardDescription>
-                    Collaborate effectively with your team members and manage permissions
+                    {t("teamManagementDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <RoleCard 
-                        title="Admin"
-                        description="Full system access and company management"
-                        permissions={["Manage all projects", "Add/remove users", "System settings", "All templates"]}
+                        title={t("admin")}
+                        description={t("adminDescription")}
+                        permissions={[t("adminPerm1"), t("adminPerm2"), t("adminPerm3"), t("adminPerm4")]}
                         color="bg-purple-100 text-purple-700"
                       />
                       <RoleCard 
-                        title="Company Admin"
-                        description="Manage company users and projects"
-                        permissions={["Manage company projects", "Add/remove colleagues", "Company templates", "User roles"]}
+                        title={t("companyAdmin")}
+                        description={t("companyAdminDescription")}
+                        permissions={[t("companyAdminPerm1"), t("companyAdminPerm2"), t("companyAdminPerm3"), t("companyAdminPerm4")]}
                         color="bg-blue-100 text-blue-700"
                       />
                       <RoleCard 
-                        title="Project Manager"
-                        description="Lead projects and manage team assignments"
-                        permissions={["Create projects", "Assign team members", "Manage documents", "Track progress"]}
+                        title={t("projectManager")}
+                        description={t("projectManagerDescription")}
+                        permissions={[t("projectManagerPerm1"), t("projectManagerPerm2"), t("projectManagerPerm3"), t("projectManagerPerm4")]}
                         color="bg-green-100 text-green-700"
                       />
                       <RoleCard 
-                        title="User"
-                        description="Work on assigned projects and documents"
-                        permissions={["View assigned projects", "Generate documents", "Use AI assistant", "Update progress"]}
+                        title={t("user")}
+                        description={t("userDescription")}
+                        permissions={[t("userPerm1"), t("userPerm2"), t("userPerm3"), t("userPerm4")]}
                         color="bg-gray-100 text-gray-700"
                       />
                     </div>
 
                     <StepSection
-                      title="Adding Team Members"
+                      title={t("addingTeamMembers")}
                       icon={<Users className="h-5 w-5" />}
-                      steps={[
-                        "Navigate to your Profile page",
-                        "Click on 'Manage Colleagues' or 'Add Team Member'",
-                        "Enter the new member's email address and name",
-                        "Select their role (User, Project Manager, or Company Admin)",
-                        "Send the invitation - they'll receive an email to join",
-                        "Once they accept, they'll appear in your team list"
-                      ]}
-                      tip="Start with 'User' role and upgrade permissions as needed. You can always change roles later."
+                      steps={[t("addTeamStep1"), t("addTeamStep2"), t("addTeamStep3"), t("addTeamStep4"), t("addTeamStep5"), t("addTeamStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("addTeamTip")}
                     />
 
                     <StepSection
-                      title="Project Assignments"
+                      title={t("projectAssignments")}
                       icon={<Target className="h-5 w-5" />}
-                      steps={[
-                        "Open a project and go to the 'Assignments' tab",
-                        "Assign specific documents to team members",
-                        "Set supervisors for quality control and review",
-                        "Monitor progress through the project dashboard",
-                        "Team members receive notifications about their assignments",
-                        "Track completion status and review submitted work"
-                      ]}
-                      tip="Clear assignments help ensure accountability and prevent work duplication."
+                      steps={[t("assignStep1"), t("assignStep2"), t("assignStep3"), t("assignStep4"), t("assignStep5"), t("assignStep6")]}
+                      tipLabel={t("tip")}
+                      tip={t("assignTip")}
                     />
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                       <h4 className="font-medium text-yellow-900 mb-2 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
-                        Best Practices
+                        {t("bestPractices")}
                       </h4>
                       <ul className="text-sm text-yellow-800 space-y-1">
-                        <li>• Assign clear roles and responsibilities from the start</li>
-                        <li>• Use project leaders to coordinate team efforts</li>
-                        <li>• Regular check-ins help keep projects on track</li>
-                        <li>• Document assignments prevent confusion and overlap</li>
+                        <li>• {t("bestPractice1")}</li>
+                        <li>• {t("bestPractice2")}</li>
+                        <li>• {t("bestPractice3")}</li>
+                        <li>• {t("bestPractice4")}</li>
                       </ul>
                     </div>
                   </div>
@@ -473,25 +421,25 @@ function DocumentationContent() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5" />
-              Need More Help?
+              {t("needMoreHelp")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <HelpCard 
                 icon={<MessageSquare className="h-6 w-6" />}
-                title="Contact Support"
-                description="Reach out to our support team for assistance with any questions or issues"
+                title={t("contactSupport")}
+                description={t("contactSupportDescription")}
               />
               <HelpCard 
                 icon={<BookOpen className="h-6 w-6" />}
-                title="Training Resources"
-                description="Access additional training materials and video tutorials"
+                title={t("trainingResources")}
+                description={t("trainingResourcesDescription")}
               />
               <HelpCard 
                 icon={<Users className="h-6 w-6" />}
-                title="Community Forum"
-                description="Connect with other users and share best practices"
+                title={t("communityForum")}
+                description={t("communityForumDescription")}
               />
             </div>
           </CardContent>
@@ -502,7 +450,6 @@ function DocumentationContent() {
   );
 }
 
-// Helper Components
 function QuickStartCard({ icon, title, description, features }: { 
   icon: React.ReactNode; 
   title: string; 
@@ -544,11 +491,12 @@ function ChecklistItem({ icon, title, description }: {
   );
 }
 
-function StepSection({ title, icon, steps, tip }: { 
+function StepSection({ title, icon, steps, tip, tipLabel }: { 
   title: string; 
   icon: React.ReactNode; 
   steps: string[];
   tip?: string;
+  tipLabel?: string;
 }) {
   return (
     <div>
@@ -564,7 +512,7 @@ function StepSection({ title, icon, steps, tip }: {
       {tip && (
         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-800">
-            <span className="font-medium">💡 Tip:</span> {tip}
+            <span className="font-medium">💡 {tipLabel ?? "Tip:"}</span> {tip}
           </p>
         </div>
       )}

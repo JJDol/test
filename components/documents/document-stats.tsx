@@ -27,9 +27,9 @@ export function DocumentStats({ stats, className = "" }: DocumentStatsProps) {
   return (
     <div className={`flex gap-4 mt-2 text-sm text-muted-foreground ${className}`}>
       <span>{t("title")}: <span className="font-medium">{stats.total}</span></span>
-      <span>Personal: <span className="font-medium">{stats.personal}</span></span>
-      <span>Company: <span className="font-medium">{stats.company}</span></span>
-      <span>Public: <span className="font-medium">{stats.public}</span></span>
+      <span>{t("personal")}: <span className="font-medium">{stats.personal}</span></span>
+      <span>{t("company")}: <span className="font-medium">{stats.company}</span></span>
+      <span>{t("public")}: <span className="font-medium">{stats.public}</span></span>
       {stats.processing > 0 && (
         <span className="text-blue-600">
           {t("processingDocuments")}: <span className="font-medium">{stats.processing}</span>

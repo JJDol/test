@@ -50,7 +50,7 @@ export function DocumentDeleteDialog({
             {t("deleteConfirm", { name: document?.name ?? "" })}
             {document?.company_id === 'public' && (
               <span className="block mt-2 text-amber-600 font-medium">
-                ⚠️ This is a public document. Deleting it will affect all users.
+                ⚠️ {t("publicDocumentWarning")}
               </span>
             )}
           </DialogDescription>
@@ -61,11 +61,11 @@ export function DocumentDeleteDialog({
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
               <div className="text-sm text-red-700">
-                <p className="font-medium mb-1">This will permanently remove:</p>
+                <p className="font-medium mb-1">{t("permanentlyRemove")}</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>The document from your knowledge base</li>
-                  <li>All associated text chunks and embeddings</li>
-                  <li>Any AI responses that reference this document</li>
+                  <li>{t("removeFromKnowledgeBase")}</li>
+                  <li>{t("removeChunksEmbeddings")}</li>
+                  <li>{t("removeAIReferences")}</li>
                 </ul>
               </div>
             </div>

@@ -110,7 +110,7 @@ function HoldBanner({
         )}
         {hold.on_hold_at && (
           <div className="mt-0.5 text-[11px] opacity-70">
-            Since {new Date(hold.on_hold_at).toLocaleString()}
+            {t("since")} {new Date(hold.on_hold_at).toLocaleString()}
           </div>
         )}
       </div>
@@ -123,7 +123,7 @@ function HoldBanner({
           onClick={() => onResume()}
         >
           <PlayCircle className="h-3.5 w-3.5" />
-          Resume
+          {t("resume")}
         </Button>
       )}
     </div>
@@ -150,7 +150,7 @@ function PhaseMetaRow({
 }) {
   const isCurrent = activePhase.is_current;
   const tc = useTranslations("common");
-  const t = useTranslations("projectDetails");
+  const tp = useTranslations("projectDetails");
   const isViewingPast =
     currentPhase != null &&
     activePhase.definition.display_order < currentPhase.definition.display_order;
@@ -175,7 +175,7 @@ function PhaseMetaRow({
           {activePhase.is_locked && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <Lock className="h-2.5 w-2.5" />
-              Locked
+              {tp("locked")}
             </span>
           )}
         </div>
@@ -204,11 +204,11 @@ function PhaseMetaRow({
               }
               title={
                 isViewingPast
-                  ? "Re-open this phase as the current one"
-                  : "Advance project to this phase"
+                  ? tp("reopenPhase")
+                  : tp("advancePhase")
               }
             >
-              Mark as current
+              {tp("markAsCurrent")}
             </Button>
           )}
           <Button
@@ -225,12 +225,12 @@ function PhaseMetaRow({
             {activePhase.is_locked ? (
               <>
                 <Unlock className="h-3.5 w-3.5" />
-                Unlock
+                {tp("unlock")}
               </>
             ) : (
               <>
                 <Lock className="h-3.5 w-3.5" />
-                Lock
+                {tp("lock")}
               </>
             )}
           </Button>
@@ -255,6 +255,7 @@ function DeadlineField({
   const [draft, setDraft] = React.useState<string>(value ?? "");
   const [saving, setSaving] = React.useState(false);
   const tc = useTranslations("common");
+  const tp = useTranslations("projectDetails");
 
   // Reset draft whenever the phase/value changes (navigating between phases).
   React.useEffect(() => {
@@ -267,9 +268,9 @@ function DeadlineField({
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <CalendarClock className="h-3.5 w-3.5" />
         {value ? (
-          <span>Due {formatDate(value)}</span>
+          <span>{tp("due")} {formatDate(value)}</span>
         ) : (
-          <span>No deadline</span>
+          <span>{tp("noDeadline")}</span>
         )}
       </div>
     );
@@ -284,9 +285,9 @@ function DeadlineField({
       >
         <CalendarClock className="h-3.5 w-3.5" />
         {value ? (
-          <span>Due {formatDate(value)}</span>
+          <span>{tp("due")} {formatDate(value)}</span>
         ) : (
-          <span>Add deadline</span>
+          <span>{tp("addDeadline")}</span>
         )}
       </button>
     );

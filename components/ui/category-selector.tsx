@@ -17,8 +17,9 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import Image from "next/image";
 
 type AllOptionValue = 'ALL' | 'GLOBAL';
@@ -40,6 +41,7 @@ export function CategorySelector<T extends AllOptionValue = 'ALL'>({
   allLabel = "All",
   allValue = "ALL" as T
 }: CategorySelectorProps<T>) {
+  const tc = useTranslations("common");
   const categories = showAllOption
     ? [allValue, ...Object.values(DocumentCategory)] as (DocumentCategory | T)[]
     : Object.values(DocumentCategory) as (DocumentCategory | T)[];
@@ -60,7 +62,7 @@ export function CategorySelector<T extends AllOptionValue = 'ALL'>({
       {categories.map((cat) => {
         const isActive = selectedCategory === cat;
         const isAllOption = cat === allValue;
-        const label = isAllOption ? allLabel : getCategoryDisplayName(cat as DocumentCategory);
+        const label = isAllOption ? allLabel : tc(getCategoryTranslationKey(cat as DocumentCategory));
 
         return (
           <Button

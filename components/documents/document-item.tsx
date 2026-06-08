@@ -95,17 +95,17 @@ export function DocumentItem({ document, onDelete, isDeleting = false, className
             {document.company_id === 'public' ? (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 <Building className="h-3 w-3 mr-1" />
-                BR18 Public
+                BR18 {t("public")}
               </Badge>
             ) : document.is_company_wide ? (
               <Badge variant="outline">
                 <Building className="h-3 w-3 mr-1" />
-                Company
+                {t("company")}
               </Badge>
             ) : (
               <Badge variant="outline">
                 <User className="h-3 w-3 mr-1" />
-                Personal
+                {t("personal")}
               </Badge>
             )}
           </div>
@@ -118,10 +118,10 @@ export function DocumentItem({ document, onDelete, isDeleting = false, className
           {/* Metadata */}
           <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-1">
             <span>{formatFileSize(document.size)}</span>
-            <span>Uploaded by {document.uploaded_by_name}</span>
+            <span>{t("uploadedBy", { name: document.uploaded_by_name })}</span>
             <span>{new Date(document.created_at).toLocaleDateString()}</span>
             {document.chunks_count && (
-              <span>{document.chunks_count} chunks</span>
+              <span>{t("chunks", { count: document.chunks_count })}</span>
             )}
           </div>
           
