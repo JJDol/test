@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -68,6 +69,7 @@ export function ProjectTemplateReuploadDialog({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const tc = useTranslations("common");
 
   const resetDialog = () => {
     setSelectedFile(null);
@@ -517,19 +519,19 @@ export function ProjectTemplateReuploadDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-            Cancel
+            {tc("cancel")}
           </Button>
           {step === "review" && (
             <Button onClick={handleConfirmUpload} disabled={isUploading}>
               {isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {tc("loading")}...
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Save Custom Template
+                  {tc("save")}
                 </>
               )}
             </Button>

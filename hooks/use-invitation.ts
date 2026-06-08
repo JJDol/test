@@ -15,6 +15,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useForm } from "@/hooks/forms/use-form";
 import { useFormValidation } from "@/hooks/validation/use-form-validation";
@@ -48,6 +49,7 @@ interface UseInvitationReturn {
 }
 
 export function useInvitation(token: string | null): UseInvitationReturn {
+  const t = useTranslations("invite");
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +69,7 @@ export function useInvitation(token: string | null): UseInvitationReturn {
   // Validate invitation token on mount
   useEffect(() => {
     if (!token) {
-      setError("Invalid invitation link. Please check your email for the correct link.");
+      setError(t("invalidInvitationLink"));
       setLoading(false);
       return;
     }
@@ -81,7 +83,7 @@ export function useInvitation(token: string | null): UseInvitationReturn {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.message || "Invalid or expired invitation");
+        setError(result.message || t("invalidOrExpiredInvitation"));
         setLoading(false);
         return;
       }
@@ -91,7 +93,7 @@ export function useInvitation(token: string | null): UseInvitationReturn {
       setLoading(false);
     } catch (error) {
       console.error('Error validating invitation:', error);
-      setError("Failed to validate invitation. Please try again.");
+      setError(t("failedToValidateInvitation"));
       setLoading(false);
     }
   };
@@ -131,8 +133,8 @@ export function useInvitation(token: string | null): UseInvitationReturn {
 
       setSuccess(true);
       toast({
-        title: "Account Created Successfully!",
-        description: "You can now log in with your email and password.",
+        title: t("accountCreatedSuccess"),
+        description: t("canNowLogIn"),
       });
 
       // Redirect to sign-in page after a short delay
@@ -143,8 +145,8 @@ export function useInvitation(token: string | null): UseInvitationReturn {
     } catch (error) {
       console.error('Error accepting invitation:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to accept invitation",
+        title: t("invalidInvitation"),
+        description: error instanceof Error ? error.message : t("failedToAcceptInvitation"),
         variant: "destructive",
       });
     } finally {

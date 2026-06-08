@@ -17,6 +17,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -89,6 +90,8 @@ export function DocumentActionsMenu({
   iconClassName,
 }: DocumentActionsMenuProps) {
   const { toast } = useToast();
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReuploadDialog, setShowReuploadDialog] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -154,7 +157,7 @@ export function DocumentActionsMenu({
               onClick={() => onGenerateDocument(template.name, template.category)}
             >
               <FileText className="mr-2 h-4 w-4" />
-              Generate document
+              {t("generateDocument")}
             </DropdownMenuItem>
           )}
           {!project.is_archived && !isLocked && hasNewerVersion && onUpgradeVersion && (
@@ -163,7 +166,7 @@ export function DocumentActionsMenu({
               className="text-amber-600"
             >
               <ArrowUpCircle className="mr-2 h-4 w-4" />
-              Upgrade to v{latestVersion}
+              {t("upgradeTemplate")} v{latestVersion}
             </DropdownMenuItem>
           )}
           {!project.is_archived && !isLocked && canManageProject && (
@@ -171,7 +174,7 @@ export function DocumentActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setShowReuploadDialog(true)}>
                 <Upload className="mr-2 h-4 w-4" />
-                Reupload Document
+                {t("reuploadTemplate")}
               </DropdownMenuItem>
               {hasCustomTemplate && (
                 <DropdownMenuItem
@@ -200,7 +203,7 @@ export function DocumentActionsMenu({
               className="text-red-600"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Remove from project
+              {t("removeDocument")}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -210,7 +213,7 @@ export function DocumentActionsMenu({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove template from project?</AlertDialogTitle>
+            <AlertDialogTitle>{tc("confirmDeletion")}</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove <strong>{template.name}</strong> from this project.
               The template itself will not be deleted and can be added back later.
@@ -218,12 +221,12 @@ export function DocumentActionsMenu({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => onTemplateRemove(template.name, template.category)}
               className="bg-red-600 hover:bg-red-700"
             >
-              Remove
+              {tc("remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -242,7 +245,7 @@ export function DocumentActionsMenu({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isResetting}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleResetToOriginal}
               disabled={isResetting}

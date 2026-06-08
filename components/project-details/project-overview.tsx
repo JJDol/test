@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -86,6 +87,8 @@ export function ProjectOverview({
   onSetHold,
   showPhaseHoldControls,
 }: ProjectOverviewProps) {
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
@@ -123,16 +126,16 @@ export function ProjectOverview({
       const absDays = Math.abs(totalDays);
       const weeks = Math.floor(absDays / 7);
       const days = absDays % 7;
-      if (weeks === 0) return `${days} ${days === 1 ? "day" : "days"} overdue`;
-      if (days === 0) return `${weeks} ${weeks === 1 ? "week" : "weeks"} overdue`;
-      return `${weeks}w ${days}d overdue`;
+      if (weeks === 0) return `${days} ${days === 1 ? t("day") : t("days")} ${t("overdue")}`;
+      if (days === 0) return `${weeks} ${weeks === 1 ? t("week") : t("weeks")} ${t("overdue")}`;
+      return `${weeks}w ${days}d ${t("overdue")}`;
     }
-    if (totalDays === 0) return "Due today";
+    if (totalDays === 0) return t("dueToday");
     const weeks = Math.floor(totalDays / 7);
     const days = totalDays % 7;
-    if (weeks === 0) return `${days} ${days === 1 ? "day" : "days"} left`;
-    if (days === 0) return `${weeks} ${weeks === 1 ? "week" : "weeks"} left`;
-    return `${weeks}w ${days}d left`;
+    if (weeks === 0) return `${days} ${days === 1 ? t("day") : t("days")} ${t("left")}`;
+    if (days === 0) return `${weeks} ${weeks === 1 ? t("week") : t("weeks")} ${t("left")}`;
+    return `${weeks}w ${days}d ${t("left")}`;
   })();
 
   return (
@@ -147,7 +150,7 @@ export function ProjectOverview({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>{tc("options")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
 
               {canAssignWorkers && (
@@ -169,14 +172,14 @@ export function ProjectOverview({
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
-                  Download Project
+                  {t("downloadProject")}
                 </DropdownMenuItem>
               )}
 
               {canUpdateProject && (
                 <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Edit Project
+                  {t("editProject")}
                 </DropdownMenuItem>
               )}
 
@@ -189,7 +192,7 @@ export function ProjectOverview({
                   onClick={() => setHoldDialogOpen(true)}
                 >
                   <PauseCircle className="mr-2 h-4 w-4" />
-                  Put on Hold
+                  {t("putOnHold")}
                 </DropdownMenuItem>
               )}
 
@@ -199,7 +202,7 @@ export function ProjectOverview({
                   className="text-orange-600 focus:text-orange-600"
                 >
                   <Archive className="mr-2 h-4 w-4" />
-                  Archive Project
+                  {t("archiveProject")}
                 </DropdownMenuItem>
               )}
 
@@ -209,7 +212,7 @@ export function ProjectOverview({
                   className="text-red-600 focus:text-red-600"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Project
+                  {t("deleteProject")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -221,7 +224,7 @@ export function ProjectOverview({
       <div className="mb-4 pr-8">
         <div className="space-y-2 text-sm">
           <div>
-            <p className="text-gray-500 text-xs uppercase tracking-wide">Project Leader</p>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">{t("projectLeader")}</p>
             {project.leaderName ? (
               <div className="mt-1">
                 <div className="group relative inline-block transition-transform duration-150 ease-out hover:scale-110">
@@ -239,11 +242,11 @@ export function ProjectOverview({
                 </div>
               </div>
             ) : (
-              <p className="text-gray-700">Unassigned</p>
+              <p className="text-gray-700">{tc("unassigned")}</p>
             )}
           </div>
           <div>
-            <p className="text-gray-500 text-xs uppercase tracking-wide">Workers</p>
+            <p className="text-gray-500 text-xs uppercase tracking-wide">{t("workers")}</p>
             {project.workers && project.workers.length > 0 ? (
               <div className="mt-1">
                 <UserAvatarStack
@@ -252,11 +255,11 @@ export function ProjectOverview({
                     name: project.workers_names?.[idx] || null,
                   }))}
                   size="sm"
-                  emptyLabel="No workers assigned"
+                  emptyLabel={t("noWorkersAssigned")}
                 />
               </div>
             ) : (
-              <p className="text-gray-700">No workers assigned</p>
+              <p className="text-gray-700">{t("noWorkersAssigned")}</p>
             )}
           </div>
         </div>
@@ -265,25 +268,25 @@ export function ProjectOverview({
       {/* Stats Cards - Vertical Stack */}
       <div className="space-y-3">
         <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Variables Progress</h2>
+          <h2 className="text-sm font-semibold mb-1">{t("variablesProgress")}</h2>
           <Progress value={overallProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{overallProgress}% Complete</p>
+          <p className="text-xs text-gray-600">{t("percentComplete", { percent: overallProgress })}</p>
         </Card>
 
         <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Supervisor Checks</h2>
+          <h2 className="text-sm font-semibold mb-1">{t("supervisorChecks")}</h2>
           <Progress value={checkedProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{checkedProgress}% Checked</p>
+          <p className="text-xs text-gray-600">{t("percentChecked", { percent: checkedProgress })}</p>
         </Card>
 
         <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Control Progress</h2>
+          <h2 className="text-sm font-semibold mb-1">{t("controlProgress")}</h2>
           <Progress value={controlProgress} className="mb-1 h-2" />
-          <p className="text-xs text-gray-600">{controlProgress}% Complete</p>
+          <p className="text-xs text-gray-600">{t("percentComplete", { percent: controlProgress })}</p>
         </Card>
 
         <Card className="p-3">
-          <h2 className="text-sm font-semibold mb-1">Phase Deadline</h2>
+          <h2 className="text-sm font-semibold mb-1">{t("phaseDeadline")}</h2>
           <p
             className={`text-sm font-medium ${
               currentPhaseDeadline
@@ -303,15 +306,15 @@ export function ProjectOverview({
       <Dialog open={holdDialogOpen} onOpenChange={setHoldDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Put project on hold</DialogTitle>
+            <DialogTitle>{t("putProjectOnHold")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Work can continue, but the project is flagged as paused for everyone.
+            {t("holdDescription")}
           </p>
           <Textarea
             value={holdNote}
             onChange={(e) => setHoldNote(e.target.value)}
-            placeholder="Note (optional) — e.g. waiting on client approval"
+            placeholder={t("holdNotePlaceholder")}
             rows={3}
           />
           <DialogFooter className="gap-2 sm:gap-0">
@@ -321,14 +324,14 @@ export function ProjectOverview({
               onClick={() => { setHoldDialogOpen(false); setHoldNote(""); }}
               disabled={holdSubmitting}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               type="button"
               onClick={confirmPutOnHold}
               disabled={holdSubmitting}
             >
-              {holdSubmitting ? "Saving…" : "Confirm hold"}
+              {holdSubmitting ? `${tc("loading")}…` : t("confirmHold")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -26,6 +26,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { DashboardHeader } from "@/components/ui/dashboard-header";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslations } from "next-intl";
 
 interface DashboardContentProps {
   // State
@@ -87,20 +88,20 @@ export function DashboardContent({
   onRetryError,
   authState
 }: DashboardContentProps) {
+  const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
   const { currentUser, isAdmin, isCompanyAdmin } = authState;
 
-  // Show loading state for initial page load
   if (loading.overall && !currentUser) {
     return (
       <LoadingState 
-        title="Loading Dashboard"
-        message="Please wait while we load your dashboard..."
+        title={t("title")}
+        message={t("loadingMessage")}
         variant="page"
       />
     );
   }
 
-  // Show error state with retry options
   if (error.overall) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -122,7 +123,7 @@ export function DashboardContent({
             disabled={loading.overall}
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading.overall ? 'animate-spin' : ''}`} />
-            Retry
+            {tc("retry")}
           </Button>
         </div>
       </div>
@@ -165,7 +166,7 @@ export function DashboardContent({
                   onClick={onToggleArchived}
                   disabled={loading.projects}
                 >
-                  {showArchived ? "Hide Archived" : "Show Archived"}
+                  {showArchived ? t("hideArchived") : t("showArchived")}
                 </Button>
               )}
             </div>
@@ -183,7 +184,7 @@ export function DashboardContent({
           ) : projects.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-muted-foreground mb-4">
-                {showArchived ? "No archived projects found" : "No projects found"}
+                {showArchived ? t("noArchivedProjects") : t("noProjects")}
               </div>
               {currentUser?.role !== 'USER' && !showArchived && (
                 <ProjectForm onProjectCreated={onRefreshProjects} />

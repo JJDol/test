@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,6 +28,7 @@ interface IngestionResult {
 }
 
 export function BR18IngestionPanel() {
+  const t = useTranslations("documents");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<IngestionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function BR18IngestionPanel() {
       
       if (response.ok) {
         setResult({
-          message: data.data?.isIngested ? 'BR18 data is ingested and ready' : 'BR18 data not yet ingested',
+          message: data.data?.isIngested ? t("br18Ingested") : t("br18NotIngested"),
           status: data.data
         });
       }
@@ -87,12 +89,12 @@ export function BR18IngestionPanel() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Download className="h-5 w-5" />
-          BR18 Knowledge Base
+          {t("br18KnowledgeBase")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Load Danish building regulations (BR18) into the AI knowledge base so the chatbot can answer regulation questions.
+          {t("br18Description")}
         </p>
 
         <div className="flex flex-wrap gap-2">
@@ -102,7 +104,7 @@ export function BR18IngestionPanel() {
             size="sm"
             disabled={isLoading}
           >
-            Check Status
+            {t("checkStatus")}
           </Button>
           <Button 
             onClick={() => handleIngest(false)} 
@@ -114,7 +116,7 @@ export function BR18IngestionPanel() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Full Ingestion (all 21 pages)
+            {t("fullIngestion")}
           </Button>
         </div>
 
@@ -123,8 +125,8 @@ export function BR18IngestionPanel() {
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertDescription>
               {mode === 'full' 
-                ? 'Processing all 21 BR18 pages. This may take several minutes...' 
-                : 'Processing test pages...'}
+                ? t("processingAllPages")
+                : t("processingTestPages")}
             </AlertDescription>
           </Alert>
         )}
@@ -146,17 +148,17 @@ export function BR18IngestionPanel() {
                 {result.data && (
                   <div className="flex flex-wrap gap-2 text-sm">
                     <Badge variant="secondary">
-                      {result.data.documentsProcessed} Documents
+                      {result.data.documentsProcessed} {t("documents")}
                     </Badge>
                     <Badge variant="secondary">
-                      {result.data.chunksIngested} Chunks
+                      {result.data.chunksIngested} {t("chunks")}
                     </Badge>
                     <Badge variant="outline">
-                      Cost: ${result.data.totalCost.toFixed(4)}
+                      {t("cost")}: ${result.data.totalCost.toFixed(4)}
                     </Badge>
                     {result.data.errors.length > 0 && (
                       <Badge variant="destructive">
-                        {result.data.errors.length} Errors
+                        {result.data.errors.length} {t("errors")}
                       </Badge>
                     )}
                   </div>
@@ -165,16 +167,16 @@ export function BR18IngestionPanel() {
                 {result.status && (
                   <div className="flex flex-wrap gap-2 text-sm">
                     <Badge variant={result.status.isIngested ? "default" : "secondary"}>
-                      {result.status.isIngested ? 'Ingested' : 'Not Ingested'}
+                      {result.status.isIngested ? t("ingested") : t("notIngested")}
                     </Badge>
                     {result.status.documentCount > 0 && (
                       <Badge variant="outline">
-                        {result.status.documentCount} Documents
+                        {result.status.documentCount} {t("documents")}
                       </Badge>
                     )}
                     {result.status.totalChunks && (
                       <Badge variant="outline">
-                        {result.status.totalChunks} Chunks
+                        {result.status.totalChunks} {t("chunks")}
                       </Badge>
                     )}
                   </div>
@@ -183,7 +185,7 @@ export function BR18IngestionPanel() {
                 {result.data?.errors && result.data.errors.length > 0 && (
                   <details className="text-sm">
                     <summary className="cursor-pointer text-red-600">
-                      View Errors ({result.data.errors.length})
+                      {t("viewErrors", { count: result.data.errors.length })}
                     </summary>
                     <ul className="mt-1 list-disc list-inside text-xs">
                       {result.data.errors.map((err, index) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EnhancedVariableInput } from "@/components/enhanced-variable-input";
@@ -74,6 +75,8 @@ export function DocumentListView({
   onDropdownOptionsChange,
 }: DocumentListViewProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
 
   const toggleRow = (templateName: string) => {
     setExpandedRows(prev => {
@@ -97,13 +100,13 @@ export function DocumentListView({
     <div className="w-full">
       {/* Table Header */}
       <div className="grid grid-cols-[minmax(250px,2fr)_80px_120px_120px_120px_100px_100px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
-        <div>Document name</div>
-        <div className="text-center">Version</div>
-        <div className="text-center">Assigned to</div>
+        <div>{tc("name")}</div>
+        <div className="text-center">{tc("version")}</div>
+        <div className="text-center">{tc("assignedTo")}</div>
         <div className="text-center">Supervisor</div>
-        <div className="text-center">Progress</div>
-        <div className="text-center">Checked by supervisor</div>
-        <div className="text-center">Ready for control</div>
+        <div className="text-center">{tc("progress")}</div>
+        <div className="text-center">{t("checkedBySupervisor")}</div>
+        <div className="text-center">{t("readyForControl")}</div>
       </div>
 
       {/* Table Rows */}
@@ -166,12 +169,12 @@ export function DocumentListView({
 
               {/* Assigned to */}
               <div className="text-center text-xs text-muted-foreground truncate">
-                {assignments?.assignee_name || "Not assigned"}
+                {assignments?.assignee_name || tc("notAssigned")}
               </div>
 
               {/* Supervisor */}
               <div className="text-center text-xs text-muted-foreground truncate">
-                {assignments?.supervisor_name || "Not assigned"}
+                {assignments?.supervisor_name || tc("notAssigned")}
               </div>
 
               {/* Progress */}
@@ -238,7 +241,7 @@ export function DocumentListView({
 
             {isExpanded && localVariables.length === 0 && (
               <div className="px-10 py-3 bg-muted/30 border-t">
-                <p className="text-xs text-muted-foreground italic">No local variables for this document.</p>
+                <p className="text-xs text-muted-foreground italic">{t("noLocalVariables")}</p>
               </div>
             )}
           </div>
@@ -247,7 +250,7 @@ export function DocumentListView({
 
       {templates.length === 0 && (
         <div className="py-6 text-center text-sm text-muted-foreground">
-          No documents in this category.
+          {t("noDocumentsInCategory")}
         </div>
       )}
     </div>

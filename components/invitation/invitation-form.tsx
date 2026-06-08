@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { InvitationFormData } from "@/lib/types/forms";
+import { useTranslations } from "next-intl";
 
 interface InvitationData {
   id: string;
@@ -47,6 +48,8 @@ export function InvitationForm({
   onSubmit, 
   submitting 
 }: InvitationFormProps) {
+  const t = useTranslations("invite");
+  const tc = useTranslations("common");
   const [showPassword, setShowPassword] = useState(false);
 
   // Helper functions for password validation
@@ -57,15 +60,15 @@ export function InvitationForm({
     <div className="w-full flex items-center justify-center p-4 bg-gray-50 min-h-[calc(100vh-8rem)]">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-2xl font-bold">Complete Your Account Setup</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("completeSetup")}</CardTitle>
           <CardDescription className="text-base">
-            You've been invited to join the team. Please complete your account setup below.
+            {t("invitedDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{t("emailInvited")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -73,9 +76,6 @@ export function InvitationForm({
                 disabled
                 className="bg-muted"
               />
-              <p className="text-xs text-muted-foreground">
-                This is the email address you were invited with
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -91,7 +91,7 @@ export function InvitationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
+              <Label htmlFor="password">{t("createPassword")} <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -116,14 +116,14 @@ export function InvitationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
+              <Label htmlFor="confirmPassword">{t("confirmPasswordPlaceholder")} <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) => onInputChange("confirmPassword", e.target.value)}
-                  placeholder="Confirm your password"
+                  placeholder={t("confirmPasswordPlaceholder")}
                   required
                   className={`pr-10 ${
                     formData.confirmPassword 
@@ -150,12 +150,12 @@ export function InvitationForm({
                   {passwordsMatch ? (
                     <p className="text-green-600 flex items-center gap-1">
                       <Check className="h-3 w-3" />
-                      Passwords match
+                      {tc("passwordsMatch")}
                     </p>
                   ) : passwordsDontMatch ? (
                     <p className="text-red-600 flex items-center gap-1">
                       <X className="h-3 w-3" />
-                      Passwords don't match
+                      {tc("passwordsDontMatch")}
                     </p>
                   ) : null}
                 </div>
@@ -164,7 +164,7 @@ export function InvitationForm({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
-                <strong>Role:</strong> {invitation.role}
+                <strong>{t("role")}:</strong> {invitation.role}
               </p>
             </div>
 
@@ -176,10 +176,10 @@ export function InvitationForm({
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  {t("creatingAccount")}
                 </>
               ) : (
-                "Create Account"
+                t("createAccount")
               )}
             </Button>
           </form>

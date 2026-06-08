@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +54,8 @@ export function KanbanFilters({
   isCompanyAdmin, 
   isAdmin 
 }: KanbanFiltersProps) {
-
+  const t = useTranslations("kanban");
+  const tc = useTranslations("common");
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Extract unique values for filter options
@@ -98,7 +100,7 @@ export function KanbanFilters({
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search projects by name, location, leader, or description..."
+            placeholder={t("searchPlaceholder")}
             value={filters.search}
             onChange={(e) => handleFilterChange("search", e.target.value)}
             className="pl-10"
@@ -107,15 +109,23 @@ export function KanbanFilters({
         
         <Select value={filters.stage || "all"} onValueChange={(value) => handleFilterChange("stage", value === "all" ? "" : value)}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="All Stages" />
+            <SelectValue placeholder={t("allStages")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {stages.map((stage) => (
-              <SelectItem key={stage} value={stage}>
-                {stage.replace("_", " ")}
-              </SelectItem>
-            ))}
+            <SelectItem value="all">{t("allStages")}</SelectItem>
+            {stages.map((stage) => {
+              const stageLabels: Record<string, string> = {
+                'TODO': t("toDo"),
+                'IN_PROGRESS': t("inProgress"),
+                'REVIEW': t("review"),
+                'COMPLETED': t("done"),
+              };
+              return (
+                <SelectItem key={stage} value={stage}>
+                  {stageLabels[stage] ?? stage.replace("_", " ")}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
 
@@ -125,7 +135,7 @@ export function KanbanFilters({
           className="shrink-0"
         >
           <Filter className="h-4 w-4 mr-2" />
-          {isExpanded ? "Hide" : "Advanced"} Filters
+          {isExpanded ? t("hideFilters") : t("advancedFilters")}
         </Button>
 
         {hasActiveFilters && (
@@ -135,7 +145,7 @@ export function KanbanFilters({
             className="shrink-0 text-red-600 hover:text-red-700"
           >
             <X className="h-4 w-4 mr-1" />
-            Clear All
+            {t("clearAll")}
           </Button>
         )}
       </div>
@@ -148,14 +158,14 @@ export function KanbanFilters({
             <div className="space-y-2">
               <Label className="text-sm font-medium flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Assignee
+                {t("assignee")}
               </Label>
               <Select value={filters.assignee || "all"} onValueChange={(value) => handleFilterChange("assignee", value === "all" ? "" : value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Assignees" />
+                  <SelectValue placeholder={t("allAssignees")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Assignees</SelectItem>
+                  <SelectItem value="all">{t("allAssignees")}</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       <div className="flex items-center justify-between w-full">
@@ -178,14 +188,14 @@ export function KanbanFilters({
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Location
+                  {tc("location")}
                 </Label>
                 <Select value={filters.location || "all"} onValueChange={(value) => handleFilterChange("location", value === "all" ? "" : value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All Locations" />
+                    <SelectValue placeholder={t("allLocations")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
+                    <SelectItem value="all">{t("allLocations")}</SelectItem>
                     {locations.map((location) => (
                       <SelectItem key={location} value={location}>
                         {location}
@@ -242,25 +252,25 @@ export function KanbanFilters({
       <div className="flex items-center justify-between text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            {filteredProjects.length} of {projects.length} projects
+            {t("ofProjects", { filtered: filteredProjects.length, total: projects.length })}
           </Badge>
           {hasActiveFilters && (
             <span className="text-gray-500">
-              (filtered)
+              ({t("filtered")})
             </span>
           )}
           {(isCompanyAdmin || isAdmin || userRole === "PROJECT_MANAGER") && (
             <Badge variant="outline" className="text-xs">
-              {users.length} team members
+              {t("teamMembers", { count: users.length })}
             </Badge>
           )}
         </div>
         
         {/* Role indicator */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-gray-500">Viewing as:</span>
+          <span className="text-gray-500">{t("viewingAs")}</span>
           <Badge variant="outline" className="text-xs">
-            {isAdmin ? "System Admin" : isCompanyAdmin ? "Company Admin" : userRole.replace("_", " ")}
+            {isAdmin ? t("systemAdmin") : isCompanyAdmin ? t("companyAdmin") : userRole.replace("_", " ")}
           </Badge>
         </div>
       </div>

@@ -10,12 +10,15 @@ import { usePasswordReset } from "@/hooks/use-password-reset";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
+import { useTranslations } from "next-intl";
 
 interface ProfileFormProps {
   onProfileUpdated?: () => void;
 }
 
 export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
+  const t = useTranslations("profile");
+  const tc = useTranslations("common");
   const { currentUser, user, isLoading } = useAuth();
   const { toast } = useToast();
   const { sendPasswordReset, isSubmitting } = usePasswordReset();
@@ -57,8 +60,8 @@ export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
   const handleResetPassword = async () => {
     if (!user?.email) {
       toast({
-        title: "Error",
-        description: "Could not retrieve your email address.",
+        title: tc("error"),
+        description: t("couldNotRetrieveEmail"),
         variant: "destructive",
       });
       return;
@@ -70,15 +73,15 @@ export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile Settings</CardTitle>
+        <CardTitle>{t("profileSettings")}</CardTitle>
         <CardDescription>
-          Update your personal information here
+          {t("updatePersonalInfo")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("emailLabel")}</Label>
             <Input
               id="email"
               name="email"
@@ -88,23 +91,23 @@ export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
               className="bg-muted"
             />
             <p className="text-sm text-muted-foreground">
-              Email cannot be changed. Contact admin for email changes.
+              {t("emailCannotBeChanged")}
             </p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
+            <Label htmlFor="name">{t("fullName")}</Label>
             <Input
               id="name"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              placeholder="Enter your full name"
+              placeholder={t("fullNamePlaceholder")}
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">{t("roleLabel")}</Label>
             <Input
               id="role"
               name="role"
@@ -113,12 +116,12 @@ export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
               className="bg-muted"
             />
             <p className="text-sm text-muted-foreground">
-              Role is assigned by administrators
+              {t("roleAssignedByAdmin")}
             </p>
           </div>
           
           <div className="space-y-2">
-            <Label>Password Reset</Label>
+            <Label>{t("passwordReset")}</Label>
             <div className="flex items-center gap-2">
               <PasswordResetButton
                 type="button"
@@ -128,13 +131,13 @@ export function ProfileForm({ onProfileUpdated }: ProfileFormProps) {
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              We'll send a password reset link to your email address
+              {t("passwordResetDescription")}
             </p>
           </div>
           
           <div>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? tc("savingEllipsis") : tc("saveChanges")}
             </Button>
           </div>
         </form>

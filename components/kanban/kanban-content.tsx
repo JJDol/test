@@ -17,6 +17,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { LoadingState } from '@/components/ui/loading-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -109,13 +110,15 @@ export function KanbanContent({
   onRetryError,
   authState
 }: KanbanContentProps) {
+  const t = useTranslations("kanban");
+  const tc = useTranslations("common");
 
   // Show loading state for initial page load
   if (loading.overall && !authState.currentUser) {
     return (
       <LoadingState 
-        title="Loading Kanban Board"
-        message="Please wait while we load your projects..."
+        title={t("loadingKanban")}
+        message={t("loadingMessage")}
         variant="page"
       />
     );
@@ -144,7 +147,7 @@ export function KanbanContent({
               disabled={loading.overall}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${loading.overall ? 'animate-spin' : ''}`} />
-              Retry
+              {tc("retry")}
             </Button>
           </div>
         </div>
@@ -157,10 +160,10 @@ export function KanbanContent({
     return (
       <div className="p-6">
         <div className="text-red-500 mb-4">
-          <div>Authentication Error: {authState.authError}</div>
+          <div>{tc("error")}: {authState.authError}</div>
         </div>
         <div className="space-x-2">
-          <Button onClick={onRetryError}>Retry Authentication</Button>
+          <Button onClick={onRetryError}>{tc("retry")}</Button>
         </div>
       </div>
     );

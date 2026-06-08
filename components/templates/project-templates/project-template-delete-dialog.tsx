@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { ProjectTemplate } from "@/lib/types/types";
@@ -32,6 +33,8 @@ export function ProjectTemplateDeleteDialog({
   loading,
   isDeletingProjectTemplate,
 }: ProjectTemplateDeleteDialogProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const handleConfirm = async () => {
     await onConfirm();
   };
@@ -44,10 +47,9 @@ export function ProjectTemplateDeleteDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogTitle>{tc("confirmDeletion")}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the project template "{projectTemplateToDelete?.name}"?
-            This action cannot be undone.
+            {t("deleteTemplateConfirm")} "{projectTemplateToDelete?.name}"
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -57,7 +59,7 @@ export function ProjectTemplateDeleteDialog({
               onClick={onCancel}
               disabled={loading || isDeletingProjectTemplate}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
           </DialogClose>
           <Button
@@ -65,7 +67,7 @@ export function ProjectTemplateDeleteDialog({
             onClick={handleConfirm}
             disabled={loading || isDeletingProjectTemplate}
           >
-            {isDeletingProjectTemplate || loading ? 'Deleting...' : 'Delete'}
+            {isDeletingProjectTemplate || loading ? tc('deletingEllipsis') : tc('delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

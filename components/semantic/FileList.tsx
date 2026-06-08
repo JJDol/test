@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,8 @@ interface FileListProps {
 }
 
 export function FileList({ onUpdate, onNewChat }: FileListProps) {
+  const t = useTranslations("documents");
+  const tc = useTranslations("common");
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       setError(null);
     } catch (error) {
       console.error('Error loading files:', error);
-      setError('Failed to load files');
+      setError(t("failedToLoadFiles"));
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +92,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onUpdate?.();
     } catch (error) {
       console.error('Error deleting file:', error);
-      setError('Failed to delete file');
+      setError(t("failedToDeleteFile"));
     }
   };
 
@@ -102,7 +105,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onNewChat?.();
     } catch (error) {
       console.error('Error starting new chat:', error);
-      setError('Failed to start new chat');
+      setError(t("failedToStartNewChat"));
     } finally {
       setIsRemoving(false);
     }
@@ -116,7 +119,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
       onUpdate?.();
     } catch (error) {
       console.error('Error reingesting documents:', error);
-      setError('Failed to reingest documents');
+      setError(t("failedToReingest"));
       setIsReingesting(false);
     }
   };
@@ -140,7 +143,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Uploaded Documents</h3>
+        <h3 className="font-semibold">{t("title")}</h3>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -153,21 +156,21 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
             ) : (
               <Plus className="h-5 w-5 mr-2" />
             )}
-            New Chat
+            {t("newChat")}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleReingest}
             disabled={isRemoving || isReingesting}
-            title={isReingesting ? "Document processing in progress" : "Reingest all documents"}
+            title={isReingesting ? t("processingDocuments") : t("title")}
           >
             {isReingesting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Reingest All
+            {t("reingestAll")}
           </Button>
         </div>
       </div>
@@ -176,7 +179,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
         <Card className="bg-muted">
           <CardContent className="flex items-center justify-center py-6">
             <p className="text-sm text-muted-foreground">
-              No files uploaded yet
+              {t("noDocuments")}
             </p>
           </CardContent>
         </Card>
@@ -203,7 +206,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                       </p>
                       {file.isTemporary && (
                         <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">
-                          Temporary
+                          {t("temporary")}
                         </Badge>
                       )}
                       {file.ingestionStatus && file.ingestionStatus !== 'completed' && (
@@ -212,8 +215,8 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                           file.ingestionStatus === 'failed' && "text-red-600 border-red-300 bg-red-50",
                           file.ingestionStatus === 'pending' && "text-gray-600 border-gray-300 bg-gray-50",
                         )}>
-                          {file.ingestionStatus === 'processing' ? 'Processing...' : 
-                           file.ingestionStatus === 'failed' ? 'Failed' : 'Pending'}
+                          {file.ingestionStatus === 'processing' ? t("processing") : 
+                           file.ingestionStatus === 'failed' ? t("failed") : t("pending")}
                         </Badge>
                       )}
                     </div>
@@ -228,7 +231,7 @@ export function FileList({ onUpdate, onNewChat }: FileListProps) {
                     disabled={isReingesting}
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete file</span>
+                    <span className="sr-only">{tc("delete")}</span>
                   </Button>
                 </div>
               </CardContent>

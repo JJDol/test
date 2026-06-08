@@ -17,6 +17,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -26,7 +27,7 @@ import { LoadingStateInline } from "@/components/ui/loading-state-inline";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Archive, RotateCcw, Loader2, ChevronDown, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, CalendarArrowDown, CalendarArrowUp } from "lucide-react";
-import { DocumentTemplate, DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentTemplate, DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import type { SortMode } from "@/hooks/use-templates";
 import { TemplateUploadForm } from "@/components/ui/template-upload-form";
 import { DocumentTemplateCard } from "./document-template-card";
@@ -136,6 +137,8 @@ export function DocumentTemplatesTab({
   templateStats,
   actions,
 }: DocumentTemplatesTabProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const archivedSectionRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to archived section when showing archived templates
@@ -155,7 +158,7 @@ export function DocumentTemplatesTab({
     <>
       <div className="flex justify-between items-center mb-10 mt-10">
         <div>
-          <h2 className="text-3xl font-bold">Document Templates</h2>
+          <h2 className="text-3xl font-bold">{t("documentTemplates")}</h2>
           <ViewModeSelector
             viewMode={viewMode}
             onViewModeChange={actions.setViewMode}
@@ -167,25 +170,25 @@ export function DocumentTemplatesTab({
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                Sort
+                {tc("sort")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => actions.setSortMode('name-asc')} className={sortMode === 'name-asc' ? 'bg-accent' : ''}>
                 <ArrowDownAZ className="mr-2 h-4 w-4" />
-                Name (A → Z)
+                {tc("nameAZ")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('name-desc')} className={sortMode === 'name-desc' ? 'bg-accent' : ''}>
                 <ArrowUpAZ className="mr-2 h-4 w-4" />
-                Name (Z → A)
+                {tc("nameZA")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-newest')} className={sortMode === 'modified-newest' ? 'bg-accent' : ''}>
                 <CalendarArrowDown className="mr-2 h-4 w-4" />
-                Modified (Newest)
+                {tc("modifiedNewest")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-oldest')} className={sortMode === 'modified-oldest' ? 'bg-accent' : ''}>
                 <CalendarArrowUp className="mr-2 h-4 w-4" />
-                Modified (Oldest)
+                {tc("modifiedOldest")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -194,7 +197,7 @@ export function DocumentTemplatesTab({
             onClick={actions.toggleShowArchived}
           >
             <Archive className="mr-2 h-4 w-4" />
-            {showArchived ? "Hide Archived" : "Show Archived"}
+            {showArchived ? t("hideArchived") : t("showArchived")}
             {archivedTemplates.length > 0 && (
               <span className="ml-2 bg-muted px-2 py-0.5 rounded-full text-xs">
                 {archivedTemplates.length}
@@ -205,12 +208,12 @@ export function DocumentTemplatesTab({
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Upload Template
+                {t("uploadTemplate")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
               <DialogHeader>
-                <DialogTitle>Upload Template</DialogTitle>
+                <DialogTitle>{t("uploadTemplate")}</DialogTitle>
               </DialogHeader>
               <div className="pr-2">
                 <TemplateUploadForm onUploadComplete={actions.handleUploadComplete} />
@@ -229,7 +232,7 @@ export function DocumentTemplatesTab({
       {/* Error state */}
       {error.overall && (
         <ErrorState
-          title="Error loading templates"
+          title={t("errorLoadingTemplates")}
           message={error.overall}
           onRetry={actions.retryOnError}
         />
@@ -237,7 +240,7 @@ export function DocumentTemplatesTab({
 
       {/* Loading state */}
       {loading.templates && templates.length === 0 && (
-        <LoadingStateInline message="Loading templates..." />
+        <LoadingStateInline message={t("loadingTemplates")} />
       )}
 
       {/* Templates accordion */}
@@ -249,7 +252,7 @@ export function DocumentTemplatesTab({
             <AccordionItem key={category} value={category} className="border-0 mb-2">
               <AccordionTrigger className="bg-muted/50 hover:bg-muted px-4 py-4 rounded-lg hover:no-underline justify-start [&>svg]:order-first [&>svg]:mr-3 [&>svg]:ml-0">
                 <div className="flex items-center gap-3">
-                  <span className="font-bold uppercase tracking-wide">{category}</span>
+                  <span className="font-bold uppercase tracking-wide">{tc(getCategoryTranslationKey(category as DocumentCategory))}</span>
                   <span className="text-muted-foreground font-normal">{categoryTemplates.length}</span>
                 </div>
               </AccordionTrigger>
@@ -276,7 +279,7 @@ export function DocumentTemplatesTab({
       {/* No templates message */}
       {!loading.templates && templates.length === 0 && !error.overall && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No templates found. Upload your first template to get started.</p>
+          <p className="text-muted-foreground">{t("noTemplatesFound")}</p>
         </div>
       )}
 
@@ -285,16 +288,16 @@ export function DocumentTemplatesTab({
         <div ref={archivedSectionRef} className="mt-8 border-t pt-8">
           <div className="flex items-center gap-2 mb-4">
             <Archive className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-xl font-semibold text-muted-foreground">Archived Templates</h2>
+            <h2 className="text-xl font-semibold text-muted-foreground">{t("archivedTemplates")}</h2>
           </div>
 
           {loading.archivedTemplates && (
-            <LoadingStateInline message="Loading archived templates..." />
+            <LoadingStateInline message={t("loadingArchivedTemplates")} />
           )}
 
           {!loading.archivedTemplates && archivedTemplates.length === 0 && (
             <div className="text-center py-8 bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">No archived templates found.</p>
+              <p className="text-muted-foreground">{t("noArchivedTemplates")}</p>
             </div>
           )}
 
@@ -308,10 +311,10 @@ export function DocumentTemplatesTab({
                   <div>
                     <h3 className="font-medium">{template.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {getCategoryDisplayName(template.category)}
+                      {tc(getCategoryTranslationKey(template.category))}
                       {template.archived_at && (
                         <span className="ml-2">
-                          • Archived {new Date(template.archived_at).toLocaleDateString()}
+                          • {t("archivedDate")} {new Date(template.archived_at).toLocaleDateString()}
                         </span>
                       )}
                     </p>
@@ -327,7 +330,7 @@ export function DocumentTemplatesTab({
                     ) : (
                       <RotateCcw className="mr-2 h-4 w-4" />
                     )}
-                    Restore
+                    {tc("restore")}
                   </Button>
                 </div>
               ))}

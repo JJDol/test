@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -57,6 +58,7 @@ export function ChatSection({
   onUploadComplete,
   onNewChat,
 }: ChatSectionProps) {
+  const t = useTranslations("documents");
   return (
     <Card className="flex-1 flex flex-col min-h-0 max-h-full overflow-hidden">
       {/* Files list */}
@@ -100,7 +102,7 @@ export function ChatSection({
               value={inputValue}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={isIngesting ? "Please wait while documents are being processed..." : "Ask a question..."}
+              placeholder={isIngesting ? t("processingDocuments") : t("askQuestion")}
               disabled={isLoading || isIngesting}
               className="flex-1"
             />
@@ -115,11 +117,11 @@ export function ChatSection({
             }}
           >
             <SendHorizontal className="h-5 w-5" />
-            <span className="sr-only">Send message</span>
+            <span className="sr-only">{t("sendMessage")}</span>
           </Button>
         </form>
         <p className="mt-2 text-xs text-muted-foreground text-center">
-          The information provided by the AI chatbot is for general informational purposes only. While efforts are made to ensure accuracy, AutoDoc does not guarantee completeness or compliance with BR18 or other regulations. Users are solely responsible for verifying all information and ensuring regulatory compliance.
+          {t("aiDisclaimer")}
         </p>
       </div>
     </Card>

@@ -6,6 +6,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { useMemo, useState, useEffect } from "react";
 import { useTemplates } from "@/hooks/use-templates";
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { CategorySelector } from "@/components/ui/category-selector";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey } from "@/lib/types/types";
 import { BaseVariable } from "@/lib/types/variable-types";
 
 type DocumentTypeDefinition = {
@@ -93,6 +94,8 @@ type CategoryDefaultVariable = {
 type CategoryDefaults = Record<DocumentCategory, CategoryDefaultVariable[]>;
 
 export function VariablesContent() {
+  const t = useTranslations("variables");
+  const tc = useTranslations("common");
   const { templates, loading, error } = useTemplates();
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | "GLOBAL">("GLOBAL");
   const [documentTypes, setDocumentTypes] = useState(DEFAULT_DOCUMENT_TYPES);
@@ -703,7 +706,7 @@ export function VariablesContent() {
   };
 
   const handleDeleteDocumentType = async (category: DocumentCategory, id: string) => {
-    const confirmed = window.confirm("Delete this document type? This cannot be undone.");
+    const confirmed = window.confirm(t("deleteDocumentType"));
     if (!confirmed) {
       return;
     }
@@ -1017,13 +1020,13 @@ export function VariablesContent() {
           <p className="mt-2 text-sm text-muted-foreground">{type.description}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          {type.variables.length} variable{type.variables.length === 1 ? "" : "s"} mapped
+          {type.variables.length} {t("variablesMapped")}
           {type.lastUpdated ? ` • Updated ${type.lastUpdated}` : ""}
         </p>
 
         {isCollapsed ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            Collapsed. Expand to manage variables for this document type.
+            {t("selectCategoryToManage")}
           </p>
         ) : (
           <div className="mt-4 space-y-3 border-t pt-4">
@@ -1031,7 +1034,7 @@ export function VariablesContent() {
 
             {type.variables.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No variables yet. Add the first variable below.
+                {t("noVariablesYet")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -1046,13 +1049,13 @@ export function VariablesContent() {
                         <span className="text-muted-foreground">• {variable.type}</span>
                         {variable.isDefault && (
                           <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
-                            Default
+                            {tc("default")}
                           </span>
                         )}
                       </div>
                       {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Options:{" "}
+                          {tc("options")}:{" "}
                           {variable.dropdownOptions.map(option => option.displayText).join(", ")}
                         </p>
                       )}
@@ -1105,12 +1108,12 @@ export function VariablesContent() {
             >
               <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
                 <Input
-                  placeholder="Variable name"
+                  placeholder={t("variableName")}
                   value={variableDrafts[getDraftKey(category, type.id)]?.name ?? ""}
                   onChange={event =>
                     handleVariableDraftChange(category, type.id, "name", event.target.value)
                   }
-                  aria-label="Variable name"
+                  aria-label={t("variableName")}
                 />
                 <Select
                   value={variableDrafts[getDraftKey(category, type.id)]?.type ?? "text"}
@@ -1118,8 +1121,8 @@ export function VariablesContent() {
                     handleVariableDraftChange(category, type.id, "type", value)
                   }
                 >
-                  <SelectTrigger aria-label="Variable type">
-                    <SelectValue placeholder="Variable type" />
+                  <SelectTrigger aria-label={t("variableType")}>
+                    <SelectValue placeholder={t("variableType")} />
                   </SelectTrigger>
                   <SelectContent>
                     {variableTypeOptions.map(option => (
@@ -1131,13 +1134,13 @@ export function VariablesContent() {
                 </Select>
                 <Button type="submit" className="sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add
+                  {tc("add")}
                 </Button>
               </div>
 
               {(variableDrafts[getDraftKey(category, type.id)]?.type ?? "text") === "dropdown" && (
                 <div className="rounded-md border p-3 space-y-2 bg-muted/30">
-                  <p className="text-xs font-medium text-muted-foreground">Dropdown Options</p>
+                  <p className="text-xs font-medium text-muted-foreground">{t("dropdownOptions")}</p>
 
                   {(variableDrafts[getDraftKey(category, type.id)]?.dropdownOptions ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -1161,7 +1164,7 @@ export function VariablesContent() {
 
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add option..."
+                      placeholder={t("addOption")}
                       value={dropdownOptionInputs[getDraftKey(category, type.id)] ?? ""}
                       onChange={event =>
                         setDropdownOptionInputs(prev => ({
@@ -1229,17 +1232,17 @@ export function VariablesContent() {
               className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
             />
           </Button>
-          <p className="text-sm font-semibold text-muted-foreground">Global Variables</p>
+          <p className="text-sm font-semibold text-muted-foreground">{t("globalVariables")}</p>
         </div>
         <p className="text-xs text-muted-foreground/80">
-          {globalVariables.length} variable{globalVariables.length === 1 ? "" : "s"} shared across every document and project.
+          {t("globalDescription", { count: globalVariables.length })}
         </p>
 
         {!isCollapsed && (
           <>
             {globalVariables.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No global variables yet. Use the form below to add common metadata like project name or client.
+                {t("noGlobalVariables")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -1257,7 +1260,7 @@ export function VariablesContent() {
                       </p>
                       {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Options:{" "}
+                          {tc("options")}:{" "}
                           {variable.dropdownOptions.map(option => option.displayText).join(", ")}
                         </p>
                       )}
@@ -1273,7 +1276,7 @@ export function VariablesContent() {
                           dropdownOptions: variable.dropdownOptions || [],
                           isGlobal: true
                         })}
-                        aria-label={`Edit ${variable.name}`}
+                        aria-label={`${tc("edit")} ${variable.name}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -1304,12 +1307,12 @@ export function VariablesContent() {
             >
               <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
                 <Input
-                  placeholder="Variable name"
+                  placeholder={t("variableName")}
                   value={globalDraft.name}
                   onChange={event =>
                     setGlobalDraft(prev => ({ ...prev, name: event.target.value }))
                   }
-                  aria-label="Global variable name"
+                  aria-label={t("variableName")}
                 />
                 <Select
                   value={globalDraft.type}
@@ -1321,8 +1324,8 @@ export function VariablesContent() {
                     }))
                   }
                 >
-                  <SelectTrigger aria-label="Global variable type">
-                    <SelectValue placeholder="Variable type" />
+                  <SelectTrigger aria-label={t("variableType")}>
+                    <SelectValue placeholder={t("variableType")} />
                   </SelectTrigger>
                   <SelectContent>
                     {variableTypeOptions.map(option => (
@@ -1334,13 +1337,13 @@ export function VariablesContent() {
                 </Select>
                 <Button type="submit" className="sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add
+                  {tc("add")}
                 </Button>
               </div>
 
               {globalDraft.type === "dropdown" && (
                 <div className="rounded-md border p-3 space-y-2 bg-muted/30">
-                  <p className="text-xs font-medium text-muted-foreground">Dropdown Options</p>
+                  <p className="text-xs font-medium text-muted-foreground">{t("dropdownOptions")}</p>
 
                   {globalDraft.dropdownOptions.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -1364,7 +1367,7 @@ export function VariablesContent() {
 
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add option..."
+                      placeholder={t("addOption")}
                       value={globalDropdownOptionInput}
                       onChange={event => setGlobalDropdownOptionInput(event.target.value)}
                       onKeyDown={event => {
@@ -1425,7 +1428,7 @@ export function VariablesContent() {
             />
           </Button>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-muted-foreground">Category Default Variables</p>
+            <p className="text-sm font-semibold text-muted-foreground">{t("categoryDefaults")}</p>
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border">
               {defaults.length} variable{defaults.length === 1 ? "" : "s"}
             </span>
@@ -1435,7 +1438,7 @@ export function VariablesContent() {
         {!isCollapsed && (
           <>
             <p className="text-xs text-muted-foreground">
-              These default variables are shared across all document types in this category and cannot be edited.
+              {t("categoryDefaultsDescription")}
             </p>
             <ul className="space-y-2">
               {defaults.map(variable => (
@@ -1448,7 +1451,7 @@ export function VariablesContent() {
                       <span className="font-medium">{variable.name}</span>
                       <span className="text-muted-foreground">• {variable.type}</span>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
-                        Default
+                        {tc("default")}
                       </span>
                     </div>
                     {variable.description && (
@@ -1456,7 +1459,7 @@ export function VariablesContent() {
                     )}
                     {variable.type === "dropdown" && variable.dropdownOptions && variable.dropdownOptions.length > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        Options: {variable.dropdownOptions.map(option => option.displayText).join(", ")}
+                        {tc("options")}: {variable.dropdownOptions.map(option => option.displayText).join(", ")}
                       </p>
                     )}
                   </div>
@@ -1471,7 +1474,7 @@ export function VariablesContent() {
 
   const renderCategoryPanel = (category: DocumentCategory) => {
     const categoryTypes = documentTypes[category] ?? [];
-    const displayName = getCategoryDisplayName(category);
+    const displayName = tc(getCategoryTranslationKey(category));
     const defaults = categoryDefaults[category] ?? [];
 
     return (
@@ -1485,7 +1488,7 @@ export function VariablesContent() {
           </div>
           <Button size="sm" onClick={() => setDialogState({ mode: "create", category })}>
             <Plus className="mr-2 h-4 w-4" />
-            Add document type
+            {t("addDocumentType")}
           </Button>
         </div>
 
@@ -1495,7 +1498,7 @@ export function VariablesContent() {
         {/* Document Types Section */}
         {categoryTypes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No document types defined yet. Add the first definition to start tracking variables.
+            {t("noDocumentTypes")}
           </p>
         ) : (
           <ul className="space-y-3">
@@ -1508,8 +1511,8 @@ export function VariablesContent() {
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Variables</h1>
-        <p className="text-muted-foreground">Manage variables used across your master templates.</p>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {loading.overall && (
@@ -1544,7 +1547,7 @@ export function VariablesContent() {
               onCategoryChange={value =>
                 setSelectedCategory(value as DocumentCategory | "GLOBAL")
               }
-              allLabel="Global"
+              allLabel={tc("global")}
               allValue="GLOBAL"
             />
 
@@ -1555,7 +1558,7 @@ export function VariablesContent() {
                   ? renderCategoryPanel(activeCategory)
                   : (
                     <p className="text-sm text-muted-foreground">
-                      Select a category to manage its document types.
+                      {t("selectCategoryToManage")}
                     </p>
                   )}
             </div>
@@ -1567,13 +1570,13 @@ export function VariablesContent() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogState?.mode === "edit" ? "Edit document type" : "Create document type"}
+              {dialogState?.mode === "edit" ? t("editDocumentType") : t("createDocumentType")}
             </DialogTitle>
             {dialogState && (
               <DialogDescription>
                 {dialogState.mode === "edit"
-                  ? `Update the definition for ${dialogState.documentType.name}.`
-                  : `Add a new document type under ${getCategoryDisplayName(dialogState.category)}.`}
+                  ? `${t("updateDefinition")} ${dialogState.documentType.name}.`
+                  : `${t("addDefinition")} ${tc(getCategoryTranslationKey(dialogState.category))}.`}
               </DialogDescription>
             )}
           </DialogHeader>
@@ -1587,7 +1590,7 @@ export function VariablesContent() {
           >
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="document-type-name">
-                Name
+                {tc("name")}
               </label>
               <Input
                 id="document-type-name"
@@ -1600,11 +1603,11 @@ export function VariablesContent() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="document-type-description">
-                Description
+                {tc("description")}
               </label>
               <Textarea
                 id="document-type-description"
-                placeholder="Short description that explains how this document type is used."
+                placeholder={t("shortDescription")}
                 value={formValues.description}
                 onChange={event =>
                   setFormValues(prev => ({ ...prev, description: event.target.value }))
@@ -1614,10 +1617,10 @@ export function VariablesContent() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogState(null)}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit">
-                {dialogState?.mode === "edit" ? "Save changes" : "Create type"}
+                {dialogState?.mode === "edit" ? tc("saveChanges") : t("createType")}
               </Button>
             </DialogFooter>
           </form>
@@ -1627,9 +1630,9 @@ export function VariablesContent() {
       <Dialog open={Boolean(editingVariable)} onOpenChange={open => !open && setEditingVariable(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Variable</DialogTitle>
+            <DialogTitle>{t("editVariable")}</DialogTitle>
             <DialogDescription>
-              Update the variable name, type, and options.
+              {t("editVariableDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1642,11 +1645,11 @@ export function VariablesContent() {
           >
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="edit-variable-name">
-                Name
+                {tc("name")}
               </label>
               <Input
                 id="edit-variable-name"
-                placeholder="Variable name"
+                placeholder={t("variableName")}
                 value={editingVariable?.name ?? ""}
                 onChange={event => setEditingVariable(prev => prev ? { ...prev, name: event.target.value } : null)}
                 required
@@ -1655,7 +1658,7 @@ export function VariablesContent() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="edit-variable-type">
-                Type
+                {tc("type")}
               </label>
               <Select
                 value={editingVariable?.type ?? "text"}
@@ -1668,7 +1671,7 @@ export function VariablesContent() {
                 }
               >
                 <SelectTrigger id="edit-variable-type">
-                  <SelectValue placeholder="Variable type" />
+                  <SelectValue placeholder={t("variableType")} />
                 </SelectTrigger>
                 <SelectContent>
                   {variableTypeOptions.map(option => (
@@ -1682,7 +1685,7 @@ export function VariablesContent() {
 
             {editingVariable?.type === "dropdown" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Dropdown Options</label>
+                <label className="text-sm font-medium">{t("dropdownOptions")}</label>
                 <div className="rounded-md border p-3 space-y-2 bg-muted/30">
                   <div className="flex flex-wrap gap-2 mb-2">
                     {editingVariable.dropdownOptions.map((opt, idx) => (
@@ -1707,7 +1710,7 @@ export function VariablesContent() {
 
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add option..."
+                      placeholder={t("addOption")}
                       value={editDropdownOptionInput}
                       onChange={event => setEditDropdownOptionInput(event.target.value)}
                       onKeyDown={event => {
@@ -1749,9 +1752,9 @@ export function VariablesContent() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingVariable(null)}>
-                Cancel
+                {tc("cancel")}
               </Button>
-              <Button type="submit">Save changes</Button>
+              <Button type="submit">{tc("saveChanges")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1760,17 +1763,17 @@ export function VariablesContent() {
       <Dialog open={Boolean(deletingVariable)} onOpenChange={open => !open && setDeletingVariable(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>{tc("confirmDeletion")}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the variable "{deletingVariable?.name}"? This action cannot be undone.
+              {t("confirmDeleteVariable", { name: deletingVariable?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletingVariable(null)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleConfirmDeleteVariable}>
-              Delete
+              {tc("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

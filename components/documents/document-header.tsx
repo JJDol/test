@@ -8,6 +8,9 @@
  * - Reusable across different document views
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Button } from '@/components/ui/button';
 import { DocumentUploadDialog } from '@/components/ui/document-upload-dialog';
 import { RefreshCw } from 'lucide-react';
@@ -31,8 +34,8 @@ interface DocumentHeaderProps {
 }
 
 export function DocumentHeader({
-  title = "Document Management",
-  description = "Upload and manage documents for your AI knowledge base",
+  title,
+  description,
   stats,
   onRefresh,
   onUploadComplete,
@@ -40,11 +43,14 @@ export function DocumentHeader({
   showUpload = true,
   className = ""
 }: DocumentHeaderProps) {
+  const t = useTranslations("documents");
+  const resolvedTitle = title ?? t("documentManagement");
+  const resolvedDescription = description ?? t("subtitle");
   return (
     <div className={`flex justify-between items-center ${className}`}>
       <div>
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+        <h1 className="text-3xl font-bold">{resolvedTitle}</h1>
+        <p className="text-muted-foreground">{resolvedDescription}</p>
         <DocumentStats stats={stats} />
       </div>
       
@@ -55,14 +61,14 @@ export function DocumentHeader({
           disabled={isRefreshing}
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t("refreshDocuments")}
         </Button>
         
         {showUpload && (
           <DocumentUploadDialog
             onUploadComplete={onUploadComplete}
-            title="Upload Document"
-            description="Upload a document to add it to your AI knowledge base"
+            title={t("uploadDocument")}
+            description={t("uploadDescription")}
             showCompanyWideToggle={true}
             allowedFileTypes={[".pdf", ".doc", ".docx", ".txt", ".md"]}
             maxFileSize={50 * 1024 * 1024} // 50MB

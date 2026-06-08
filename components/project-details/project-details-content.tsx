@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { ProjectOverview } from "./project-overview";
@@ -248,6 +249,7 @@ export function ProjectDetailsContent({
   actions,
 }: ProjectDetailsContentProps) {
   const { toast } = useToast();
+  const tc = useTranslations("common");
   const permissions = useProjectPermissions(project, currentUser);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -928,8 +930,8 @@ export function ProjectDetailsContent({
       error={error.overall}
       onRetry={actions.refreshProject}
       variant="page"
-      loadingMessage="Loading project details..."
-      errorTitle="Failed to load project"
+      loadingMessage={tc("loading")}
+      errorTitle={tc("error")}
     >
       <div className="space-y-4">
         <button
@@ -938,7 +940,7 @@ export function ProjectDetailsContent({
           disabled={loadingAction !== "none"}
           className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
         >
-          ← Back to Dashboard
+          ← {tc("back")}
         </button>
 
         <h1 className="text-3xl font-bold">{project?.name}</h1>

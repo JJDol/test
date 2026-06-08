@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentTemplate } from "@/lib/types/types";
@@ -35,6 +36,8 @@ export function DocumentTemplateCard({
   onDelete,
   onReupload,
 }: DocumentTemplateCardProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -87,14 +90,14 @@ export function DocumentTemplateCard({
       console.log('Template download completed successfully');
       // TODO: This toast doesnt show
       toast({
-        title: "Success",
-        description: "Template downloaded successfully",
+        title: tc("success"),
+        description: t("templateDownloaded"),
       });
     } catch (error) {
       console.error('Error downloading template:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to download template",
+        title: tc("error"),
+        description: error instanceof Error ? error.message : t("failedToDownload"),
         variant: "destructive",
       });
     } finally {
@@ -120,7 +123,7 @@ export function DocumentTemplateCard({
           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           <span className="text-base font-medium truncate">{template.name}</span>
           <Badge variant={template.is_public ? "default" : "secondary"} className="shrink-0">
-            {template.is_public ? "Public" : "Private"}
+            {template.is_public ? t("public") : t("private")}
           </Badge>
           <Badge variant="outline" className="text-xs shrink-0">
             v{template.current_version || 1}
@@ -130,14 +133,14 @@ export function DocumentTemplateCard({
         {/* Right: modified + actions */}
         <div className="flex items-center gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm text-muted-foreground hidden sm:inline whitespace-nowrap">
-            Modified {template.updated_at ? new Date(template.updated_at).toLocaleDateString() : 'Unknown'}
+            {t("lastUpdated")}: {template.updated_at ? new Date(template.updated_at).toLocaleDateString() : '—'}
           </span>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title={isDownloading ? "Downloading..." : "Download"}
+              title={isDownloading ? tc("loading") : tc("download")}
               onClick={handleDownload}
               disabled={isDownloading}
             >
@@ -151,7 +154,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title="Upload New Version"
+              title={t("reuploadTemplate")}
               onClick={onReupload}
             >
               <UploadCloud className="h-4 w-4" />
@@ -160,7 +163,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-foreground/70 hover:text-foreground"
-              title="Edit"
+              title={tc("edit")}
               onClick={onEdit}
             >
               <Pencil className="h-4 w-4" />
@@ -169,7 +172,7 @@ export function DocumentTemplateCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-red-400 hover:text-red-500"
-              title="Delete"
+              title={tc("delete")}
               onClick={onDelete}
             >
               <Trash2 className="h-4 w-4" />

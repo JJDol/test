@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,8 @@ interface CompanySettingsProps {
 }
 
 export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySettingsProps) {
+  const t = useTranslations("company");
+  const tc = useTranslations("common");
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,8 +48,8 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
     } catch (error) {
       console.error("Error fetching company info:", error);
       toast({
-        title: "Error",
-        description: "Failed to load company information",
+        title: tc("error"),
+        description: t("failedToLoadCompany"),
         variant: "destructive"
       });
     } finally {
@@ -57,8 +60,8 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
   const handleSave = async () => {
     if (!formData.name.trim()) {
       toast({
-        title: "Error",
-        description: "Company name is required",
+        title: tc("error"),
+        description: t("companyNameRequired"),
         variant: "destructive"
       });
       return;
@@ -79,21 +82,21 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
       if (response.ok) {
         setCompany(data.company);
         toast({
-          title: "Success",
-          description: "Company information updated successfully"
+          title: tc("success"),
+          description: t("companyUpdatedSuccess")
         });
       } else {
         toast({
-          title: "Error",
-          description: data.message || "Failed to update company information",
+          title: tc("error"),
+          description: data.message || t("failedToUpdateCompany"),
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error("Error updating company:", error);
       toast({
-        title: "Error",
-        description: "Failed to update company information",
+        title: tc("error"),
+        description: t("failedToUpdateCompany"),
         variant: "destructive"
       });
     } finally {
@@ -109,10 +112,10 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
         <Building2 className="w-5 h-5" />
-        Company Settings
+        {t("companySettings")}
       </CardTitle>
       <CardDescription>
-        Manage your company information and branding
+        {t("manageCompanyInfo")}
       </CardDescription>
     </CardHeader>
   );
@@ -136,12 +139,12 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
       {renderHeader()}
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="company-name">Company Name</Label>
+          <Label htmlFor="company-name">{t("companyName")}</Label>
           <Input
             id="company-name"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="Enter company name"
+            placeholder={t("enterCompanyName")}
           />
         </div>
 
@@ -153,20 +156,20 @@ export default function CompanySettings({ isAdmin, isCompanyAdmin }: CompanySett
           {isSaving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
+              {t("savingEllipsis")}
             </>
           ) : (
             <>
               <Save className="w-4 h-4 mr-2" />
-              Save Company Information
+              {t("saveCompanyInfo")}
             </>
           )}
         </Button>
 
         {company && (
           <div className="text-sm text-muted-foreground pt-4 border-t">
-            <p>Company ID: {company.id}</p>
-            <p>Created: {new Date(company.created_at).toLocaleDateString()}</p>
+            <p>{t("companyId")}: {company.id}</p>
+            <p>{t("created")}: {new Date(company.created_at).toLocaleDateString()}</p>
           </div>
         )}
       </CardContent>

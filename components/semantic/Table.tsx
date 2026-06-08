@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from "next-intl";
 import Image from 'next/image';
 import Br18SourceCard from './Br18SourceCard';
 import PdfSourceCard from './PdfSourceCard';
@@ -29,6 +30,8 @@ export default function Table({
 }: {
     query: string;
 }) {
+    const t = useTranslations("documents");
+    const tc = useTranslations("common");
     const [result, setResult] = useState<SearchResult>({ source_nodes: [], base_response: "" });
     const [isLoading, setIsLoading] = useState(false);
 
@@ -55,7 +58,7 @@ export default function Table({
     }, [query]);
 
     if (isLoading) {
-        return <div className="text-gray-400">Loading results...</div>;
+        return <div className="text-gray-400">{tc("loading")}...</div>;
     }
 
     const allComps = result.source_nodes.map((node) => {

@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BR18IngestionPanel } from "@/components/admin/BR18IngestionPanel";
@@ -27,6 +28,7 @@ interface SourcesSectionProps {
 }
 
 export function SourcesSection({ messages, userRole }: SourcesSectionProps) {
+  const t = useTranslations("documents");
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const sources = lastMessage?.sources || [];
   const hasAdminAccess = userRole === 'ADMIN' || userRole === 'COMPANY_ADMIN';
@@ -42,7 +44,7 @@ export function SourcesSection({ messages, userRole }: SourcesSectionProps) {
             </div>
           )}
           
-          <h3 className="font-semibold">Sources</h3>
+          <h3 className="font-semibold">{t("sources")}</h3>
           
           {/* Sources list - Limited to top 5 */}
           {sources.length > 0 ? (
@@ -50,9 +52,9 @@ export function SourcesSection({ messages, userRole }: SourcesSectionProps) {
               <div key={index} className="p-3 rounded-lg bg-muted text-sm">
                 <p className="font-medium text-xs text-muted-foreground mb-1">
                   {source.document_name}
-                  {source.page_number && ` - Page ${source.page_number}`}
+                  {source.page_number && ` - ${t("page", { number: source.page_number })}`}
                   <span className="ml-2 opacity-75">
-                    ({Math.round(source.confidence_score * 100)}% match)
+                    ({t("match", { percent: Math.round(source.confidence_score * 100) })})
                   </span>
                 </p>
                 <p className="leading-relaxed">{source.text_snippet}</p>
@@ -60,7 +62,7 @@ export function SourcesSection({ messages, userRole }: SourcesSectionProps) {
             ))
           ) : (
             <p className="text-sm text-muted-foreground">
-              No sources available for the current response.
+              {t("noDocuments")}
             </p>
           )}
         </div>

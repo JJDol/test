@@ -1,4 +1,5 @@
 import { LoadingState } from "@/components/ui/loading-state";
+import { useTranslations } from "next-intl";
 
 /**
  * Invitation Loading Component
@@ -9,10 +10,11 @@ import { LoadingState } from "@/components/ui/loading-state";
  * - Professional loading indicator
  */
 export function InvitationLoading() {
+  const t = useTranslations("invite");
   return (
     <LoadingState
-      title="Validating Invitation"
-      message="Please wait while we verify your invitation link..."
+      title={t("validatingInvitation")}
+      message={t("validatingMessage")}
       variant="card"
       size="md"
     />

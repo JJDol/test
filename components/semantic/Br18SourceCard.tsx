@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { HandThumbDownIcon, HandThumbUpIcon, LinkIcon } from "@heroicons/react/24/outline";
 
 export default function Br18SourceCard({
@@ -43,6 +44,7 @@ export default function Br18SourceCard({
             })
         });
     };
+    const t = useTranslations("documents");
     const startText = text.slice(0, 100);
     return <div className="flex flex-col gap-2 shadow-lg p-4 text-zinc-800 bg-yellow-50 rounded border border-zinc-400">
         <details className="group">

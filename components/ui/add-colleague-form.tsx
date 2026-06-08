@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +28,8 @@ interface AddColleagueFormProps {
 }
 
 export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
+  const t = useTranslations("invite");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,8 +51,8 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
     
     if (!formData.email || !formData.role) {
       toast({
-        title: "Validation Error",
-        description: "Email and role are required",
+        title: t("validationError"),
+        description: t("emailAndRoleRequired"),
         variant: "destructive",
       });
       return;
@@ -59,8 +62,8 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast({
-        title: "Validation Error",
-        description: "Please enter a valid email address",
+        title: t("validationError"),
+        description: t("invalidEmail"),
         variant: "destructive",
       });
       return;
@@ -99,15 +102,15 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
       }
 
       toast({
-        title: "Invitation Sent!",
-        description: "Your colleague will receive an email with a secure invitation link.",
+        title: t("invitationSent"),
+        description: t("invitationSentDescription"),
       });
 
     } catch (error) {
       console.error('Error inviting colleague:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to invite colleague",
+        title: tc("error"),
+        description: error instanceof Error ? error.message : t("failedToInvite"),
         variant: "destructive",
       });
     } finally {
@@ -129,17 +132,17 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
       <DialogTrigger asChild>
         <Button className="flex items-center gap-2">
           <UserPlus className="h-4 w-4" />
-          Add Colleague
+          {t("addColleague")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
-            Invite New Colleague
+            {t("inviteNewColleague")}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Send an invitation email to add a new team member to your company.
+            {t("inviteDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -148,7 +151,7 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address <span className="text-destructive">*</span>
+                  {t("emailAddress")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -163,7 +166,7 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
               
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">
-                  Full Name
+                  {t("fullName")}
                 </Label>
                 <Input
                   id="name"
@@ -177,11 +180,11 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-sm font-medium">
-                  Role <span className="text-destructive">*</span>
+                  {t("role")} <span className="text-destructive">*</span>
                 </Label>
                 <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
                   <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder={t("selectRole")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USER">User</SelectItem>
@@ -201,11 +204,10 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
                 </div>
                 <div>
                   <h4 className="font-medium text-blue-900 mb-1">
-                    Secure Invitation Process
+                    {t("secureInvitationProcess")}
                   </h4>
                   <p className="text-sm text-blue-700">
-                    Your colleague will receive an email with a secure invitation link. 
-                    They'll be able to create their own password and set up their account safely.
+                    {t("secureInvitationDescription")}
                   </p>
                 </div>
               </div>
@@ -219,16 +221,16 @@ export function AddColleagueForm({ onColleagueAdded }: AddColleagueFormProps) {
                 disabled={isSubmitting}
                 className="px-6"
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSubmitting} className="px-6">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending Invitation...
+                    {t("sendingInvitation")}
                   </>
                 ) : (
-                  "Send Invitation"
+                  t("sendInvitation")
                 )}
               </Button>
             </div>

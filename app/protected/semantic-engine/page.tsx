@@ -19,12 +19,14 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SemanticEngineContent } from "@/components/semantic/semantic-engine-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function SemanticEngine() {
+  const t = useTranslations("documents");
   return (
-    <ProtectedPageWrapper loadingMessage="Loading AI assistant...">
+    <ProtectedPageWrapper loadingMessage={t("loadingAI")}>
       <SemanticEngineContent />
     </ProtectedPageWrapper>
   );

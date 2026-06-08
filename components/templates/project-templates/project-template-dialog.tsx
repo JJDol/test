@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ViewModeSelector } from "@/components/ui/view-mode-selector";
-import { DocumentCategory, getCategoryDisplayName, DocumentTemplate } from "@/lib/types/types";
+import { DocumentCategory, getCategoryTranslationKey, DocumentTemplate } from "@/lib/types/types";
 
 interface ProjectTemplateDialogProps {
   open: boolean;
@@ -59,6 +60,8 @@ export function ProjectTemplateDialog({
   onCancel,
   loading,
 }: ProjectTemplateDialogProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
 
   const handleTemplateToggle = (templateName: string, checked: boolean) => {
     if (checked) {
@@ -85,40 +88,40 @@ export function ProjectTemplateDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {isCreate ? 'Create Project Template' : 'Edit Project Template'}
+            {isCreate ? t('createProjectTemplate') : t('editProjectTemplate')}
           </DialogTitle>
           <DialogDescription>
             {isCreate 
-              ? 'Create a new project template for a specific document category.'
-              : 'Update the name, category, and included document templates.'
+              ? t('createDescription')
+              : t('editDescription')
             }
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 pb-6">
           <div className="grid gap-2">
-            <Label htmlFor={`${inputPrefix}name`}>Template Name</Label>
+            <Label htmlFor={`${inputPrefix}name`}>{t("templateName")}</Label>
             <Input
               id={`${inputPrefix}name`}
               value={projectTemplate.name}
               onChange={(e) => onNameChange(e.target.value)}
-              placeholder="Enter template name"
+              placeholder={t("templateNamePlaceholder")}
               disabled={loading}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`${inputPrefix}category`}>Category</Label>
+            <Label htmlFor={`${inputPrefix}category`}>{t("category")}</Label>
             <Select 
               value={projectTemplate.category} 
               onValueChange={(value) => onCategoryChange(value as DocumentCategory)}
               disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t("selectCategory")} />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(DocumentCategory).map((category) => (
                   <SelectItem key={category} value={category}>
-                    {getCategoryDisplayName(category)}
+                    {tc(getCategoryTranslationKey(category))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,7 +130,7 @@ export function ProjectTemplateDialog({
           
           {/* Template Filter Selection */}
           <div className="grid gap-2">
-            <Label>Template Filter</Label>
+            <Label>{t("templateFilter")}</Label>
             <ViewModeSelector
               viewMode={documentViewMode}
               onViewModeChange={onDocumentViewModeChange}
@@ -137,7 +140,7 @@ export function ProjectTemplateDialog({
 
           {projectTemplate.category && (
             <div className="grid gap-2">
-              <Label>Available Templates</Label>
+              <Label>{t("availableTemplates")}</Label>
               <div className="grid gap-2 max-h-[300px] overflow-y-auto">
                 {documentTemplates
                   .filter(template => template.category === projectTemplate.category)
@@ -164,7 +167,7 @@ export function ProjectTemplateDialog({
           )}
 
           <div className="mt-4">
-            <h4 className="font-medium mb-2">Selected Templates</h4>
+            <h4 className="font-medium mb-2">{t("selectedTemplates")}</h4>
             <div className="flex flex-wrap gap-2">
               {projectTemplate.templates.map((templateName) => (
                 <Badge 
@@ -187,12 +190,12 @@ export function ProjectTemplateDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={loading}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
             {loading 
-              ? (isCreate ? 'Creating...' : 'Saving...') 
-              : (isCreate ? 'Create Template' : 'Save changes')
+              ? (isCreate ? tc('creatingEllipsis') : tc('updatingEllipsis')) 
+              : (isCreate ? t('createTemplate') : tc('saveChanges'))
             }
           </Button>
         </DialogFooter>

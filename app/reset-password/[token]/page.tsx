@@ -9,12 +9,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, AlertCircle, Eye, EyeOff, Shield, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PasswordStrength } from "@/components/ui/password-strength";
+import { useTranslations } from "next-intl";
 
 interface ResetPasswordProps {
   params: Promise<{ token: string }>;
 }
 
 export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const [token, setToken] = useState<string>("");
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
@@ -49,7 +52,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
           console.log('Token validation failed');
           setMessage({ 
             type: 'error', 
-            text: data.message || 'Invalid or expired reset link. Please request a new password reset.' 
+            text: t("invalidResetLinkDescription")
           });
         }
       } catch (error) {
@@ -57,7 +60,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
         setIsValid(false);
         setMessage({ 
           type: 'error', 
-          text: 'Failed to validate reset link. Please try again.' 
+          text: t("invalidResetLinkDescription")
         });
       } finally {
         setIsValidating(false);
@@ -79,14 +82,14 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
     try {
       // Check if passwords match
       if (password !== confirmPassword) {
-        setMessage({ type: 'error', text: 'Passwords do not match' });
+        setMessage({ type: 'error', text: t("passwordsDoNotMatch") });
         setIsSubmitting(false);
         return;
       }
 
       // Check password strength using enhanced validation
       if (password.length < 8) {
-        setMessage({ type: 'error', text: 'Password must be at least 8 characters long.' });
+        setMessage({ type: 'error', text: t("passwordMinLength") });
         setIsSubmitting(false);
         return;
       }
@@ -108,15 +111,15 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
       
       // If successful, redirect to sign-in
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Password updated successfully! Redirecting to sign-in...' });
+        setMessage({ type: 'success', text: t("passwordUpdatedSuccess") });
         setTimeout(() => {
           router.push('/sign-in?message=Password updated successfully. Please sign in with your new password.');
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to update password. Please try again.' });
+        setMessage({ type: 'error', text: data.error || t("failedToUpdatePassword") });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
+      setMessage({ type: 'error', text: t("failedToUpdatePassword") });
     } finally {
       setIsSubmitting(false);
     }
@@ -132,8 +135,8 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
-          <h1 className="text-xl font-semibold text-foreground mb-2">Validating Reset Link</h1>
-          <p className="text-muted-foreground">Please wait while we verify your reset link...</p>
+          <h1 className="text-xl font-semibold text-foreground mb-2">{t("validatingResetLink")}</h1>
+          <p className="text-muted-foreground">{t("validatingResetMessage")}</p>
         </div>
       </div>
     );
@@ -148,9 +151,9 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
             <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
               <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
-            <h1 className="text-2xl font-semibold text-foreground mb-2">Invalid Reset Link</h1>
+            <h1 className="text-2xl font-semibold text-foreground mb-2">{t("invalidResetLink")}</h1>
             <p className="text-muted-foreground mb-6">
-              {message?.text || 'This password reset link is invalid or has expired.'}
+              {message?.text || t("invalidResetLinkDescription")}
             </p>
           </div>
 
@@ -164,7 +167,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                   }}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 rounded-lg"
                 >
-                  Request New Reset Link
+                  {t("requestNewResetLink")}
                 </Button>
                 
                 <Button
@@ -173,7 +176,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                   className="w-full"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Sign In
+                  {t("backToSignIn")}
                 </Button>
               </div>
             </CardContent>
@@ -191,9 +194,9 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Shield className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-semibold text-foreground mb-2">Reset Password</h1>
+          <h1 className="text-3xl font-semibold text-foreground mb-2">{t("resetPasswordTitle")}</h1>
           <p className="text-muted-foreground">
-            Please enter your new password below
+            {t("resetPasswordSubtitle")}
           </p>
         </div>
 
@@ -204,7 +207,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
               {/* Password Field */}
               <div className="space-y-3">
                 <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                  New Password
+                  {t("newPassword")}
                 </Label>
                 <div className="relative">
                   <Input
@@ -212,7 +215,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => handlePasswordChange(e.target.value)}
-                    placeholder="Enter new password"
+                    placeholder={t("newPasswordPlaceholder")}
                     className="pr-10"
                     required
                   />
@@ -240,7 +243,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
               {/* Confirm Password Field */}
               <div className="space-y-3">
                 <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-                  Confirm Password
+                  {t("confirmPassword")}
                 </Label>
                 <div className="relative">
                   <Input
@@ -248,7 +251,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
+                    placeholder={t("confirmPasswordPlaceholder")}
                     className="pr-10"
                     required
                   />
@@ -269,12 +272,12 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                     {password === confirmPassword ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-green-600 dark:text-green-400">Passwords match</span>
+                        <span className="text-green-600 dark:text-green-400">{tc("passwordsMatch")}</span>
                       </>
                     ) : (
                       <>
                         <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-red-600 dark:text-red-400">Passwords do not match</span>
+                        <span className="text-red-600 dark:text-red-400">{tc("passwordsDontMatch")}</span>
                       </>
                     )}
                   </div>
@@ -290,12 +293,12 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Updating Password...
+                    {t("updatingPassword")}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Lock className="w-4 h-4" />
-                    Update Password
+                    {t("updatePassword")}
                   </div>
                 )}
               </Button>
@@ -327,7 +330,7 @@ export default function ResetPasswordWithToken({ params }: ResetPasswordProps) {
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Sign In
+                {t("backToSignIn")}
               </Button>
             </div>
           </CardContent>

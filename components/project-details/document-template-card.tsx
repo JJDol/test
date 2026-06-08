@@ -15,6 +15,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +92,8 @@ export function DocumentTemplateCard({
   isLocked = false,
   onDropdownOptionsChange,
 }: DocumentTemplateCardProps) {
+  const t = useTranslations("projectDetails");
+  const tc = useTranslations("common");
   // Version info (used to render the badge in the card body)
   const lockedVersion = project.template_version_locks?.[template.name] || 1;
   const latestVersion = template.current_version || 1;
@@ -163,11 +166,11 @@ export function DocumentTemplateCard({
 
         {/* Assignment Information - fixed height for consistency */}
         <div className="mt-3 space-y-1 text-xs text-muted-foreground min-h-[4.5rem] text-center">
-          <p className="truncate">Assigned to: {project.document_assignments?.[template.name]?.assignee_name || 'Not assigned'}</p>
-          <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || 'Not assigned'}</p>
+          <p className="truncate">{tc("assignedTo")}: {project.document_assignments?.[template.name]?.assignee_name || tc("notAssigned")}</p>
+          <p className="truncate">Supervisor: {project.document_assignments?.[template.name]?.supervisor_name || tc("notAssigned")}</p>
           <div className="h-6 flex items-center justify-center">
             {project.document_assignments?.[template.name]?.supervisor_checked && (
-              <Badge variant="outline" className="text-xs">Checked by supervisor</Badge>
+              <Badge variant="outline" className="text-xs">{t("checkedBySupervisor")}</Badge>
             )}
           </div>
         </div>
@@ -183,7 +186,7 @@ export function DocumentTemplateCard({
                 onCheckedChange={(checked) => onSupervisorCheck(template.name, checked as boolean)}
               />
               <Label htmlFor={`check-${template.name}`} className="text-xs text-muted-foreground">
-                Check by supervisor
+                {t("checkedBySupervisor")}
               </Label>
             </div>
           )}
@@ -196,7 +199,7 @@ export function DocumentTemplateCard({
               onCheckedChange={(checked) => onReadyForControl(template.name, checked as boolean)}
             />
             <Label htmlFor={`ready-${template.name}`} className="text-xs text-muted-foreground">
-              Ready for control
+              {t("readyForControl")}
             </Label>
           </div>
         </div>

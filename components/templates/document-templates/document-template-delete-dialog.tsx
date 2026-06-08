@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,6 +51,8 @@ export function DocumentTemplateDeleteDialog({
   onCancel,
   loading,
 }: DocumentTemplateDeleteDialogProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const [usageInfo, setUsageInfo] = useState<TemplateUsageInfo | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [action, setAction] = useState<"archive" | "delete" | null>(null);
@@ -102,10 +105,10 @@ export function DocumentTemplateDeleteDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            Delete Template
+            {t("deleteTemplate")}
           </DialogTitle>
           <DialogDescription>
-            What would you like to do with "{templateToDelete?.name}"?
+            {t("deleteTemplateConfirm")} "{templateToDelete?.name}"
           </DialogDescription>
         </DialogHeader>
 
@@ -223,7 +226,7 @@ export function DocumentTemplateDeleteDialog({
                       {loading && action === "delete" ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Deleting...
+                          {tc("deletingEllipsis")}
                         </>
                       ) : (
                         <>
@@ -241,7 +244,7 @@ export function DocumentTemplateDeleteDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onCancel} disabled={loading}>
-            Cancel
+            {tc("cancel")}
           </Button>
         </DialogFooter>
       </DialogContent>

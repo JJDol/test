@@ -2,6 +2,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 
 interface InvitationErrorProps {
   error: string;
@@ -16,6 +17,7 @@ interface InvitationErrorProps {
  * - Professional error messaging
  */
 export function InvitationError({ error }: InvitationErrorProps) {
+  const t = useTranslations("invite");
   const router = useRouter();
 
   return (
@@ -25,15 +27,15 @@ export function InvitationError({ error }: InvitationErrorProps) {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle>Invalid Invitation</CardTitle>
+              <CardTitle>{t("invalidInvitation")}</CardTitle>
             </div>
-            <span className="text-sm text-muted-foreground">Please contact admin.</span>
+            <span className="text-sm text-muted-foreground">{t("contactAdmin")}</span>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">{error}</p>
           <Button onClick={() => router.push('/sign-in')} className="w-full">
-            Go to Sign In
+            {t("goToSignIn")}
           </Button>
         </CardContent>
       </Card>

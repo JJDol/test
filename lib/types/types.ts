@@ -46,6 +46,20 @@ export const getCategoryDisplayName = (category: DocumentCategory): string => {
   return displayNames[category];
 };
 
+const categoryTranslationKeys: Record<DocumentCategory, string> = {
+  [DocumentCategory.ARCHITECTURE]: 'categoryArchitecture',
+  [DocumentCategory.CONSTRUCTIONS]: 'categoryConstructions',
+  [DocumentCategory.FIRE]: 'categoryFire',
+  [DocumentCategory.AUTHORITY_PROCESSING]: 'categoryAuthorityProcessing',
+  [DocumentCategory.ENERGY]: 'categoryEnergy',
+  [DocumentCategory.HVAC]: 'categoryHVAC',
+  [DocumentCategory.EXECUTION_CONTROL]: 'categoryExecutionControl',
+};
+
+export const getCategoryTranslationKey = (category: DocumentCategory): string => {
+  return categoryTranslationKeys[category];
+};
+
 // Helper function to get Danish names for categories
 // TODO: This will be used in the future
 export const getCategoryDanishName = (category: DocumentCategory): string => {

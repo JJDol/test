@@ -29,8 +29,11 @@ import { AuthContentLayout } from "@/components/auth/auth-content-layout";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { PasswordResetInstructions } from "@/components/auth/password-reset-instructions";
 import { AuthNavigationLinks } from "@/components/auth/auth-navigation-links";
+import { useTranslations } from "next-intl";
 
 export default function ForgotPassword({ searchParams }: { searchParams: Promise<any> }) {
+  const t = useTranslations("auth");
+  
   // Use custom hook for all business logic
   const {
     email,
@@ -42,8 +45,8 @@ export default function ForgotPassword({ searchParams }: { searchParams: Promise
   return (
     <>
       <AuthPageHeader
-        title="Reset Password"
-        description="Enter your email address and we'll send you a link to reset your password"
+        title={t("resetPassword")}
+        description={t("resetPasswordDescription")}
       />
       
       <AuthContentLayout>

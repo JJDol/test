@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,7 +19,7 @@ import { CategorySelector } from "@/components/ui/category-selector";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingStateInline } from "@/components/ui/loading-state-inline";
 import { Plus, ChevronDown, ChevronRight, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, CalendarArrowDown, CalendarArrowUp } from "lucide-react";
-import { ProjectTemplate, DocumentCategory, getCategoryDisplayName, DocumentTemplate } from "@/lib/types/types";
+import { ProjectTemplate, DocumentCategory, getCategoryTranslationKey, DocumentTemplate } from "@/lib/types/types";
 import type { SortMode } from "@/hooks/use-templates";
 import { ProjectTemplateDialog } from "./project-template-dialog";
 import { ProjectTemplateViewDialog } from "./project-template-view-dialog";
@@ -135,6 +136,8 @@ export function ProjectTemplatesTab({
   documentViewMode,
   onDocumentViewModeChange,
 }: ProjectTemplatesTabProps) {
+  const t = useTranslations("templates");
+  const tc = useTranslations("common");
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const toggleCategory = (category: string) => {
@@ -152,31 +155,31 @@ export function ProjectTemplatesTab({
   return (
     <>
       <div className="flex justify-between items-center mb-6 mt-16">
-        <h2 className="text-3xl font-bold">Project Templates</h2>
+        <h2 className="text-3xl font-bold">{t("projectTemplates")}</h2>
         <div className="flex gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                Sort
+                {tc("sort")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => actions.setSortMode('name-asc')} className={sortMode === 'name-asc' ? 'bg-accent' : ''}>
                 <ArrowDownAZ className="mr-2 h-4 w-4" />
-                Name (A → Z)
+                {tc("nameAZ")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('name-desc')} className={sortMode === 'name-desc' ? 'bg-accent' : ''}>
                 <ArrowUpAZ className="mr-2 h-4 w-4" />
-                Name (Z → A)
+                {tc("nameZA")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-newest')} className={sortMode === 'modified-newest' ? 'bg-accent' : ''}>
                 <CalendarArrowDown className="mr-2 h-4 w-4" />
-                Modified (Newest)
+                {tc("modifiedNewest")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => actions.setSortMode('modified-oldest')} className={sortMode === 'modified-oldest' ? 'bg-accent' : ''}>
                 <CalendarArrowUp className="mr-2 h-4 w-4" />
-                Modified (Oldest)
+                {tc("modifiedOldest")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -184,7 +187,7 @@ export function ProjectTemplatesTab({
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Project Template
+                {t("createProjectTemplate")}
               </Button>
             </DialogTrigger>
           </Dialog>
@@ -200,7 +203,7 @@ export function ProjectTemplatesTab({
       {/* Error state */}
       {error.overall && (
         <ErrorState
-          title="Error loading project templates"
+          title={t("errorLoadingProjectTemplates")}
           message={error.overall}
           onRetry={actions.retryOnError}
         />
@@ -208,7 +211,7 @@ export function ProjectTemplatesTab({
 
       {/* Loading state */}
       {loading.projectTemplates && projectTemplates.length === 0 && (
-        <LoadingStateInline message="Loading project templates..." />
+        <LoadingStateInline message={t("loadingProjectTemplates")} />
       )}
 
       {/* Project templates grid */}
@@ -232,7 +235,7 @@ export function ProjectTemplatesTab({
                       )}
                     </div>
                     <h3 className="text-lg font-semibold uppercase tracking-wide">
-                      {getCategoryDisplayName(category as DocumentCategory)}
+                      {tc(getCategoryTranslationKey(category as DocumentCategory))}
                     </h3>
                     <span className="text-sm text-muted-foreground font-medium">
                       {categoryProjectTemplates.length}
@@ -260,7 +263,7 @@ export function ProjectTemplatesTab({
       {/* No project templates message */}
       {!loading.projectTemplates && projectTemplates.length === 0 && !error.overall && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No project templates found. Create your first project template to get started.</p>
+          <p className="text-muted-foreground">{t("noProjectTemplatesFound")}</p>
         </div>
       )}
 

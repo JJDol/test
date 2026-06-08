@@ -26,11 +26,13 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useKanban } from "@/hooks/use-kanban";
 import { KanbanContent } from "@/components/kanban/kanban-content";
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function KanbanPage() {
+  const t = useTranslations("kanban");
   const {
     // State
     projects,
@@ -56,7 +58,7 @@ export default function KanbanPage() {
   // Show loading screen while authentication is being checked
   // TODO: Figure out what to do here
   if (authState.authLoading || !authState.currentUser) {
-    return <ProtectedPageWrapper loadingMessage="Loading kanban board..."><div /></ProtectedPageWrapper>;
+    return <ProtectedPageWrapper loadingMessage={t("loadingKanban")}><div /></ProtectedPageWrapper>;
   }
 
   return (

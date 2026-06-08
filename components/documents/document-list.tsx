@@ -8,6 +8,9 @@
  * - Reusable across different document views
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText } from 'lucide-react';
@@ -50,18 +53,22 @@ export function DocumentList({
   loading = false,
   onDeleteDocument,
   isDeleting = false,
-  title = "Your Documents",
+  title,
   description,
-  emptyMessage = "No documents found",
-  emptySubMessage = "Upload your first document to get started",
+  emptyMessage,
+  emptySubMessage,
   className = ""
 }: DocumentListProps) {
-  const defaultDescription = `${documents.length} document${documents.length !== 1 ? 's' : ''} found`;
+  const t = useTranslations("documents");
+  const resolvedTitle = title ?? t("title");
+  const resolvedEmptyMessage = emptyMessage ?? t("noDocuments");
+  const resolvedEmptySubMessage = emptySubMessage ?? t("uploadDescription");
+  const defaultDescription = t("documentsFound", { count: documents.length });
 
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>{resolvedTitle}</CardTitle>
         <CardDescription>
           {description || defaultDescription}
         </CardDescription>
@@ -86,8 +93,8 @@ export function DocumentList({
         ) : documents.length === 0 ? (
           <div className="text-center p-8 text-muted-foreground">
             <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">{emptyMessage}</h3>
-            <p>{emptySubMessage}</p>
+            <h3 className="text-lg font-semibold mb-2">{resolvedEmptyMessage}</h3>
+            <p>{resolvedEmptySubMessage}</p>
           </div>
         ) : (
           <ScrollArea className="h-[600px]">

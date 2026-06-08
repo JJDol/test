@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordResetButton } from "@/components/ui/password-reset-button";
 import { Mail } from "lucide-react";
 import { AuthContentLayout } from "./auth-content-layout";
+import { useTranslations } from "next-intl";
 
 interface ForgotPasswordFormProps {
   email: string;
@@ -30,6 +31,7 @@ export function ForgotPasswordForm({
   onEmailChange,
   onSubmit,
 }: ForgotPasswordFormProps) {
+  const t = useTranslations("auth");
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onEmailChange(e.target.value);
   };
@@ -41,7 +43,7 @@ export function ForgotPasswordForm({
       <div className="w-full space-y-4">
         <div className="w-full space-y-2">
           <Label htmlFor="email" className="w-full text-sm font-medium text-foreground">
-            Email Address
+            {t("emailAddress")}
           </Label>
           <div className="w-full relative">
             <Input
@@ -50,7 +52,7 @@ export function ForgotPasswordForm({
               type="email"
               value={email}
               onChange={handleEmailChange}
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               className="w-full pl-10"
               required
               disabled={isSubmitting}

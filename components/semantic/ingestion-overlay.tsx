@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Loader2 } from "lucide-react";
@@ -21,6 +22,7 @@ interface IngestionOverlayProps {
 }
 
 export function IngestionOverlay({ ingestionStatus, progressPercentage }: IngestionOverlayProps) {
+  const t = useTranslations("documents");
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Background overlay */}
@@ -29,11 +31,11 @@ export function IngestionOverlay({ ingestionStatus, progressPercentage }: Ingest
       {/* Progress card */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-50">
         <Card className="w-[500px] p-6 space-y-4">
-          <h2 className="text-xl font-semibold text-center">Processing Documents</h2>
+          <h2 className="text-xl font-semibold text-center">{t("processingDocuments")}</h2>
           
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            <p>Please wait while we process your documents...</p>
+            <p>{t("loadingMessage")}</p>
           </div>
           
           {ingestionStatus && (

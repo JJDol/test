@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DocumentCategory, getCategoryDisplayName } from "@/lib/types/types";
+import { DocumentCategory, getCategoryDisplayName, getCategoryTranslationKey } from "@/lib/types/types";
 import {
   ALL_DISCIPLINE_FILTERS,
   DISCIPLINES,
@@ -25,6 +25,7 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslations } from "next-intl";
 
 interface TemplateAssignment {
   templateName: string;
@@ -57,7 +58,17 @@ interface DerivedMember extends RawMember {
 
 
 export default function TeamPage() {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   const { isCompanyAdmin } = useAuth();
+
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+    Unassigned: tc("unassigned"),
+  };
   const [members, setMembers] = useState<RawMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,12 +98,12 @@ export default function TeamPage() {
         const res = await fetch("/api/team/members");
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || "Failed to load team members");
+          throw new Error(data?.message || t("failedToLoadMembers"));
         }
         setMembers(data.members || []);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load team members"
+          err instanceof Error ? err.message : t("failedToLoadMembers")
         );
       } finally {
         setLoading(false);
@@ -193,11 +204,10 @@ export default function TeamPage() {
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Users className="h-6 w-6" />
-            Team
+            {t("title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Every company member and what they&apos;re working on. Click a
-            member to see their projects and document assignments.
+            {t("description")}
           </p>
         </div>
       </div>
@@ -208,7 +218,7 @@ export default function TeamPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search name or email..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -218,7 +228,7 @@ export default function TeamPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-            Discipline
+            {t("discipline")}
           </span>
           {ALL_DISCIPLINE_FILTERS.map((d) => {
             const active = disciplineFilter.has(d);
@@ -235,7 +245,7 @@ export default function TeamPage() {
                     : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
                 )}
               >
-                {d}
+                {disciplineDisplayMap[d] ?? d}
                 <span
                   className={cn(
                     "inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold",
@@ -257,7 +267,7 @@ export default function TeamPage() {
               className="h-6 text-xs px-2"
               onClick={() => setDisciplineFilter(new Set())}
             >
-              Clear
+              {tc("clear")}
             </Button>
           )}
         </div>
@@ -274,13 +284,13 @@ export default function TeamPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No team members match the current filters.
+          {t("noMembersMatch")}
         </div>
       ) : (
         <>
           <div className="text-xs text-muted-foreground px-1 -mb-2">
-            Showing <span className="font-medium">{filtered.length}</span> of{" "}
-            <span className="font-medium">{derived.length}</span> members
+            {tc("showing")} <span className="font-medium">{filtered.length}</span> {tc("of")}{" "}
+            <span className="font-medium">{derived.length}</span>
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
             {/* Left: list */}
@@ -325,6 +335,14 @@ function MemberRow({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+  };
   return (
     <button
       type="button"
@@ -361,19 +379,17 @@ function MemberRow({
               member.discipline ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            {member.discipline ?? "Unassigned"}
+            {member.discipline ? (disciplineDisplayMap[member.discipline] ?? member.discipline) : tc("unassigned")}
           </span>
         </div>
 
         {/* Stats — two lines, right-aligned */}
         <div className="text-[11px] text-muted-foreground shrink-0 tabular-nums text-right leading-tight">
           <div>
-            {member.projectCount} project
-            {member.projectCount !== 1 ? "s" : ""}
+            {tc("projects", { count: member.projectCount })}
           </div>
           <div>
-            {member.documentCount} document
-            {member.documentCount !== 1 ? "s" : ""}
+            {tc("documents", { count: member.documentCount })}
           </div>
         </div>
       </div>
@@ -382,10 +398,11 @@ function MemberRow({
 }
 
 function EmptyDetail() {
+  const t = useTranslations("team");
   return (
     <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
       <UserCircle2 className="h-8 w-8 text-muted-foreground/50" />
-      Select a team member to see their projects and document assignments.
+      {t("selectMember")}
     </div>
   );
 }
@@ -399,6 +416,8 @@ function MemberDetailPanel({
   canEditDiscipline: boolean;
   onDisciplineChange: (d: Discipline | null) => void;
 }) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   return (
     <div className="rounded-lg border bg-muted/40 overflow-hidden">
       {/* Header */}
@@ -431,16 +450,10 @@ function MemberDetailPanel({
         {/* Stats */}
         <div className="text-right text-xs text-muted-foreground shrink-0 tabular-nums">
           <div>
-            <span className="font-medium text-foreground text-sm">
-              {member.projectCount}
-            </span>{" "}
-            project{member.projectCount !== 1 ? "s" : ""}
+            {tc("projects", { count: member.projectCount })}
           </div>
           <div>
-            <span className="font-medium text-foreground text-sm">
-              {member.documentCount}
-            </span>{" "}
-            document{member.documentCount !== 1 ? "s" : ""}
+            {tc("documents", { count: member.documentCount })}
           </div>
         </div>
       </div>
@@ -449,7 +462,7 @@ function MemberDetailPanel({
       <div className="p-5">
         {member.assignments.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            Not assigned to any active project.
+            {t("notAssignedToProject")}
           </p>
         ) : (
           <ul className="space-y-2.5">
@@ -468,12 +481,12 @@ function MemberDetailPanel({
                   <div className="flex flex-wrap gap-1">
                     {a.isLeader && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                        Leader
+                        {t("leader")}
                       </span>
                     )}
                     {a.isWorker && !a.isLeader && (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Worker
+                        {t("worker")}
                       </span>
                     )}
                   </div>
@@ -500,6 +513,14 @@ function DisciplineEditor({
   canEdit: boolean;
   onChange: (d: Discipline | null) => void;
 }) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
+  const disciplineDisplayMap: Record<string, string> = {
+    Architect: t("disciplineArchitect"),
+    Engineer: t("disciplineEngineer"),
+    Fire: t("disciplineFire"),
+    Constructor: t("disciplineConstructor"),
+  };
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -525,12 +546,12 @@ function DisciplineEditor({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.message || "Failed to update discipline");
+        throw new Error(data?.message || t("failedToUpdateDiscipline"));
       }
       onChange(next);
       setEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update");
+      setError(err instanceof Error ? err.message : t("failedToUpdate"));
     } finally {
       setSaving(false);
     }
@@ -545,7 +566,7 @@ function DisciplineEditor({
             discipline ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          {discipline ?? "Unassigned"}
+          {discipline ? (disciplineDisplayMap[discipline] ?? discipline) : tc("unassigned")}
         </span>
         {canEdit && (
           <button
@@ -554,7 +575,7 @@ function DisciplineEditor({
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />
-            Edit
+            {tc("edit")}
           </button>
         )}
       </div>
@@ -583,7 +604,7 @@ function DisciplineEditor({
               onClick={() => save(d)}
               className={selectorChipClass(active)}
             >
-              {d}
+              {disciplineDisplayMap[d] ?? d}
             </button>
           );
         })}
@@ -593,7 +614,7 @@ function DisciplineEditor({
           onClick={() => save(null)}
           className={selectorChipClass(discipline === null)}
         >
-          Unassigned
+          {tc("unassigned")}
         </button>
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -604,12 +625,12 @@ function DisciplineEditor({
           className="inline-flex items-center gap-1 hover:text-foreground"
         >
           <X className="h-3 w-3" />
-          Cancel
+          {tc("cancel")}
         </button>
         {saving && (
           <span className="inline-flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Saving…
+            {tc("saving")}
           </span>
         )}
       </div>
@@ -625,13 +646,15 @@ function AssignmentDocumentsToggle({
 }: {
   assignment: ProjectAssignment;
 }) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const count = assignment.templates.length;
 
   if (count === 0) {
     return (
       <p className="text-xs text-muted-foreground italic">
-        No documents assigned on this project.
+        {t("noDocumentsAssigned")}
       </p>
     );
   }
@@ -649,37 +672,37 @@ function AssignmentDocumentsToggle({
         ) : (
           <ChevronRight className="h-3.5 w-3.5" />
         )}
-        <span>View assigned documents</span>
+        <span>{t("viewAssignedDocuments")}</span>
         <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
           {count}
         </span>
       </button>
       {open && (
         <ul className="flex flex-col gap-1 mt-2">
-          {assignment.templates.map((t) => (
+          {assignment.templates.map((tmpl) => (
             <li
-              key={t.templateName}
+              key={tmpl.templateName}
               className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-1.5 text-xs"
               title={
-                t.category
-                  ? `${getCategoryDisplayName(t.category)}${
-                      t.isSupervisor ? " · supervisor" : ""
+                tmpl.category
+                  ? `${tc(getCategoryTranslationKey(tmpl.category))}${
+                      tmpl.isSupervisor ? " · supervisor" : ""
                     }`
-                  : t.isSupervisor
+                  : tmpl.isSupervisor
                   ? "Supervisor"
                   : undefined
               }
             >
               <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate flex-1">{t.templateName}</span>
-              {t.category && (
+              <span className="truncate flex-1">{tmpl.templateName}</span>
+              {tmpl.category && (
                 <span className="rounded bg-muted px-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
-                  {getCategoryDisplayName(t.category)}
+                  {tc(getCategoryTranslationKey(tmpl.category))}
                 </span>
               )}
-              {t.isSupervisor && (
+              {tmpl.isSupervisor && (
                 <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
-                  supv.
+                  {t("supervisor")}
                 </span>
               )}
             </li>

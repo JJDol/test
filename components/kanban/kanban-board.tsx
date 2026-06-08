@@ -9,16 +9,12 @@
  * - Reusable across different project views
  */
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { DragDropContext } from '@hello-pangea/dnd';
 import { Project, ProjectStage } from '@/lib/types/types';
 import { KanbanColumn } from './kanban-column';
-
-const stages = [
-  { id: ProjectStage.TODO, title: 'To Do' },
-  { id: ProjectStage.IN_PROGRESS, title: 'In Progress' },
-  { id: ProjectStage.REVIEW, title: 'Review' },
-  { id: ProjectStage.DONE, title: 'Done' },
-];
 
 interface KanbanBoardProps {
   projects: Project[];
@@ -35,6 +31,15 @@ export function KanbanBoard({
   isLoading = false,
   className = "" 
 }: KanbanBoardProps) {
+  const t = useTranslations("kanban");
+
+  const stages = [
+    { id: ProjectStage.TODO, title: t("toDo") },
+    { id: ProjectStage.IN_PROGRESS, title: t("inProgress") },
+    { id: ProjectStage.REVIEW, title: t("review") },
+    { id: ProjectStage.DONE, title: t("done") },
+  ];
+
   return (
     <div className={className}>
       <DragDropContext onDragEnd={onDragEnd}>
@@ -56,7 +61,7 @@ export function KanbanBoard({
           <div className="bg-background p-4 rounded-lg shadow-lg">
             <div className="flex items-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-              <span className="text-sm">Updating project...</span>
+              <span className="text-sm">{t("updatingProject")}</span>
             </div>
           </div>
         </div>

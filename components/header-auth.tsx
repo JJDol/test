@@ -14,8 +14,10 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export default function AuthButton() {
+  const t = useTranslations("auth");
   const { currentUser, user, isLoading } = useAuth();
   const pathname = usePathname();
 
@@ -59,7 +61,7 @@ export default function AuthButton() {
       <div className="flex items-center gap-4">
         <Link href="/sign-in">
           <Button variant="default">
-            Sign In
+            {t("signIn")}
           </Button>
         </Link>
       </div>
@@ -78,10 +80,10 @@ export default function AuthButton() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="px-3 py-2 font-medium">My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className="px-3 py-2 font-medium">{t("myAccount")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild className="px-3 py-2 cursor-pointer">
-            <Link href="/protected/profile">Profile Settings</Link>
+            <Link href="/protected/profile">{t("profileSettings")}</Link>
           </DropdownMenuItem>
           {currentUser?.assigned_projects && currentUser.assigned_projects.length > 0 && (
             <>
@@ -93,7 +95,7 @@ export default function AuthButton() {
             variant="ghost" 
             className="w-full justify-start px-3 py-2 h-auto font-normal text-base"
           >
-            Sign out
+            {t("signOut")}
           </Button>
         </DropdownMenuContent>
       </DropdownMenu>

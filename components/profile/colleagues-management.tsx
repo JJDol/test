@@ -38,6 +38,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslations } from "next-intl";
 import type { Colleague, Invitation } from "@/hooks/use-colleagues";
 
 interface ColleaguesManagementProps {
@@ -73,6 +74,8 @@ export function ColleaguesManagement({
   getDeletionBlockReason,
   onColleagueRoleUpdated,
 }: ColleaguesManagementProps) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colleagueToDelete, setColleagueToDelete] = useState<Colleague | null>(null);
   const [pendingInvitationId, setPendingInvitationId] = useState<string | null>(null);
@@ -128,9 +131,9 @@ export function ColleaguesManagement({
   const header = (
     <div className="flex items-center justify-between pb-4">
       <div>
-        <h2 className="text-xl font-semibold">Team Management</h2>
+        <h2 className="text-xl font-semibold">{t("teamManagement")}</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage colleagues in your company
+          {t("manageColleagues")}
         </p>
       </div>
       <AddColleagueForm onColleagueAdded={onColleagueAdded} />
@@ -141,7 +144,7 @@ export function ColleaguesManagement({
     return (
       <div>
         {header}
-        <LoadingState variant="inline" message="Loading team members..." size="sm" />
+        <LoadingState variant="inline" message={t("loadingTeamMembers")} size="sm" />
       </div>
     );
   }
@@ -164,7 +167,7 @@ export function ColleaguesManagement({
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Filter members..."
+            placeholder={t("filterMembers")}
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             className="pl-9"
@@ -175,15 +178,15 @@ export function ColleaguesManagement({
         <div className="rounded-lg border overflow-hidden">
           {/* Table header */}
           <div className="grid grid-cols-[1fr_160px_auto] bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b">
-            <span>Member</span>
-            <span>Role</span>
+            <span>{t("member")}</span>
+            <span>{t("role")}</span>
             <span className="w-36" />
           </div>
 
           {/* Rows */}
           {allRows.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              {filterQuery ? "No members match your filter." : "No team members yet."}
+              {filterQuery ? t("noMembersMatchFilter") : t("noTeamMembers")}
             </div>
           ) : (
             allRows.map((row) =>
@@ -214,7 +217,7 @@ export function ColleaguesManagement({
         {/* Footer count */}
         {totalCount > 0 && (
           <p className="text-xs text-muted-foreground mt-3 px-1">
-            {totalCount} {totalCount === 1 ? "member" : "members"}
+            {tc("members", { count: totalCount })}
           </p>
         )}
       </div>
@@ -255,6 +258,14 @@ interface ColleagueRowProps {
 }
 
 function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRole }: ColleagueRowProps) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
+  const roleDisplayMap: Record<string, string> = {
+    USER: t("roleUser"),
+    MANAGER: t("roleManager"),
+    COMPANY_ADMIN: t("roleCompanyAdmin"),
+    ADMIN: t("roleAdmin"),
+  };
   return (
     <div className="grid grid-cols-[1fr_160px_auto] items-center px-4 py-3.5 border-b last:border-b-0 hover:bg-muted/20 transition-colors">
       {/* Member */}
@@ -265,7 +276,7 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
           </span>
           {isCurrentUser && (
             <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              You
+              {tc("you")}
             </span>
           )}
         </div>
@@ -276,7 +287,7 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
 
       {/* Role */}
       <div>
-        <span className="text-sm">{colleague.role}</span>
+        <span className="text-sm">{roleDisplayMap[colleague.role] ?? colleague.role}</span>
       </div>
 
       {/* Actions */}
@@ -284,7 +295,7 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
         {isCurrentUser ? (
           <Button variant="outline" size="sm" className="text-xs h-7 px-3 gap-1.5" disabled>
             <LogOut className="h-3 w-3" />
-            Leave team
+            {t("leaveTeam")}
           </Button>
         ) : canDelete ? (
           <DropdownMenu>
@@ -296,19 +307,19 @@ function ColleagueRow({ colleague, isCurrentUser, canDelete, onDelete, onEditRol
             <DropdownMenuContent align="end">
               <DropdownMenuItem className="cursor-pointer" onClick={onEditRole}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit role
+                {t("editRole")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive cursor-pointer"
                 onClick={onDelete}
               >
                 <UserMinus className="mr-2 h-4 w-4" />
-                Remove member
+                {t("removeMember")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <span className="text-xs text-muted-foreground italic">Protected</span>
+          <span className="text-xs text-muted-foreground italic">{t("protected")}</span>
         )}
       </div>
     </div>
@@ -334,6 +345,8 @@ interface EditRoleDialogProps {
 }
 
 function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogProps) {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   const [selectedRole, setSelectedRole] = useState(colleague?.role ?? "USER");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -376,10 +389,10 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
         throw new Error(data.message || "Failed to update role");
       }
 
-      toast({ title: `Role updated to ${selectedRole}` });
+      toast({ title: t("roleUpdatedTo", { role: selectedRole }) });
       onSaved();
     } catch (err: any) {
-      toast({ title: err.message || "Failed to update role", variant: "destructive" });
+      toast({ title: err.message || t("failedToUpdateRole"), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -389,7 +402,7 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Edit Role</DialogTitle>
+          <DialogTitle>{t("editRoleTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="py-4 space-y-4">
@@ -400,7 +413,7 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role-select">Role</Label>
+            <Label htmlFor="role-select">{t("role")}</Label>
             <Select
               value={selectedRole}
               onValueChange={setSelectedRole}
@@ -410,23 +423,23 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="USER">User</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
+                <SelectItem value="USER">{tc("user")}</SelectItem>
+                <SelectItem value="MANAGER">{tc("manager")}</SelectItem>
               </SelectContent>
             </Select>
             {isAdminRole && (
-              <p className="text-xs text-muted-foreground">Admin roles cannot be changed here.</p>
+              <p className="text-xs text-muted-foreground">{t("adminRolesCannotBeChanged")}</p>
             )}
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={handleSave} disabled={isSaving || isAdminRole || selectedRole === currentRole}>
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save
+            {tc("save")}
           </Button>
         </div>
       </DialogContent>
@@ -435,11 +448,18 @@ function EditRoleDialog({ colleague, open, onClose, onSaved }: EditRoleDialogPro
 }
 
 function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: InvitationRowProps) {
+  const t = useTranslations("team");
+  const roleDisplayMap: Record<string, string> = {
+    USER: t("roleUser"),
+    MANAGER: t("roleManager"),
+    COMPANY_ADMIN: t("roleCompanyAdmin"),
+    ADMIN: t("roleAdmin"),
+  };
   const isExpired = invitation.status === "expired";
   const badgeClasses = isExpired
     ? "bg-red-100 text-red-700 border-red-200"
     : "bg-amber-100 text-amber-800 border-amber-200";
-  const badgeLabel = isExpired ? "EXPIRED" : "PENDING";
+  const badgeLabel = isExpired ? t("expired") : t("pending");
 
   return (
     <div className="grid grid-cols-[1fr_160px_auto] items-center px-4 py-3.5 border-b last:border-b-0 hover:bg-muted/20 transition-colors">
@@ -463,7 +483,7 @@ function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: Invi
 
       {/* Role */}
       <div>
-        <span className="text-sm">{invitation.role}</span>
+        <span className="text-sm">{roleDisplayMap[invitation.role] ?? invitation.role}</span>
       </div>
 
       {/* Actions */}
@@ -481,7 +501,7 @@ function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: Invi
           <DropdownMenuContent align="end">
             <DropdownMenuItem className="cursor-pointer" onClick={onResend} disabled={isActionPending}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Resend
+              {t("resend")}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive cursor-pointer"
@@ -489,7 +509,7 @@ function InvitationRow({ invitation, isActionPending, onRevoke, onResend }: Invi
               disabled={isActionPending}
             >
               <X className="mr-2 h-4 w-4" />
-              Revoke
+              {t("revoke")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

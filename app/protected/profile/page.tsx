@@ -8,6 +8,7 @@ import CompanySettings from "@/components/ui/company-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { useColleagues } from "@/hooks/use-colleagues";
 import { useProfile, type Project } from "@/hooks/use-profile";
+import { useTranslations } from "next-intl";
 
 // Components
 import { ProfileForm } from "@/components/profile/profile-form";
@@ -16,9 +17,9 @@ import { ColleaguesManagement } from "@/components/profile/colleagues-management
 import ProtectedPageWrapper from "@/components/auth/protected-page-wrapper";
 
 export default function ProfilePage() {
+  const t = useTranslations("profile");
   const [activeTab, setActiveTab] = useState("profile");
   
-  // Existing hooks
   const { currentUser, user, isLoading, isAdmin, isCompanyAdmin } = useAuth();
   
   const {
@@ -111,8 +112,8 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <LoadingState 
-        title="Loading Profile"
-        message="Please wait while we load your profile information..."
+        title={t("title")}
+        message={t("loadingMessage")}
         variant="page"
       />
     );
@@ -134,24 +135,24 @@ export default function ProfilePage() {
   };
 
   return (
-    <ProtectedPageWrapper loadingMessage="Loading profile...">
+    <ProtectedPageWrapper loadingMessage={t("loadingProfile")}>
       <div className="container mx-auto py-10">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className={`grid w-full max-w-md ${(isCompanyAdmin || isAdmin) ? 'grid-cols-4' : 'grid-cols-2'}`}>
-            <TabsTrigger value="profile" aria-label="Profile settings and personal information">
-              Profile
+            <TabsTrigger value="profile">
+              {t("profileTab")}
             </TabsTrigger>
-            <TabsTrigger value="projects" aria-label="View your assigned projects">
-              My Projects
+            <TabsTrigger value="projects">
+              {t("myProjects")}
             </TabsTrigger>
             {(isCompanyAdmin || isAdmin) && (
-              <TabsTrigger value="colleagues" aria-label="Manage team members and colleagues">
-                Team
+              <TabsTrigger value="colleagues">
+                {t("teamTab")}
               </TabsTrigger>
             )}
             {(isCompanyAdmin || isAdmin) && (
-              <TabsTrigger value="company-settings" aria-label="Company settings and configuration">
-                Company
+              <TabsTrigger value="company-settings">
+                {t("companyTab")}
               </TabsTrigger>
             )}
           </TabsList>
