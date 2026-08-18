@@ -33,15 +33,11 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = path.startsWith('/protected/');
   const isAdminRoute = path.startsWith('/admin/');
   const isSignInOrUp = path === '/sign-in' || path === '/sign-up';
+  const isPublicMarketing = path === '/';
 
   // Fast paths - no session check needed
-  if (isStaticRoute || isApiRoute || isAuthCallback) {
+  if (isStaticRoute || isApiRoute || isAuthCallback || isPublicMarketing) {
     return response;
-  }
-
-  // Redirect root to sign-in (preserves existing behavior)
-  if (path === '/') {
-    return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
   try {

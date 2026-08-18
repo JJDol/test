@@ -12,12 +12,18 @@ export function AuthSessionManager() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivity = useRef<number>(Date.now());
   const lastValidation = useRef<number>(Date.now());
-  const supabaseRef = useRef(
-    createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  );
+  const supabaseRef = useRef<ReturnType<typeof createBrowserClient> | null>(null);
+
+  if (
+    !supabaseRef.current &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    supabaseRef.current = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+  }
 
   const isAuthPage = useCallback((path: string | null) => {
     if (!path) return false;
@@ -25,11 +31,15 @@ export function AuthSessionManager() {
       || path.startsWith('/invite') || path.startsWith('/reset-password');
   }, []);
 
+  const isPublicMarketing = useCallback((path: string | null) => {
+    return path === '/';
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isAuthPage(pathname)) return;
-
+    if (isAuthPage(pathname) || isPublicMarketing(pathname)) return;
     const supabase = supabaseRef.current;
+    if (!supabase) return;
 
     const performSignOut = async () => {
       if (isSigningOut.current) return;
@@ -132,7 +142,7 @@ export function AuthSessionManager() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       subscription?.unsubscribe();
     };
-  }, [router, pathname, isAuthPage]);
+  }, [router, pathname, isAuthPage, isPublicMarketing]);
 
   return null;
 } 
