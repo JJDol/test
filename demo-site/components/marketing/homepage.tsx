@@ -23,12 +23,9 @@ export function MarketingHomepage() {
             <Link href="/" className="text-lg font-semibold tracking-tight">
               AutoDOC
             </Link>
-            <Link
-              href="/sign-in"
-              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-zinc-200"
-            >
-              Sign in
-            </Link>
+            <span className="rounded-full border border-amber-400/50 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-300">
+              SIMULATED DEMO
+            </span>
           </header>
 
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 pb-24 pt-8 md:px-6">

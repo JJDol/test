@@ -1,0 +1,8 @@
+# Simulated AutoDOC demo — Render Static Site
+# Publish directory: out
+services:
+  - type: web
+    name: autodoc-simulated-demo
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: out
