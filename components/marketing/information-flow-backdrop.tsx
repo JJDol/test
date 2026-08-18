@@ -75,6 +75,10 @@ type ImageBlock = {
 };
 
 type Block = TextBlock | TableBlock | ImageBlock;
+type DraftBlock =
+  | Omit<TextBlock, "y" | "cStart">
+  | Omit<TableBlock, "y" | "cStart">
+  | Omit<ImageBlock, "y" | "cStart">;
 
 type Column = { blocks: Block[]; chars: number };
 
@@ -297,7 +301,7 @@ class FlowEngine {
       const roll = R();
       const tRate = 0.08 * TABLE_RATE;
       const iRate = 0.07 * IMAGE_RATE;
-      let b: Omit<Block, "y" | "cStart"> | null = null;
+      let b: DraftBlock | null = null;
 
       if (roll < tRate) {
         const cols = 2 + Math.floor(R() * 3);
