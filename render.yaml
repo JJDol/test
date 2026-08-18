@@ -1,7 +1,11 @@
-# Simulated AutoDOC demo — Render Static Site
+# Simulated AutoDOC demo — Render Web Service (Node)
 services:
   - type: web
     name: autodoc-simulated-demo
-    runtime: static
+    runtime: node
+    plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: out
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
