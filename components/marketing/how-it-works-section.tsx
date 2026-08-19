@@ -5,10 +5,10 @@ import { DEMO_STEPS, type DemoStepId } from "@/lib/marketing/havnegade-demo";
 import { DemoAppFrame } from "@/components/marketing/demo-app-frame";
 import { DemoStepper } from "@/components/marketing/demo-stepper";
 import { UploadContractScene } from "@/components/marketing/scenes/upload-contract-scene";
+import { CreateProjectScene } from "@/components/marketing/scenes/create-project-scene";
 import {
   AskAutodocScene,
   GenerateScene,
-  ProjectFormScene,
   TypeOnceScene,
 } from "@/components/marketing/scenes/static-scenes";
 
@@ -26,13 +26,13 @@ export function HowItWorksSection() {
 
   const handleSelect = (id: DemoStepId) => {
     setActiveId(id);
-    if (id === "upload") {
+    if (id === "upload" || id === "create") {
       setReplayKey((key) => key + 1);
     }
   };
 
   const handleReplay = () => {
-    if (activeId === "upload") {
+    if (activeId === "upload" || activeId === "create") {
       setReplayKey((key) => key + 1);
     }
   };
@@ -58,10 +58,15 @@ export function HowItWorksSection() {
               <UploadContractScene
                 replayKey={replayKey}
                 onStatusChange={handleStatusChange}
-                onCreateProject={() => setActiveId("create")}
+                onCreateProject={() => {
+                  setReplayKey((key) => key + 1);
+                  setActiveId("create");
+                }}
               />
             )}
-            {activeId === "create" && <ProjectFormScene />}
+            {activeId === "create" && (
+              <CreateProjectScene replayKey={replayKey} onNext={() => setActiveId("type-once")} />
+            )}
             {activeId === "type-once" && <TypeOnceScene />}
             {activeId === "generate" && <GenerateScene />}
             {activeId === "ask" && <AskAutodocScene />}

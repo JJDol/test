@@ -150,8 +150,8 @@ export function UploadContractScene({
   const dropped = phase === "drop";
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col md:min-h-[500px]">
-      <div className="grid flex-1 gap-4 p-4 md:grid-cols-[1.15fr_0.85fr] md:p-6">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 md:grid-cols-[1.15fr_0.85fr] md:p-6">
       <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
         {(phase === "idle" || phase === "drop") && (
           <div
@@ -318,7 +318,7 @@ export function UploadContractScene({
       </div>
 
       {phase === "done" && (
-        <div className="demo-fade-up border-t border-white/10 px-4 py-3 md:px-6">
+        <div className="demo-fade-up shrink-0 border-t border-white/10 px-4 py-2 md:px-6">
           <button
             type="button"
             onClick={handleCreate}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Download, SendHorizontal } from "lucide-react";
+import { Download, SendHorizontal } from "lucide-react";
 import { DEMO_DOCUMENTS, SAMPLE_PROJECT } from "@/lib/marketing/havnegade-demo";
 
 function Donut({ value }: { value: number }) {
@@ -24,71 +23,6 @@ function Donut({ value }: { value: number }) {
         strokeLinecap="round"
       />
     </svg>
-  );
-}
-
-const PROJECT_FORM_FIELDS = [
-  ["Project name", SAMPLE_PROJECT.name],
-  ["Location", SAMPLE_PROJECT.address],
-  ["Client", SAMPLE_PROJECT.client],
-  ["Deadline", SAMPLE_PROJECT.deadline],
-  ["Architect", SAMPLE_PROJECT.architect],
-  ["Case no.", SAMPLE_PROJECT.caseNumber],
-] as const;
-
-export function ProjectFormScene() {
-  const [filled, setFilled] = useState(0);
-
-  useEffect(() => {
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setFilled(PROJECT_FORM_FIELDS.length);
-      return;
-    }
-
-    setFilled(0);
-    const timers: number[] = [];
-    PROJECT_FORM_FIELDS.forEach((_, index) => {
-      timers.push(window.setTimeout(() => setFilled(index + 1), 180 + index * 220));
-    });
-    return () => timers.forEach((id) => window.clearTimeout(id));
-  }, []);
-
-  return (
-    <div className="grid min-h-[420px] gap-4 p-5 md:min-h-[500px] md:grid-cols-2 md:p-6">
-      <div className="space-y-3">
-        <p className="text-[10px] font-semibold tracking-[0.18em] text-zinc-500">NEW PROJECT</p>
-        {PROJECT_FORM_FIELDS.map(([label, value], index) => {
-          const visible = index < filled;
-          return (
-            <label key={label} className="block">
-              <span className="mb-1 block text-[11px] text-zinc-500">{label}</span>
-              <div
-                className={`flex min-h-[38px] items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all duration-300 ${
-                  visible
-                    ? "border-emerald-400/20 bg-emerald-400/5 text-white"
-                    : "border-white/10 bg-white/[0.03] text-transparent"
-                }`}
-              >
-                {visible ? value : "·"}
-                {visible && <Check className="h-3.5 w-3.5 text-emerald-400" />}
-              </div>
-            </label>
-          );
-        })}
-      </div>
-      <div className="flex flex-col justify-end rounded-xl border border-white/10 bg-white/[0.03] p-5">
-        <p className="text-sm text-zinc-300">
-          AutoDoc created <span className="text-white">{SAMPLE_PROJECT.shortName}</span> from the
-          contract. Fields filled from the extracted facts.
-        </p>
-        <div className="mt-6 rounded-lg bg-emerald-400/15 px-4 py-2.5 text-center text-sm font-semibold text-emerald-300">
-          Project created
-        </div>
-      </div>
-    </div>
   );
 }
 
