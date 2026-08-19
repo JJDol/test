@@ -38,7 +38,7 @@ const INTERFERENCE = 1;
 const SHOW_IMAGE_FIELD = false;
 const THREAD_RATE = 1;
 const WORD_DEPTH = 0.35;
-const WORD_SIZE = 170;
+const WORD_SIZE = 78;
 const WORD_COLOR = "#a36aa5";
 
 const HERO_LINES = [
@@ -845,8 +845,8 @@ function HeroWords({
   onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
 }) {
   const wordStyle = {
-    font: `500 ${WORD_SIZE / 19.2}cqw/0.9 ${workSans.style.fontFamily}, sans-serif`,
-    letterSpacing: "-0.04em",
+    font: `500 ${WORD_SIZE / 19.2}cqw/0.95 ${workSans.style.fontFamily}, sans-serif`,
+    letterSpacing: "-0.03em",
     color: WORD_COLOR,
   } as const;
 
@@ -854,9 +854,19 @@ function HeroWords({
     <div
       className={`pointer-events-none absolute inset-0 ${layer === "back" ? "z-[1]" : "z-[3]"} ${workSans.className}`}
     >
-      <div className="absolute inset-x-0 top-[16%] mx-auto flex w-full max-w-6xl flex-col items-start gap-[0.08em] px-4 md:px-6">
+      <div
+        className="absolute inset-x-0 top-[18%] mx-auto flex w-full max-w-6xl flex-col items-start px-4 md:px-6"
+        style={{ ...wordStyle, gap: "0.14em" }}
+      >
         {HERO_LINES.map((line, lineIdx) => (
-          <div key={lineIdx} className="flex items-baseline justify-start gap-[0.28em]">
+          <div
+            key={lineIdx}
+            className="flex items-baseline justify-start"
+            style={{
+              ...wordStyle,
+              gap: "0.32em",
+            }}
+          >
             {line.map((word) => {
               if (pos[word.id]) return null;
               return (
