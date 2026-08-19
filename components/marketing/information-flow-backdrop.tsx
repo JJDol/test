@@ -1,11 +1,17 @@
 "use client";
 
-import { IBM_Plex_Mono } from "next/font/google";
-import { useEffect, useRef } from "react";
+import { IBM_Plex_Mono, Work_Sans } from "next/font/google";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["300", "400"],
+  display: "swap",
+});
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["500"],
   display: "swap",
 });
 
@@ -30,6 +36,30 @@ const IMAGE_RATE = 0.5;
 const LINE_OPACITY = 1.1;
 const INTERFERENCE = 1;
 const SHOW_IMAGE_FIELD = false;
+const THREAD_RATE = 1;
+const WORD_DEPTH = 0.35;
+const WORD_SIZE = 170;
+const WORD_COLOR = "#a36aa5";
+
+const HERO_LINES = [
+  [{ id: "w1", text: "AutoDoc", locked: true }],
+  [
+    { id: "w2", text: "Knowledge", locked: false },
+    { id: "w3", text: "Built", locked: false },
+    { id: "w4", text: "Into", locked: false },
+  ],
+  [
+    { id: "w5", text: "Every", locked: false },
+    { id: "w6", text: "Document", locked: false },
+  ],
+] as const;
+
+const HERO_WORDS = HERO_LINES.flat();
+
+const EDGE_PCT = 1.5;
+
+type WordId = (typeof HERO_WORDS)[number]["id"];
+type Positions = Partial<Record<WordId, { x: number; y: number }>>;
 
 type TextBlock = {
   kind: "text";
@@ -383,8 +413,11 @@ class FlowEngine {
     if (!targets.length) return out;
 
     for (const src of newer.blocks) {
-      if (span === 2 && R() > 0.22) continue;
-      if (span === 1 && src.kind === "text" && src.filler && R() > 0.6) continue;
+      if (span === 2 && R() > 0.22 * THREAD_RATE) continue;
+      const filler = src.kind === "text" && src.filler;
+      if (span === 1 && R() > Math.min(1, (filler ? 0.6 : 1) * THREAD_RATE)) continue;
+      const fan = Math.max(1, Math.floor(THREAD_RATE) + (R() < THREAD_RATE % 1 ? 1 : 0));
+      for (let fi = 0; fi < fan; fi++) {
       const dst = targets[Math.floor(R() * targets.length)];
       if (!dst) continue;
       const y1 = dst.y + (dst.kind === "text" ? dst.h - dst.lh * 0.5 : dst.h * 0.5);
@@ -413,7 +446,6 @@ class FlowEngine {
         cum.push(len);
       }
       const colored = R() < 0.38;
-      const filler = src.kind === "text" && src.filler;
       out.push({
         pts,
         cum,
@@ -425,6 +457,7 @@ class FlowEngine {
         color: colored ? (R() < 0.5 ? src.tint : dst.tint) : PAL.base,
         a: (span === 1 ? 0.14 + R() * 0.2 : 0.08 + R() * 0.09) * (filler ? 0.55 : 1),
       });
+      }
     }
     return out;
   }
@@ -548,8 +581,7 @@ class FlowEngine {
   }
 
   paint(ctx: CanvasRenderingContext2D, tGlobal: number, reduced: boolean, nowMs: number) {
-    ctx.fillStyle = PAL.bg;
-    ctx.fillRect(0, 0, this.W, this.H);
+    ctx.clearRect(0, 0, this.W, this.H);
     this._itf = reduced ? 0 : INTERFERENCE;
     this._itfT = nowMs / 1000;
 
@@ -649,13 +681,52 @@ class FlowEngine {
 export function InformationFlowBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<Positions>({});
+  const posRef = useRef(pos);
+  posRef.current = pos;
+
+  const startDrag = (id: WordId, event: MouseEvent<HTMLDivElement>) => {
+    const word = HERO_WORDS.find((item) => item.id === id);
+    if (!word || word.locked) return;
+    event.preventDefault();
+    const host = wrapRef.current;
+    if (!host) return;
+    const el = event.currentTarget;
+    const r0 = host.getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    const origin = posRef.current[id] ?? {
+      x: ((box.left - r0.left) / r0.width) * 100,
+      y: ((box.top - r0.top) / r0.height) * 100,
+    };
+    const ox = event.clientX - r0.left - (origin.x / 100) * r0.width;
+    const oy = event.clientY - r0.top - (origin.y / 100) * r0.height;
+    setPos((prev) => ({ ...prev, [id]: origin }));
+
+    const onMove = (ev: globalThis.MouseEvent) => {
+      const r = host.getBoundingClientRect();
+      const x = ((ev.clientX - r.left - ox) / r.width) * 100;
+      const y = ((ev.clientY - r.top - oy) / r.height) * 100;
+      setPos((prev) => ({
+        ...prev,
+        [id]: clampWord(el, r, x, y),
+      }));
+    };
+
+    const up = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", up);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", up);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     const engine = new FlowEngine();
@@ -711,9 +782,151 @@ export function InformationFlowBackdrop() {
     <div
       ref={wrapRef}
       aria-hidden
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#0f0f0f] [container-type:inline-size]`}
     >
-      <canvas ref={canvasRef} className="h-full w-full object-cover" />
+      <HeroWords layer="back" pos={pos} onDragStart={startDrag} />
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none absolute inset-0 z-[2] h-full w-full object-cover"
+      />
+      <HeroWords layer="front" pos={pos} onDragStart={startDrag} />
+    </div>
+  );
+}
+
+function clampWord(
+  el: HTMLElement,
+  host: DOMRect,
+  xPct: number,
+  yPct: number,
+) {
+  const widthPct = host.width > 0 ? (el.offsetWidth / host.width) * 100 : 0;
+  const heightPct = host.height > 0 ? (el.offsetHeight / host.height) * 100 : 0;
+  const maxX = Math.max(EDGE_PCT, 100 - widthPct - EDGE_PCT);
+  const maxY = Math.max(EDGE_PCT, 100 - heightPct - EDGE_PCT);
+  return {
+    x: Math.min(maxX, Math.max(EDGE_PCT, xPct)),
+    y: Math.min(maxY, Math.max(EDGE_PCT, yPct)),
+  };
+}
+
+function wordChars(id: string, text: string) {
+  const n = text.length;
+  const order = Array.from({ length: n }, (_, i) => i);
+  let a = (id.charCodeAt(1) * 2654435761) >>> 0;
+  const rnd = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = order[i];
+    order[i] = order[j];
+    order[j] = tmp;
+  }
+  const rank = new Array<number>(n);
+  for (let k = 0; k < n; k++) rank[order[k]] = k;
+  return [...text].map((c, i) => ({
+    c,
+    back: n > 0 && rank[i] / n < WORD_DEPTH,
+  }));
+}
+
+function HeroWords({
+  layer,
+  pos,
+  onDragStart,
+}: {
+  layer: "back" | "front";
+  pos: Positions;
+  onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
+}) {
+  const wordStyle = {
+    font: `500 ${WORD_SIZE / 19.2}cqw/0.9 ${workSans.style.fontFamily}, sans-serif`,
+    letterSpacing: "-0.04em",
+    color: WORD_COLOR,
+  } as const;
+
+  return (
+    <div
+      className={`pointer-events-none absolute inset-0 ${layer === "back" ? "z-[1]" : "z-[3]"} ${workSans.className}`}
+    >
+      <div className="absolute inset-x-0 top-[16%] mx-auto flex w-full max-w-6xl flex-col items-start gap-[0.08em] px-4 md:px-6">
+        {HERO_LINES.map((line, lineIdx) => (
+          <div key={lineIdx} className="flex items-baseline justify-start gap-[0.28em]">
+            {line.map((word) => {
+              if (pos[word.id]) return null;
+              return (
+                <HeroWord
+                  key={`${layer}-${word.id}`}
+                  word={word}
+                  layer={layer}
+                  style={wordStyle}
+                  onDragStart={onDragStart}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      {HERO_WORDS.map((word) => {
+        const place = pos[word.id];
+        if (!place) return null;
+        return (
+          <HeroWord
+            key={`${layer}-free-${word.id}`}
+            word={word}
+            layer={layer}
+            style={wordStyle}
+            onDragStart={onDragStart}
+            place={place}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function HeroWord({
+  word,
+  layer,
+  style,
+  onDragStart,
+  place,
+}: {
+  word: (typeof HERO_WORDS)[number];
+  layer: "back" | "front";
+  style: { font: string; letterSpacing: string; color: string };
+  onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
+  place?: { x: number; y: number };
+}) {
+  const chars = wordChars(word.id, word.text);
+  return (
+    <div
+      className={`m-0 whitespace-pre select-none ${word.locked ? "cursor-default" : "cursor-move"} ${
+        place ? "absolute" : "relative"
+      }`}
+      style={{
+        ...style,
+        left: place ? `${place.x}%` : undefined,
+        top: place ? `${place.y}%` : undefined,
+        pointerEvents: word.locked ? "none" : "auto",
+      }}
+      onMouseDown={word.locked ? undefined : (event) => onDragStart(word.id, event)}
+    >
+      {chars.map((ch, i) => (
+        <span
+          key={i}
+          style={{
+            visibility: (layer === "back" ? ch.back : !ch.back) ? "visible" : "hidden",
+          }}
+        >
+          {ch.c}
+        </span>
+      ))}
     </div>
   );
 }
