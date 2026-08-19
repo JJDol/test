@@ -55,7 +55,7 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "type-once",
     number: 3,
     label: "Type once",
-    caption: "Shared facts update every document. Specific facts finish one.",
+    caption: "Type a fact once. General fields fill every document; discipline fields fill only that scope.",
     windowTitle: `AUTODOC — ${SAMPLE_PROJECT.shortName.toUpperCase()}`,
     status: "GENERAL VARIABLES APPLIED · 4 DOCUMENTS MOVED",
   },
@@ -63,9 +63,9 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "generate",
     number: 4,
     label: "Generate",
-    caption: "One click. Finished documents download to your computer.",
+    caption: "Open a generated file. The same facts repeat on every page.",
     windowTitle: `AUTODOC — ${SAMPLE_PROJECT.shortName.toUpperCase()}`,
-    status: "4 DOCUMENTS GENERATED · ZIP READY",
+    status: "4 DOCUMENTS GENERATED",
   },
   {
     id: "ask",
@@ -132,6 +132,191 @@ export const DEMO_DISCIPLINES = [
 ] as const;
 
 export type DemoDisciplineId = (typeof DEMO_DISCIPLINES)[number]["id"];
+
+export type DemoPickedDocs = Partial<Record<DemoDisciplineId, string[]>>;
+
+export type DemoTypedValues = {
+  general: Record<string, string>;
+  category: Record<DemoDisciplineId, Record<string, string>>;
+};
+
+export function emptyTypedValues(): DemoTypedValues {
+  return {
+    general: {},
+    category: {
+      architecture: {},
+      construction: {},
+      fire: {},
+    },
+  };
+}
+
+export type DemoInputField =
+  | {
+      id: string;
+      label: string;
+      type: "text" | "number";
+      placeholder?: string;
+      suffix?: string;
+    }
+  | {
+      id: string;
+      label: string;
+      type: "select";
+      options: readonly string[];
+    };
+
+export function typedFieldDisplay(
+  field: DemoInputField,
+  values: Record<string, string> | undefined
+): string | null {
+  const raw = (values?.[field.id] ?? "").trim();
+  if (!raw) return null;
+  return "suffix" in field && field.suffix ? `${raw} ${field.suffix}` : raw;
+}
+
+export const DEMO_GENERAL_FIELDS: readonly DemoInputField[] = [
+  {
+    id: "projectNumber",
+    label: "Project number",
+    type: "text",
+    placeholder: SAMPLE_PROJECT.caseNumber,
+  },
+  {
+    id: "gfa",
+    label: "Gross floor area",
+    type: "number",
+    placeholder: "3240",
+    suffix: "m²",
+  },
+  {
+    id: "basement",
+    label: "Basement area",
+    type: "number",
+    placeholder: "480",
+    suffix: "m²",
+  },
+  {
+    id: "geo",
+    label: "Geotechnical category",
+    type: "select",
+    options: ["GK1", "GK2", "GK3"],
+  },
+] as const;
+
+export const DEMO_CATEGORY_FIELDS: Record<DemoDisciplineId, readonly DemoInputField[]> = {
+  architecture: [
+    {
+      id: "responsible",
+      label: "Responsible person",
+      type: "text",
+      placeholder: "Mina Holm",
+    },
+    {
+      id: "height",
+      label: "Permitted building height",
+      type: "number",
+      placeholder: "18",
+      suffix: "m",
+    },
+    {
+      id: "storeys",
+      label: "Permitted number of storeys",
+      type: "number",
+      placeholder: "5",
+    },
+    {
+      id: "parking",
+      label: "Required parking spaces",
+      type: "number",
+      placeholder: "12",
+    },
+  ],
+  construction: [
+    {
+      id: "responsible",
+      label: "Responsible person",
+      type: "text",
+      placeholder: "Jonas Vestergaard",
+    },
+    {
+      id: "cc",
+      label: "Consequence class",
+      type: "select",
+      options: ["CC1", "CC2", "CC3", "CC3+"],
+    },
+    {
+      id: "kk",
+      label: "Construction class",
+      type: "select",
+      options: ["KK1", "KK2", "KK3", "KK4"],
+    },
+    {
+      id: "complexity",
+      label: "Structural complexity",
+      type: "select",
+      options: ["Simple", "Complex"],
+    },
+  ],
+  fire: [
+    {
+      id: "responsible",
+      label: "Responsible person",
+      type: "text",
+      placeholder: "Sofie Lind",
+    },
+    {
+      id: "bk",
+      label: "Fire class",
+      type: "select",
+      options: ["BK1", "BK2", "BK3", "BK4"],
+    },
+    {
+      id: "rk",
+      label: "Risk class",
+      type: "select",
+      options: ["RK1", "RK2", "RK3", "RK4"],
+    },
+    {
+      id: "sleeping",
+      label: "Sleeping accommodation",
+      type: "select",
+      options: ["Yes", "No"],
+    },
+  ],
+};
+
+export const GENERAL_PROGRESS_WEIGHT = 50;
+export const CATEGORY_PROGRESS_WEIGHT = 50;
+
+export function defaultPickedDocs(): Record<DemoDisciplineId, string[]> {
+  return {
+    architecture: DEMO_DISCIPLINES[0].documents.map((doc) => doc.id),
+    construction: DEMO_DISCIPLINES[1].documents.map((doc) => doc.id),
+    fire: DEMO_DISCIPLINES[2].documents.map((doc) => doc.id),
+  };
+}
+
+export function hasPickedDocuments(picked: DemoPickedDocs) {
+  return DEMO_DISCIPLINES.some((item) => (picked[item.id] ?? []).length > 0);
+}
+
+export function resolvePickedDocs(picked: DemoPickedDocs) {
+  return hasPickedDocuments(picked) ? picked : defaultPickedDocs();
+}
+
+export function selectedDemoDocuments(picked: DemoPickedDocs) {
+  return DEMO_DISCIPLINES.flatMap((discipline) => {
+    const ids = picked[discipline.id] ?? [];
+    return discipline.documents
+      .filter((doc) => ids.includes(doc.id))
+      .map((doc) => ({
+        ...doc,
+        disciplineId: discipline.id,
+        disciplineLabel: discipline.label,
+      }));
+  });
+}
 
 export const NEW_BOARD_PROJECT = {
   id: "kobenhavnsgade",

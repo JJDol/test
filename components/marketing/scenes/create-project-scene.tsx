@@ -12,19 +12,22 @@ import { cn } from "@/lib/utils";
 
 export function CreateProjectScene({
   replayKey,
+  selected,
+  pickedDocs,
+  onToggleDiscipline,
+  onToggleDocument,
   onNext,
 }: {
   replayKey: number;
+  selected: DemoDisciplineId[];
+  pickedDocs: Record<string, string[]>;
+  onToggleDiscipline: (id: DemoDisciplineId) => void;
+  onToggleDocument: (disciplineId: DemoDisciplineId, docId: string) => void;
   onNext: () => void;
 }) {
   const [ready, setReady] = useState(false);
-  const [selected, setSelected] = useState<Set<DemoDisciplineId>>(new Set());
-  const [pickedDocs, setPickedDocs] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    setSelected(new Set());
-    setPickedDocs({});
-
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -38,34 +41,7 @@ export function CreateProjectScene({
     return () => window.clearTimeout(timer);
   }, [replayKey]);
 
-  const chosen = DEMO_DISCIPLINES.filter((item) => selected.has(item.id));
-
-  const toggleDiscipline = (id: DemoDisciplineId) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        setPickedDocs((docs) => {
-          const copy = { ...docs };
-          delete copy[id];
-          return copy;
-        });
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleDocument = (disciplineId: DemoDisciplineId, docId: string) => {
-    setPickedDocs((prev) => {
-      const current = prev[disciplineId] ?? [];
-      const next = current.includes(docId)
-        ? current.filter((item) => item !== docId)
-        : [...current, docId];
-      return { ...prev, [disciplineId]: next };
-    });
-  };
+  const chosen = DEMO_DISCIPLINES.filter((item) => selected.includes(item.id));
 
   const project = NEW_BOARD_PROJECT;
 
@@ -100,13 +76,13 @@ export function CreateProjectScene({
             <p className="text-[11px] font-semibold tracking-[0.18em] text-zinc-400">DISCIPLINES</p>
             <div className="mt-3 space-y-2">
               {DEMO_DISCIPLINES.map((discipline) => {
-                const on = selected.has(discipline.id);
+                const on = selected.includes(discipline.id);
                 const count = pickedDocs[discipline.id]?.length ?? 0;
                 return (
                   <button
                     key={discipline.id}
                     type="button"
-                    onClick={() => toggleDiscipline(discipline.id)}
+                    onClick={() => onToggleDiscipline(discipline.id)}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition",
                       on
@@ -176,7 +152,7 @@ export function CreateProjectScene({
                             type="checkbox"
                             className="sr-only"
                             checked={checked}
-                            onChange={() => toggleDocument(discipline.id, doc.id)}
+                            onChange={() => onToggleDocument(discipline.id, doc.id)}
                           />
                           <span
                             className={cn(
