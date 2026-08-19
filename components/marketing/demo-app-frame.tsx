@@ -24,7 +24,7 @@ export function DemoAppFrame({ title, status, onReplay, children }: DemoAppFrame
         </span>
       </div>
 
-      <div className="relative min-h-[420px] md:min-h-[500px]">{children}</div>
+      <div className="relative h-[420px] overflow-hidden md:h-[500px]">{children}</div>
 
       <div className="flex items-center justify-between border-t border-white/10 px-4 py-3">
         <p className="font-mono text-[11px] tracking-wide text-emerald-400">{status}</p>

@@ -47,8 +47,8 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "create",
     number: 2,
     label: "Create project",
-    caption: "The project form fills itself from the contract. No blank start.",
-    windowTitle: "AUTODOC — CREATE PROJECT",
+    caption: "The project appears as a card. Choose disciplines, then the documents for each.",
+    windowTitle: "AUTODOC — PROJECTS",
     status: "PROJECT READY · KØBENHAVNSGADE 88",
   },
   {
@@ -100,3 +100,45 @@ export const DEMO_DOCUMENTS = [
   { id: "energy", name: "Energy statement", progressFromGeneral: 55, complete: 100 },
   { id: "struct", name: "Structural brief", progressFromGeneral: 60, complete: 100 },
 ] as const;
+
+export const DEMO_DISCIPLINES = [
+  {
+    id: "architecture",
+    label: "Architecture",
+    documents: [
+      { id: "arch-desc", name: "Architecture description" },
+      { id: "facade", name: "Facade drawing set" },
+      { id: "access", name: "Accessibility statement" },
+    ],
+  },
+  {
+    id: "construction",
+    label: "Construction",
+    documents: [
+      { id: "struct", name: "Structural brief" },
+      { id: "foundation", name: "Foundation plan" },
+      { id: "loads", name: "Load-bearing calculations" },
+    ],
+  },
+  {
+    id: "fire",
+    label: "Fire safety",
+    documents: [
+      { id: "fire-strategy", name: "Fire strategy" },
+      { id: "escape", name: "Escape route plan" },
+      { id: "class", name: "Fire classification report" },
+    ],
+  },
+] as const;
+
+export type DemoDisciplineId = (typeof DEMO_DISCIPLINES)[number]["id"];
+
+export const NEW_BOARD_PROJECT = {
+  id: "kobenhavnsgade",
+  name: SAMPLE_PROJECT.name,
+  location: SAMPLE_PROJECT.address,
+  progress: 0,
+  deadline: "3/15/2028",
+  deadlineTone: "ok" as const,
+  leader: "Sofie Kragh",
+} as const;
