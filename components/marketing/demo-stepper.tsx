@@ -9,35 +9,30 @@ interface DemoStepperProps {
 
 export function DemoStepper({ steps, activeId, onSelect }: DemoStepperProps) {
   return (
-    <ol className="flex gap-3 overflow-x-auto pb-2 md:flex-col md:gap-0 md:overflow-visible md:pb-0">
-      {steps.map((step, index) => {
+    <ol className="flex w-full gap-5 overflow-x-auto pb-1 lg:h-full lg:flex-col lg:justify-between lg:gap-0 lg:overflow-visible lg:py-[10%]">
+      {steps.map((step) => {
         const isActive = step.id === activeId;
         return (
-          <li key={step.id} className="flex shrink-0 md:shrink">
+          <li key={step.id} className="flex shrink-0">
             <button
               type="button"
               onClick={() => onSelect(step.id)}
-              className="flex items-center gap-3 rounded-full px-1 py-1 text-left md:w-full md:rounded-none md:px-0 md:py-0"
+              className="flex items-center gap-3.5 text-left"
             >
-              <span className="flex flex-col items-center">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center">
                 <span
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition",
+                    "rounded-full transition",
                     isActive
-                      ? "bg-sky-300 text-zinc-950 shadow-[0_0_18px_rgba(125,211,252,0.55)]"
-                      : "border border-white/15 bg-white/5 text-zinc-500"
+                      ? "h-7 w-7 border border-[#1a1a1a] bg-transparent"
+                      : "h-2.5 w-2.5 bg-[#D4CFC6]"
                   )}
-                >
-                  {step.number}
-                </span>
-                {index < steps.length - 1 && (
-                  <span className="hidden h-8 w-px bg-white/10 md:block" />
-                )}
+                />
               </span>
               <span
                 className={cn(
-                  "whitespace-nowrap text-sm font-medium md:mb-8",
-                  isActive ? "text-white" : "text-zinc-500"
+                  "whitespace-nowrap text-[15px] tracking-tight",
+                  isActive ? "font-medium text-[#1a1a1a]" : "text-[#1a1a1a]/40"
                 )}
               >
                 {step.label}
