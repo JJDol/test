@@ -1,7 +1,7 @@
 "use client";
 
 import { IBM_Plex_Mono, Work_Sans } from "next/font/google";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { forwardRef, useEffect, useRef, useState, type MouseEvent } from "react";
 
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
@@ -16,7 +16,7 @@ const workSans = Work_Sans({
 });
 
 const PAL = {
-  bg: "#0f0f0f",
+  bg: "#2134c4",
   base: "#e9e9e9",
   doc: "#ff6a4d",
   role: "#9a9a9a",
@@ -24,34 +24,64 @@ const PAL = {
   ok: "#4cae7a",
 } as const;
 
+type HeroParams = {
+  bgColor: string;
+  bgOpacity: number;
+  inkColor: string;
+  wordColor: string;
+  wordSize: number;
+  parallax: number;
+  depth: number;
+  speed: number;
+  textScale: number;
+  weight: number;
+  lineSpacing: number;
+  tableRate: number;
+  imageRate: number;
+  lineOpacity: number;
+  glide: number;
+  threadRate: number;
+  interference: number;
+  showTables: boolean;
+  showImageField: boolean;
+};
+
+const DEFAULT_HERO: HeroParams = {
+  bgColor: "#2134c4",
+  bgOpacity: 0.6,
+  inkColor: "#e9e9e9",
+  wordColor: "#e9e9e9",
+  wordSize: 150,
+  parallax: 1,
+  depth: 0.35,
+  speed: 2.9,
+  textScale: 0.75,
+  weight: 400,
+  lineSpacing: 0.4,
+  tableRate: 1.1,
+  imageRate: 0.5,
+  lineOpacity: 1.1,
+  glide: 0,
+  threadRate: 1,
+  interference: 1,
+  showTables: true,
+  showImageField: false,
+};
+
 const SOURCE_W = 1920;
 const SOURCE_H = 1080;
 const SLOTS = 5;
 const LOOP_COLS = 10;
-const SPEED = 2.9;
-const TEXT_SCALE = 0.75;
-const LINE_SPACING = 0.4;
-const TABLE_RATE = 1.1;
-const IMAGE_RATE = 0.5;
-const LINE_OPACITY = 1.1;
-const INTERFERENCE = 1;
-const SHOW_IMAGE_FIELD = false;
-const THREAD_RATE = 1;
-const WORD_DEPTH = 0.35;
-const WORD_SIZE = 78;
-const WORD_COLOR = "#a36aa5";
+
+function fmt(value: number) {
+  return (Math.round(value * 100) / 100).toFixed(2);
+}
 
 const HERO_LINES = [
-  [{ id: "w1", text: "AutoDoc", locked: true }],
-  [
-    { id: "w2", text: "Knowledge", locked: false },
-    { id: "w3", text: "Built", locked: false },
-    { id: "w4", text: "Into", locked: false },
-  ],
-  [
-    { id: "w5", text: "Every", locked: false },
-    { id: "w6", text: "Document", locked: false },
-  ],
+  [{ id: "w1", text: "Project", locked: false }],
+  [{ id: "w2", text: "Knowledge", locked: false }],
+  [{ id: "w3", text: "Made", locked: false }],
+  [{ id: "w4", text: "Consistent", locked: false }],
 ] as const;
 
 const HERO_WORDS = HERO_LINES.flat();
@@ -230,8 +260,43 @@ class FlowEngine {
   links = new Map<string, Link[]>();
   tables: AtmosTable[] = [];
   fields: ColorField[] = [];
-  _itf = INTERFERENCE;
+  _itf = DEFAULT_HERO.interference;
   _itfT = 0;
+  params: HeroParams = { ...DEFAULT_HERO };
+  _cacheKey = "";
+
+  ink() {
+    return this.params.inkColor;
+  }
+
+  bg() {
+    return this.params.bgColor;
+  }
+
+  wt(base: number) {
+    const step = Math.round(this.params.weight / 100) * 100 - 400;
+    return Math.max(300, Math.min(700, base + step));
+  }
+
+  syncFrom(params: HeroParams) {
+    this.params = params;
+    const key = [
+      params.textScale,
+      params.lineSpacing,
+      params.tableRate,
+      params.imageRate,
+      params.threadRate,
+      params.weight,
+      params.inkColor,
+      params.bgColor,
+      params.showImageField,
+    ].join("|");
+    if (key === this._cacheKey) return;
+    this._cacheKey = key;
+    this.colCache.clear();
+    this.links.clear();
+    this.buildAtmos();
+  }
 
   layout(width: number, height: number) {
     this.W = width;
@@ -244,7 +309,6 @@ class FlowEngine {
     this.colCache.clear();
     this.links.clear();
     this.buildAtmos();
-    if (!SHOW_IMAGE_FIELD) this.fields = [];
   }
 
   slotX(slot: number) {
@@ -264,7 +328,7 @@ class FlowEngine {
         rh: 15 + R() * 11,
         phase: R(),
         a: 0.028 + R() * 0.04,
-        color: R() < 0.25 ? PAL.ext : PAL.base,
+        color: this.ink(),
       });
     }
 
@@ -275,7 +339,7 @@ class FlowEngine {
       const g = c.getContext("2d");
       if (!g) return { canvas: c, dx: k ? -1 : 1, dy: k ? 0.6 : -0.8, ph: k * 0.5 };
       g.filter = "blur(70px)";
-      const cols = [PAL.doc, PAL.ext, PAL.ok, PAL.role];
+      const cols = [this.ink()];
       for (let i = 0; i < 9; i++) {
         const cx = R() * this.W;
         const cy = R() * this.H;
@@ -284,7 +348,7 @@ class FlowEngine {
         const col = cols[Math.floor(R() * cols.length)];
         const grd = g.createLinearGradient(cx - rw / 2, cy - rh / 2, cx + rw / 2, cy + rh / 2);
         grd.addColorStop(0, col);
-        grd.addColorStop(1, PAL.bg);
+        grd.addColorStop(1, this.bg());
         g.fillStyle = grd;
         g.globalAlpha = 0.35 + R() * 0.5;
         if (R() < 0.45) {
@@ -297,7 +361,7 @@ class FlowEngine {
       }
       g.filter = "none";
       g.globalAlpha = 0.05;
-      g.fillStyle = PAL.base;
+      g.fillStyle = this.ink();
       for (let y = 0; y < this.H; y += 6) g.fillRect(0, y, this.W, 1.4);
       return { canvas: c, dx: k ? -1 : 1, dy: k ? 0.6 : -0.8, ph: k * 0.5 };
     });
@@ -329,8 +393,8 @@ class FlowEngine {
 
     while (y < bottom) {
       const roll = R();
-      const tRate = 0.08 * TABLE_RATE;
-      const iRate = 0.07 * IMAGE_RATE;
+      const tRate = 0.08 * this.params.tableRate;
+      const iRate = 0.07 * this.params.imageRate;
       let b: DraftBlock | null = null;
 
       if (roll < tRate) {
@@ -366,9 +430,9 @@ class FlowEngine {
       } else {
         const g = pick();
         const s = g.items[Math.floor(R() * g.items.length)];
-        const fs = (g.filler ? 10 + R() * 1.5 : 10.5 + R() * 3.5) * TEXT_SCALE;
-        const lh = fs * (1.15 + 0.45 * LINE_SPACING);
-        ctx.font = `400 ${fs}px ${family}`;
+        const fs = (g.filler ? 10 + R() * 1.5 : 10.5 + R() * 3.5) * this.params.textScale;
+        const lh = fs * (1.15 + 0.45 * this.params.lineSpacing);
+        ctx.font = `${this.wt(400)} ${fs}px ${family}`;
         const cw = ctx.measureText("0").width || fs * 0.6;
         const maxChars = Math.max(10, Math.floor(this.colW / cw));
         const lines: string[] = [];
@@ -397,8 +461,8 @@ class FlowEngine {
       y +=
         placed.h +
         (placed.kind === "text"
-          ? placed.lh * (0.5 + R() * 1.9) * LINE_SPACING
-          : (16 + R() * 26) * LINE_SPACING);
+          ? placed.lh * (0.5 + R() * 1.9) * this.params.lineSpacing
+          : (16 + R() * 26) * this.params.lineSpacing);
     }
 
     const col = { blocks, chars };
@@ -413,10 +477,11 @@ class FlowEngine {
     if (!targets.length) return out;
 
     for (const src of newer.blocks) {
-      if (span === 2 && R() > 0.22 * THREAD_RATE) continue;
+      if (span === 2 && R() > 0.22 * this.params.threadRate) continue;
       const filler = src.kind === "text" && src.filler;
-      if (span === 1 && R() > Math.min(1, (filler ? 0.6 : 1) * THREAD_RATE)) continue;
-      const fan = Math.max(1, Math.floor(THREAD_RATE) + (R() < THREAD_RATE % 1 ? 1 : 0));
+      if (span === 1 && R() > Math.min(1, (filler ? 0.6 : 1) * this.params.threadRate)) continue;
+      const fan =
+        Math.max(1, Math.floor(this.params.threadRate) + (R() < this.params.threadRate % 1 ? 1 : 0));
       for (let fi = 0; fi < fan; fi++) {
       const dst = targets[Math.floor(R() * targets.length)];
       if (!dst) continue;
@@ -445,7 +510,6 @@ class FlowEngine {
         len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
         cum.push(len);
       }
-      const colored = R() < 0.38;
       out.push({
         pts,
         cum,
@@ -454,7 +518,7 @@ class FlowEngine {
         y2,
         dstW: dst.w,
         appearAt: (src.cStart + src.cLen) / Math.max(1, newer.chars),
-        color: colored ? (R() < 0.5 ? src.tint : dst.tint) : PAL.base,
+        color: this.ink(),
         a: (span === 1 ? 0.14 + R() * 0.2 : 0.08 + R() * 0.09) * (filler ? 0.55 : 1),
       });
       }
@@ -490,8 +554,8 @@ class FlowEngine {
     if (b.kind === "text") {
       const perLine = Math.max(1, b.lines[0].length);
       const chars = f * b.cLen;
-      ctx.font = `${b.filler ? "300" : "400"} ${b.fs}px ${family}`;
-      ctx.fillStyle = PAL.base;
+      ctx.font = `${this.wt(b.filler ? 300 : 400)} ${b.fs}px ${family}`;
+      ctx.fillStyle = this.ink();
       ctx.globalAlpha = b.maxA * alpha;
       for (let li = 0; li < b.lines.length; li++) {
         const from = li * perLine;
@@ -509,13 +573,13 @@ class FlowEngine {
           const dx = (w1 * 2.2 + w2 * 1.1) * itf + burst * 26 * itf;
           const split = (0.6 + Math.abs(w2)) * 2.4 * itf;
           ctx.globalAlpha = b.maxA * alpha * 0.4 * Math.min(1, itf * 1.6);
-          ctx.fillStyle = PAL.doc;
+          ctx.fillStyle = this.ink();
           ctx.fillText(txt, x + dx - split, ly);
-          ctx.fillStyle = PAL.ext;
+          ctx.fillStyle = this.ink();
           ctx.fillText(txt, x + dx + split, ly);
           const drop = burst > 0.02 && ((seed | 0) % 5 === 0);
           ctx.globalAlpha = b.maxA * alpha * (drop ? 0.18 : 1);
-          ctx.fillStyle = PAL.base;
+          ctx.fillStyle = this.ink();
           ctx.fillText(txt, x + dx, ly);
           ctx.globalAlpha = b.maxA * alpha;
         } else {
@@ -531,7 +595,7 @@ class FlowEngine {
     }
 
     if (b.kind === "table") {
-      ctx.strokeStyle = b.tint;
+      ctx.strokeStyle = this.ink();
       ctx.globalAlpha = b.maxA * alpha * 0.5;
       ctx.lineWidth = 0.8;
       const rows = Math.max(1, Math.ceil(b.rows * f));
@@ -546,8 +610,8 @@ class FlowEngine {
       }
       ctx.stroke();
       ctx.globalAlpha = b.maxA * alpha * 0.8;
-      ctx.fillStyle = PAL.base;
-      ctx.font = `300 8.5px ${family}`;
+      ctx.fillStyle = this.ink();
+      ctx.font = `${this.wt(300)} 8.5px ${family}`;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < b.cols; c++) {
           if ((r + c) % 2 === 0) {
@@ -560,38 +624,41 @@ class FlowEngine {
 
     const h = b.h * f;
     const grd = ctx.createLinearGradient(x, b.y, x + b.w, b.y + b.h);
-    grd.addColorStop(0, b.tint);
-    grd.addColorStop(1, PAL.bg);
+    grd.addColorStop(0, this.ink());
+    grd.addColorStop(1, this.bg());
     ctx.globalAlpha = 0.2 * b.maxA * alpha;
     ctx.fillStyle = grd;
     ctx.fillRect(x, b.y, b.w, h);
     ctx.globalAlpha = 0.06 * alpha;
-    ctx.fillStyle = PAL.base;
+    ctx.fillStyle = this.ink();
     for (let yy = 0; yy < h; yy += 5) ctx.fillRect(x, b.y + yy, b.w, 1.2);
     ctx.globalAlpha = b.maxA * alpha * 0.55;
-    ctx.strokeStyle = PAL.base;
+    ctx.strokeStyle = this.ink();
     ctx.lineWidth = 0.8;
     ctx.strokeRect(x + 0.5, b.y + 0.5, b.w - 1, h - 1);
     if (f > 0.85) {
       ctx.globalAlpha = b.maxA * alpha * 0.8;
-      ctx.fillStyle = PAL.base;
-      ctx.font = `300 8.5px ${family}`;
+      ctx.fillStyle = this.ink();
+      ctx.font = `${this.wt(300)} 8.5px ${family}`;
       ctx.fillText(b.cap, x + 3, b.y + b.h + 4);
     }
   }
 
   paint(ctx: CanvasRenderingContext2D, tGlobal: number, reduced: boolean, nowMs: number) {
     ctx.clearRect(0, 0, this.W, this.H);
-    this._itf = reduced ? 0 : INTERFERENCE;
+    this._itf = reduced ? 0 : this.params.interference;
     this._itfT = nowMs / 1000;
+    const ink = this.ink();
+    const lo = this.params.lineOpacity;
 
     const typeFrac = 0.78;
     const k = reduced ? 4 : Math.floor(tGlobal);
     const frac = reduced ? typeFrac : tGlobal - Math.floor(tGlobal);
-    const shift = reduced || frac < typeFrac ? 0 : ease((frac - typeFrac) / (1 - typeFrac));
+    const staged = reduced || frac < typeFrac ? 0 : ease((frac - typeFrac) / (1 - typeFrac));
+    const shift = staged + (frac - staged) * this.params.glide;
     const loopT = (tGlobal / LOOP_COLS) % 1;
 
-    if (SHOW_IMAGE_FIELD) {
+    if (this.params.showImageField) {
       for (const f of this.fields) {
         ctx.globalAlpha = 0.1 + 0.05 * Math.sin(2 * Math.PI * (loopT + f.ph));
         ctx.drawImage(
@@ -604,21 +671,23 @@ class FlowEngine {
       }
     }
 
-    for (const tb of this.tables) {
-      const u = (loopT + tb.phase) % 1;
-      ctx.globalAlpha = tb.a * (0.5 + 0.5 * Math.sin(2 * Math.PI * u));
-      ctx.strokeStyle = tb.color;
-      ctx.lineWidth = 0.7;
-      ctx.beginPath();
-      for (let c = 0; c <= tb.cols; c++) {
-        ctx.moveTo(tb.x + c * tb.cw, tb.y);
-        ctx.lineTo(tb.x + c * tb.cw, tb.y + tb.rows * tb.rh);
+    if (this.params.showTables) {
+      for (const tb of this.tables) {
+        const u = (loopT + tb.phase) % 1;
+        ctx.globalAlpha = tb.a * (0.5 + 0.5 * Math.sin(2 * Math.PI * u));
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        for (let c = 0; c <= tb.cols; c++) {
+          ctx.moveTo(tb.x + c * tb.cw, tb.y);
+          ctx.lineTo(tb.x + c * tb.cw, tb.y + tb.rows * tb.rh);
+        }
+        for (let r = 0; r <= tb.rows; r++) {
+          ctx.moveTo(tb.x, tb.y + r * tb.rh);
+          ctx.lineTo(tb.x + tb.cols * tb.cw, tb.y + r * tb.rh);
+        }
+        ctx.stroke();
       }
-      for (let r = 0; r <= tb.rows; r++) {
-        ctx.moveTo(tb.x, tb.y + r * tb.rh);
-        ctx.lineTo(tb.x + tb.cols * tb.cw, tb.y + r * tb.rh);
-      }
-      ctx.stroke();
     }
 
     const live = [];
@@ -654,11 +723,11 @@ class FlowEngine {
           const p = Math.max(0, Math.min(1, (newer.typed - l.appearAt) / 0.14));
           if (p <= 0) continue;
           const x1 = older.x + l.dstW + 7;
-          ctx.globalAlpha = l.a * a0 * LINE_OPACITY;
-          ctx.strokeStyle = l.color;
+          ctx.globalAlpha = l.a * a0 * lo;
+          ctx.strokeStyle = ink;
           this.drawThread(ctx, l, x1, l.y1, p);
-          ctx.globalAlpha = Math.min(1, l.a * a0 * LINE_OPACITY * 2.4);
-          ctx.fillStyle = l.color;
+          ctx.globalAlpha = Math.min(1, l.a * a0 * lo * 2.4);
+          ctx.fillStyle = ink;
           ctx.fillRect(x1 - 1.5, l.y1 - 1.5, 3, 3);
           if (p >= 1) ctx.fillRect(newer.x - 8.5, l.y2 - 1.5, 3, 3);
         }
@@ -681,9 +750,16 @@ class FlowEngine {
 export function InformationFlowBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLImageElement>(null);
+  const backWordsRef = useRef<HTMLDivElement>(null);
+  const frontWordsRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<Positions>({});
+  const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
+  const [panelOpen, setPanelOpen] = useState(true);
   const posRef = useRef(pos);
+  const uiRef = useRef(ui);
   posRef.current = pos;
+  uiRef.current = ui;
 
   const startDrag = (id: WordId, event: MouseEvent<HTMLDivElement>) => {
     const word = HERO_WORDS.find((item) => item.id === id);
@@ -746,7 +822,18 @@ export function InformationFlowBackdrop() {
     const frame = (now: number) => {
       if (!running) return;
       if (!t0) t0 = now;
-      const cycle = 5200 / SPEED;
+      const params = uiRef.current;
+      engine.syncFrom(params);
+      const cycle = 5200 / Math.max(0.3, params.speed);
+      const sy = window.scrollY || 0;
+      const px = params.parallax;
+      const move = (el: HTMLElement | null, k: number) => {
+        if (el) el.style.transform = `translate3d(0, ${-sy * k * px}px, 0)`;
+      };
+      move(backWordsRef.current, 0.42);
+      move(frontWordsRef.current, 0.42);
+      move(canvas, 0.14);
+      move(photoRef.current, 0.05);
       engine.paint(ctx, (now - t0) / cycle, reduced, now - t0);
       if (!reduced) raf = requestAnimationFrame(frame);
     };
@@ -767,7 +854,10 @@ export function InformationFlowBackdrop() {
     });
 
     const ro = new ResizeObserver(() => {
-      if (reduced) engine.paint(ctx, 4, true, 0);
+      if (reduced) {
+        engine.syncFrom(uiRef.current);
+        engine.paint(ctx, 4, true, 0);
+      }
     });
     ro.observe(wrap);
 
@@ -781,15 +871,41 @@ export function InformationFlowBackdrop() {
   return (
     <div
       ref={wrapRef}
-      aria-hidden
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#0f0f0f] [container-type:inline-size]`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden [container-type:inline-size]`}
     >
-      <HeroWords layer="back" pos={pos} onDragStart={startDrag} />
+      <img
+        ref={photoRef}
+        src="/images/marketing/hero-site.jpg"
+        alt=""
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+      />
+      <div
+        className="absolute inset-0 z-[1]"
+        style={{ background: ui.bgColor, opacity: ui.bgOpacity }}
+      />
+      <HeroWords
+        ref={backWordsRef}
+        layer="back"
+        pos={pos}
+        wordColor={ui.wordColor}
+        wordSize={ui.wordSize}
+        depth={ui.depth}
+        onDragStart={startDrag}
+      />
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute inset-0 z-[2] h-full w-full object-cover"
+        className="pointer-events-none absolute inset-0 z-[3] h-full w-full object-cover"
       />
-      <HeroWords layer="front" pos={pos} onDragStart={startDrag} />
+      <HeroWords
+        ref={frontWordsRef}
+        layer="front"
+        pos={pos}
+        wordColor={ui.wordColor}
+        wordSize={ui.wordSize}
+        depth={ui.depth}
+        onDragStart={startDrag}
+      />
+      <HeroControls ui={ui} setUi={setUi} open={panelOpen} onToggle={() => setPanelOpen((v) => !v)} />
     </div>
   );
 }
@@ -810,7 +926,7 @@ function clampWord(
   };
 }
 
-function wordChars(id: string, text: string) {
+function wordChars(id: string, text: string, depth: number) {
   const n = text.length;
   const order = Array.from({ length: n }, (_, i) => i);
   let a = (id.charCodeAt(1) * 2654435761) >>> 0;
@@ -831,28 +947,32 @@ function wordChars(id: string, text: string) {
   for (let k = 0; k < n; k++) rank[order[k]] = k;
   return [...text].map((c, i) => ({
     c,
-    back: n > 0 && rank[i] / n < WORD_DEPTH,
+    back: n > 0 && rank[i] / n < depth,
   }));
 }
 
-function HeroWords({
-  layer,
-  pos,
-  onDragStart,
-}: {
-  layer: "back" | "front";
-  pos: Positions;
-  onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
-}) {
+const HeroWords = forwardRef<
+  HTMLDivElement,
+  {
+    layer: "back" | "front";
+    pos: Positions;
+    wordColor: string;
+    wordSize: number;
+    depth: number;
+    onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
+  }
+>(function HeroWords({ layer, pos, wordColor, wordSize, depth, onDragStart }, ref) {
   const wordStyle = {
-    font: `500 ${WORD_SIZE / 19.2}cqw/0.95 ${workSans.style.fontFamily}, sans-serif`,
+    font: `500 ${wordSize / 19.2}cqw/0.95 ${workSans.style.fontFamily}, sans-serif`,
     letterSpacing: "-0.03em",
-    color: WORD_COLOR,
+    color: wordColor,
   } as const;
 
   return (
     <div
-      className={`pointer-events-none absolute inset-0 ${layer === "back" ? "z-[1]" : "z-[3]"} ${workSans.className}`}
+      ref={ref}
+      aria-hidden
+      className={`pointer-events-none absolute inset-0 ${layer === "back" ? "z-[2]" : "z-[4]"} ${workSans.className}`}
     >
       <div
         className="absolute inset-x-0 top-[18%] mx-auto flex w-full max-w-6xl flex-col items-start px-4 md:px-6"
@@ -875,6 +995,7 @@ function HeroWords({
                   word={word}
                   layer={layer}
                   style={wordStyle}
+                  depth={depth}
                   onDragStart={onDragStart}
                 />
               );
@@ -891,6 +1012,7 @@ function HeroWords({
             word={word}
             layer={layer}
             style={wordStyle}
+            depth={depth}
             onDragStart={onDragStart}
             place={place}
           />
@@ -898,22 +1020,24 @@ function HeroWords({
       })}
     </div>
   );
-}
+});
 
 function HeroWord({
   word,
   layer,
   style,
+  depth,
   onDragStart,
   place,
 }: {
   word: (typeof HERO_WORDS)[number];
   layer: "back" | "front";
   style: { font: string; letterSpacing: string; color: string };
+  depth: number;
   onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
   place?: { x: number; y: number };
 }) {
-  const chars = wordChars(word.id, word.text);
+  const chars = wordChars(word.id, word.text, depth);
   return (
     <div
       className={`m-0 whitespace-pre select-none ${word.locked ? "cursor-default" : "cursor-move"} ${
@@ -937,6 +1061,278 @@ function HeroWord({
           {ch.c}
         </span>
       ))}
+    </div>
+  );
+}
+
+function HeroControls({
+  ui,
+  setUi,
+  open,
+  onToggle,
+}: {
+  ui: HeroParams;
+  setUi: (update: HeroParams | ((prev: HeroParams) => HeroParams)) => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const setNum =
+    (name: keyof HeroParams) => (event: { target: { value: string } }) => {
+      setUi({ ...ui, [name]: parseFloat(event.target.value) });
+    };
+  const setColor =
+    (name: "bgColor" | "inkColor" | "wordColor") =>
+    (event: { target: { value: string } }) => {
+      setUi({ ...ui, [name]: event.target.value });
+    };
+
+  const row = "flex items-center gap-2 text-[10px] font-light tracking-[0.06em] text-white/80";
+  const swatch =
+    "h-[22px] w-[34px] cursor-pointer border border-white/25 bg-transparent p-0";
+  const slider = "w-[118px] bg-transparent";
+  const hex = "w-[66px] uppercase text-[#e9e9e9]";
+  const val = "w-[30px] text-right text-[#e9e9e9]";
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col items-start gap-2 p-3.5 md:p-[14px_18px]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="pointer-events-auto border border-white/20 bg-black/70 px-[9px] py-1.5 text-[10px] font-normal uppercase tracking-[0.08em] text-[#e9e9e9]"
+      >
+        {open ? "controls −" : "controls +"}
+      </button>
+      {open ? (
+        <div className="pointer-events-auto flex max-w-[620px] flex-wrap items-center gap-x-[22px] gap-y-2 border border-white/15 bg-black/70 px-3.5 py-2.5">
+          <label className={row}>
+            <span className="w-[88px]">background</span>
+            <input type="color" value={ui.bgColor} onChange={setColor("bgColor")} className={swatch} />
+            <span className={hex}>{ui.bgColor}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">bg opacity</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={ui.bgOpacity}
+              onChange={setNum("bgOpacity")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{fmt(ui.bgOpacity)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">text / threads</span>
+            <input type="color" value={ui.inkColor} onChange={setColor("inkColor")} className={swatch} />
+            <span className={hex}>{ui.inkColor}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">word color</span>
+            <input type="color" value={ui.wordColor} onChange={setColor("wordColor")} className={swatch} />
+            <span className={hex}>{ui.wordColor}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">word size</span>
+            <input
+              type="range"
+              min={40}
+              max={400}
+              step={2}
+              value={ui.wordSize}
+              onChange={setNum("wordSize")}
+              className={slider}
+              style={{ accentColor: "#e9e9e9" }}
+            />
+            <span className={val}>{String(ui.wordSize)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">parallax</span>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={0.05}
+              value={ui.parallax}
+              onChange={setNum("parallax")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{fmt(ui.parallax)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">word depth</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={ui.depth}
+              onChange={setNum("depth")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{fmt(ui.depth)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">speed</span>
+            <input
+              type="range"
+              min={0.3}
+              max={6}
+              step={0.05}
+              value={ui.speed}
+              onChange={setNum("speed")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{fmt(ui.speed)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">text size</span>
+            <input
+              type="range"
+              min={0.6}
+              max={1.8}
+              step={0.05}
+              value={ui.textScale}
+              onChange={setNum("textScale")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{fmt(ui.textScale)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">weight</span>
+            <input
+              type="range"
+              min={300}
+              max={700}
+              step={100}
+              value={ui.weight}
+              onChange={setNum("weight")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{String(ui.weight)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">line spacing</span>
+            <input
+              type="range"
+              min={0.4}
+              max={2.2}
+              step={0.05}
+              value={ui.lineSpacing}
+              onChange={setNum("lineSpacing")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{fmt(ui.lineSpacing)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">tables</span>
+            <input
+              type="range"
+              min={0}
+              max={3}
+              step={0.1}
+              value={ui.tableRate}
+              onChange={setNum("tableRate")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{fmt(ui.tableRate)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">images</span>
+            <input
+              type="range"
+              min={0}
+              max={3}
+              step={0.1}
+              value={ui.imageRate}
+              onChange={setNum("imageRate")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{fmt(ui.imageRate)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">threads</span>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={0.05}
+              value={ui.lineOpacity}
+              onChange={setNum("lineOpacity")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{fmt(ui.lineOpacity)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">glide</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={ui.glide}
+              onChange={setNum("glide")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{fmt(ui.glide)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">thread count</span>
+            <input
+              type="range"
+              min={0}
+              max={6}
+              step={0.05}
+              value={ui.threadRate}
+              onChange={setNum("threadRate")}
+              className={slider}
+              style={{ accentColor: "#ff6a4d" }}
+            />
+            <span className={val}>{fmt(ui.threadRate)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">interference</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={ui.interference}
+              onChange={setNum("interference")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{fmt(ui.interference)}</span>
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setUi({ ...ui, showTables: !ui.showTables })}
+              className="border border-white/20 bg-transparent px-2 py-1.5 text-[10px] font-light tracking-[0.06em] text-white/80"
+            >
+              {ui.showTables ? "table field  ON" : "table field  OFF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setUi({ ...ui, showImageField: !ui.showImageField })}
+              className="border border-white/20 bg-transparent px-2 py-1.5 text-[10px] font-light tracking-[0.06em] text-white/80"
+            >
+              {ui.showImageField ? "image field  ON" : "image field  OFF"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

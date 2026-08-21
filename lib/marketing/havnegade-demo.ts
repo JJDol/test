@@ -71,7 +71,7 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "ask",
     number: 5,
     label: "Ask AutoDoc",
-    caption: "Ask about this project, BR18, or building-industry standards.",
+    caption: "Choose a question. AutoDoc answers from this project and from BR18.",
     windowTitle: "AUTODOC — ASSISTANT",
     status: "ANSWERED FROM PROJECT + BR18",
   },

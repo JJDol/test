@@ -1,5 +1,6 @@
 "use client";
 
+import { Instrument_Serif } from "next/font/google";
 import { useCallback, useState } from "react";
 import {
   DEMO_STEPS,
@@ -16,6 +17,12 @@ import { CreateProjectScene } from "@/components/marketing/scenes/create-project
 import { TypeOnceScene } from "@/components/marketing/scenes/type-once-scene";
 import { GenerateScene } from "@/components/marketing/scenes/generate-scene";
 import { AskAutodocScene } from "@/components/marketing/scenes/static-scenes";
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 
 export function HowItWorksSection() {
   const [activeId, setActiveId] = useState<DemoStepId>("upload");
@@ -43,7 +50,7 @@ export function HowItWorksSection() {
 
   const handleSelect = (id: DemoStepId) => {
     setActiveId(id);
-    if (id === "upload" || id === "create" || id === "type-once" || id === "generate") {
+    if (id === "upload" || id === "create" || id === "type-once" || id === "generate" || id === "ask") {
       if (id === "create" || id === "upload") resetPicks();
       if (id === "type-once") setTypedValues(emptyTypedValues());
       setReplayKey((key) => key + 1);
@@ -55,7 +62,8 @@ export function HowItWorksSection() {
       activeId === "upload" ||
       activeId === "create" ||
       activeId === "type-once" ||
-      activeId === "generate"
+      activeId === "generate" ||
+      activeId === "ask"
     ) {
       if (activeId === "create") resetPicks();
       if (activeId === "type-once") setTypedValues(emptyTypedValues());
@@ -88,21 +96,22 @@ export function HowItWorksSection() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24">
-      <p className="text-xs font-medium tracking-[0.22em] text-zinc-500">HOW IT WORKS — TRY IT</p>
-      <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-white md:text-5xl md:leading-tight">
-        From contract to finished documents in{" "}
-        <span className="bg-gradient-to-r from-sky-300 to-violet-300 bg-clip-text text-transparent">
-          one sitting
-        </span>
-        .
+    <section id="how-it-works" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
+      <p className="text-sm text-[#1a1a1a]/45">How it works - try it</p>
+      <h2
+        className={`${instrumentSerif.className} mt-4 max-w-4xl text-4xl leading-[1.12] text-[#1a1a1a] md:text-6xl`}
+      >
+        From contract to finished documents in one sitting.
       </h2>
 
-      <div className="mt-12 grid gap-10 lg:grid-cols-[220px_1fr]">
-        <DemoStepper steps={DEMO_STEPS} activeId={activeId} onSelect={handleSelect} />
-
-        <div>
-          <p className="mb-4 text-sm text-zinc-400">{step.caption}</p>
+      <div className="mt-14 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-10 xl:gap-x-12">
+        <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#1a1a1a]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
+          {step.caption}
+        </p>
+        <div className="order-2 mb-6 lg:order-none lg:col-start-1 lg:row-start-2 lg:mb-0 lg:flex lg:h-full lg:min-h-0">
+          <DemoStepper steps={DEMO_STEPS} activeId={activeId} onSelect={handleSelect} />
+        </div>
+        <div className="order-3 min-w-0 lg:col-start-2 lg:row-start-2">
           <DemoAppFrame title={step.windowTitle} status={status} onReplay={handleReplay}>
             {activeId === "upload" && (
               <UploadContractScene
@@ -149,7 +158,7 @@ export function HowItWorksSection() {
                 onStatusChange={setGenerateStatus}
               />
             )}
-            {activeId === "ask" && <AskAutodocScene />}
+            {activeId === "ask" && <AskAutodocScene key={replayKey} />}
           </DemoAppFrame>
         </div>
       </div>

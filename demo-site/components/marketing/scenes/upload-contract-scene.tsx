@@ -151,12 +151,12 @@ export function UploadContractScene({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 md:grid-cols-[1.15fr_0.85fr] md:p-6">
-      <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 md:grid-cols-[3fr_2fr] md:p-6">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
         {(phase === "idle" || phase === "drop") && (
           <div
             className={cn(
-              "relative m-4 flex min-h-[280px] flex-col items-center justify-center gap-3 overflow-hidden rounded-xl p-6 md:m-6 md:min-h-[360px]",
+              "relative m-4 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-xl p-6 md:m-6",
               phase === "drop" ? "demo-zone-catch bg-sky-50" : "demo-idle-zone bg-zinc-50"
             )}
           >
@@ -317,13 +317,13 @@ export function UploadContractScene({
       </div>
       </div>
 
-      {phase === "done" && (
-        <div className="demo-fade-up shrink-0 border-t border-white/10 px-4 py-2 md:px-6">
+        {phase === "done" && (
+        <div className="demo-fade-up shrink-0 px-4 py-2 md:px-6">
           <button
             type="button"
             onClick={handleCreate}
             disabled={creating}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-sky-200 disabled:cursor-wait disabled:opacity-80"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2.5 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8] disabled:cursor-wait disabled:opacity-80"
           >
             {creating ? (
               <>
@@ -346,17 +346,17 @@ function ExtractedRow({ field, visible }: { field: ExtractedField; visible: bool
       className={cn(
         "flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-xs transition-all duration-300",
         visible
-          ? "demo-fade-up border-emerald-400/20 bg-emerald-400/5 text-white"
-          : "border-white/5 bg-white/[0.02] text-transparent"
+          ? "demo-fade-up border-[#1a1a1a]/10 bg-white text-[#1a1a1a]"
+          : "border-[#1a1a1a]/10 bg-white/40 text-transparent"
       )}
     >
       <div className="min-w-0">
-        <p className={cn("text-[10px] tracking-wide", visible ? "text-zinc-500" : "text-transparent")}>
+        <p className={cn("text-[10px] tracking-wide", visible ? "text-[#1a1a1a]/45" : "text-transparent")}>
           {field.label}
         </p>
         <p className="truncate font-medium">{field.value}</p>
       </div>
-      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />}
+      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1a1a1a]/40" />}
     </li>
   );
 }

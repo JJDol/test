@@ -49,31 +49,31 @@ export function CreateProjectScene({
     <div className="flex h-full min-h-0 flex-col">
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-5 md:grid-cols-2 md:p-6">
       {ready ? (
-        <article className="demo-card-pop flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-emerald-400/30 bg-white/[0.04] p-4 shadow-[0_0_0_1px_rgba(52,211,153,0.08)]">
+        <article className="demo-card-pop flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#1a1a1a]/10 bg-white p-4">
           <div className="mb-2 flex items-start justify-between gap-2">
-            <h3 className="text-base font-semibold leading-snug text-white">{project.name}</h3>
+            <h3 className="text-base font-semibold leading-snug text-[#1a1a1a]">{project.name}</h3>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="rounded-full bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-300">
+              <span className="rounded-full bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#1a1a1a]/70">
                 NEW
               </span>
-              <MoreVertical className="h-4 w-4 text-zinc-500" />
+              <MoreVertical className="h-4 w-4 text-[#1a1a1a]/35" />
             </div>
           </div>
-          <p className="text-xs text-zinc-400">Location: {project.location}</p>
+          <p className="text-xs text-[#1a1a1a]/50">Location: {project.location}</p>
           <div className="mt-2">
-            <p className="text-xs text-zinc-400">Progress</p>
-            <div className="mt-1 h-1.5 w-full rounded bg-white/10">
-              <div className="h-1.5 w-0 rounded bg-red-500" />
+            <p className="text-xs text-[#1a1a1a]/50">Progress</p>
+            <div className="mt-1 h-1.5 w-full rounded bg-[#1a1a1a]/10">
+              <div className="h-1.5 w-0 rounded bg-[#1a1a1a]" />
             </div>
-            <p className="mt-1 text-xs text-zinc-300">{project.progress}%</p>
+            <p className="mt-1 text-xs text-[#1a1a1a]/70">{project.progress}%</p>
           </div>
-          <p className="mt-2 text-xs text-zinc-300">
-            Deadline: <span className="font-semibold text-sky-300">{project.deadline}</span>
+          <p className="mt-2 text-xs text-[#1a1a1a]/70">
+            Deadline: <span className="font-semibold text-[#1a1a1a]">{project.deadline}</span>
           </p>
-          <p className="mt-1.5 text-xs text-zinc-300">Project Leader: {project.leader}</p>
+          <p className="mt-1.5 text-xs text-[#1a1a1a]/70">Project Leader: {project.leader}</p>
 
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-zinc-400">DISCIPLINES</p>
+          <div className="mt-4 border-t border-[#1a1a1a]/10 pt-4">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-[#1a1a1a]/40">DISCIPLINES</p>
             <div className="mt-3 space-y-2">
               {DEMO_DISCIPLINES.map((discipline) => {
                 const on = selected.includes(discipline.id);
@@ -86,23 +86,23 @@ export function CreateProjectScene({
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition",
                       on
-                        ? "border-sky-300/35 bg-sky-300/10"
-                        : "border-white/10 hover:border-white/20"
+                        ? "border-[#1a1a1a]/20 bg-[#E8E2D6]"
+                        : "border-[#1a1a1a]/10 hover:border-[#1a1a1a]/20"
                     )}
                   >
                     <span
                       className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                        on ? "border-sky-300 bg-sky-300 text-zinc-950" : "border-white/25"
+                        on ? "border-[#1a1a1a] bg-[#1a1a1a] text-white" : "border-[#1a1a1a]/25"
                       )}
                     >
                       {on && <Check className="h-3 w-3" strokeWidth={3} />}
                     </span>
-                    <span className={cn("flex-1 text-sm", on ? "text-white" : "text-zinc-400")}>
+                    <span className={cn("flex-1 text-sm", on ? "text-[#1a1a1a]" : "text-[#1a1a1a]/50")}>
                       {discipline.label}
                     </span>
                     {on && count > 0 && (
-                      <span className="rounded-full bg-sky-300/20 px-1.5 py-0.5 text-[10px] font-medium text-sky-200">
+                      <span className="rounded-full bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#1a1a1a]/70">
                         {count}
                       </span>
                     )}
@@ -113,20 +113,20 @@ export function CreateProjectScene({
           </div>
         </article>
       ) : (
-        <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 text-sm text-zinc-500">
+        <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-[#1a1a1a]/15 text-sm text-[#1a1a1a]/45">
           Creating {SAMPLE_PROJECT.shortName}…
         </div>
       )}
 
       <section
         className={cn(
-          "h-full min-h-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 transition-opacity duration-500",
+          "h-full min-h-0 overflow-hidden rounded-xl border border-[#1a1a1a]/10 bg-white p-3 transition-opacity duration-500",
           ready ? "opacity-100" : "pointer-events-none opacity-30"
         )}
       >
         {chosen.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-center text-sm text-zinc-400">
+            <p className="text-center text-sm text-[#1a1a1a]/45">
               Select a discipline to choose its documents.
             </p>
           </div>
@@ -136,7 +136,7 @@ export function CreateProjectScene({
               const docs = pickedDocs[discipline.id] ?? [];
               return (
                 <div key={discipline.id} className="demo-fade-up">
-                  <p className="text-sm font-semibold leading-tight text-white">{discipline.label}</p>
+                  <p className="text-sm font-semibold leading-tight text-[#1a1a1a]">{discipline.label}</p>
                   <div className="mt-1 space-y-1">
                     {discipline.documents.map((doc) => {
                       const checked = docs.includes(doc.id);
@@ -145,7 +145,7 @@ export function CreateProjectScene({
                           key={doc.id}
                           className={cn(
                             "flex cursor-pointer items-center gap-3.5 rounded-md px-2.5 py-1 transition",
-                            checked ? "bg-emerald-400/10" : "hover:bg-white/[0.04]"
+                            checked ? "bg-[#E8E2D6]" : "hover:bg-[#1a1a1a]/5"
                           )}
                         >
                           <input
@@ -158,13 +158,13 @@ export function CreateProjectScene({
                             className={cn(
                               "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
                               checked
-                                ? "border-emerald-400 bg-emerald-400 text-zinc-950"
-                                : "border-white/25"
+                                ? "border-[#1a1a1a] bg-[#1a1a1a] text-white"
+                                : "border-[#1a1a1a]/25"
                             )}
                           >
                             {checked && <Check className="h-3 w-3" strokeWidth={3} />}
                           </span>
-                          <span className={cn("text-sm", checked ? "text-white" : "text-zinc-300")}>
+                          <span className={cn("text-sm", checked ? "text-[#1a1a1a]" : "text-[#1a1a1a]/60")}>
                             {doc.name}
                           </span>
                         </label>
@@ -180,11 +180,11 @@ export function CreateProjectScene({
     </div>
 
       {ready && (
-        <div className="demo-fade-up shrink-0 border-t border-white/10 px-4 py-2 md:px-6">
+        <div className="demo-fade-up shrink-0 px-4 py-2 md:px-6">
           <button
             type="button"
             onClick={onNext}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-sky-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8]"
           >
             Next
             <ChevronRight className="h-4 w-4" />
