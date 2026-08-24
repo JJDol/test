@@ -9,7 +9,7 @@ export function MarketingFooter() {
         <FooterColumn
           title="PRODUCT"
           links={[
-            { label: "Features", href: "#how-it-works" },
+            { label: "Features", href: "#features" },
             { label: "Solutions", href: "#how-it-works" },
             { label: "FAQ", href: "#how-it-works" },
           ]}

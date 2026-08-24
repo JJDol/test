@@ -7,7 +7,7 @@ const NAV = [
   {
     label: "Product",
     items: [
-      { label: "Features", href: "#how-it-works" },
+      { label: "Features", href: "#features" },
       { label: "Solutions", href: "#how-it-works" },
       { label: "FAQ", href: "#how-it-works" },
     ],
