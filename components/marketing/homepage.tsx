@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { HowItWorksSection } from "@/components/marketing/how-it-works-section";
 import { InformationFlowBackdrop } from "@/components/marketing/information-flow-backdrop";
+import { KeyFeaturesSection } from "@/components/marketing/key-features-section";
+import { LatestNewsSection } from "@/components/marketing/latest-news-section";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 
@@ -24,7 +26,9 @@ export function MarketingHomepage() {
         </section>
       </div>
 
+      <KeyFeaturesSection />
       <HowItWorksSection />
+      <LatestNewsSection />
       <MarketingFooter />
     </div>
   );

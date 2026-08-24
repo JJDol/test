@@ -10,7 +10,7 @@ import { AuthSessionManager } from "@/components/auth-session-manager";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isMarketingHome = pathname === "/";
+  const isMarketingHome = pathname === "/" || pathname === "/new";
 
   if (isMarketingHome) {
     return <>{children}</>;
