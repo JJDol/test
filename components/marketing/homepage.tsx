@@ -20,7 +20,7 @@ export function MarketingHomepage() {
               href="#how-it-works"
               className="pointer-events-auto rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white"
             >
-              TRY AUTODOC
+              TRY DEMO
             </Link>
           </div>
         </section>

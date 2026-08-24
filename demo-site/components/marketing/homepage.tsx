@@ -10,7 +10,7 @@ export function MarketingHomepage() {
   return (
     <div className="bg-[#F5F2EB] text-[#1a1a1a]">
       <div className="flex min-h-svh flex-col">
-        <MarketingHeader loginHref="#how-it-works" />
+        <MarketingHeader />
 
         <section className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#2134c4]">
           <h1 className="sr-only">Project Knowledge Made Consistent</h1>
@@ -20,7 +20,7 @@ export function MarketingHomepage() {
               href="#how-it-works"
               className="pointer-events-auto rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white"
             >
-              TRY AUTODOC
+              TRY DEMO
             </Link>
           </div>
         </section>

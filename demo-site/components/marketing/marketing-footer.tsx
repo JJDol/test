@@ -1,3 +1,5 @@
+import { FOOTER_COLUMNS } from "@/lib/marketing/links";
+
 export function MarketingFooter() {
   return (
     <footer id="site-footer" className="border-t border-[#1a1a1a]/12 bg-[#F5F2EB] text-[#1a1a1a]">
@@ -6,31 +8,9 @@ export function MarketingFooter() {
           ATI<span className="font-light">:</span>lab
         </p>
 
-        <FooterColumn
-          title="PRODUCT"
-          links={[
-            { label: "Features", href: "#features" },
-            { label: "Solutions", href: "#how-it-works" },
-            { label: "FAQ", href: "#how-it-works" },
-          ]}
-        />
-        <FooterColumn
-          title="COMPANY"
-          links={[
-            { label: "About", href: "#site-footer" },
-            { label: "Careers", href: "#site-footer" },
-            { label: "Contact", href: "https://aticon.dk" },
-          ]}
-        />
-        <FooterColumn
-          title="RESOURCES"
-          links={[
-            { label: "Support", href: "https://aticon.dk" },
-            { label: "Terms of Use", href: "#site-footer" },
-            { label: "Privacy", href: "#site-footer" },
-            { label: "Security", href: "#site-footer" },
-          ]}
-        />
+        {FOOTER_COLUMNS.map((column) => (
+          <FooterColumn key={column.title} title={column.title} links={[...column.links]} />
+        ))}
       </div>
 
       <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between px-5 pb-8 text-sm text-[#1a1a1a]/45 md:px-8 lg:px-10">
@@ -54,11 +34,7 @@ function FooterColumn({
       <ul className="mt-4 space-y-2.5 text-[15px]">
         {links.map((link) => (
           <li key={link.label}>
-            <a
-              href={link.href}
-              className="text-[#1a1a1a]/80 transition hover:text-[#1a1a1a]"
-              {...(link.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}
-            >
+            <a href={link.href} className="text-[#1a1a1a]/80 transition hover:text-[#1a1a1a]">
               {link.label}
             </a>
           </li>

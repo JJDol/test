@@ -7,10 +7,11 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import CompanyHeader from "@/components/ui/company-header";
 import { AuthSessionManager } from "@/components/auth-session-manager";
+import { isMarketingPath } from "@/lib/marketing/links";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isMarketingHome = pathname === "/" || pathname === "/new";
+  const isMarketingHome = isMarketingPath(pathname);
 
   if (isMarketingHome) {
     return <>{children}</>;

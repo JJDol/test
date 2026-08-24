@@ -162,6 +162,15 @@ export function HowItWorksSection() {
           </DemoAppFrame>
         </div>
       </div>
+
+      <div className="mt-12 flex justify-center md:mt-16">
+        <a
+          href="/signup"
+          className="rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white"
+        >
+          SIGN UP
+        </a>
+      </div>
     </section>
   );
 }
