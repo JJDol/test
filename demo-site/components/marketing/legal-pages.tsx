@@ -9,7 +9,7 @@ const instrumentSerif = Instrument_Serif({
 
 export type LegalSection = {
   heading: string;
-  paragraphs: string[];
+  paragraphs: readonly string[];
 };
 
 export function LegalPage({
