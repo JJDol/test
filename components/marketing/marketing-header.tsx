@@ -8,14 +8,14 @@ export function MarketingHeader({ loginHref = APP_SIGN_IN }: { loginHref?: strin
   return (
     <header className="relative z-40 bg-[#F5F2EB]">
       <div className="mx-auto grid h-[72px] w-full max-w-[1760px] grid-cols-[1fr_auto_1fr] items-center px-5 md:px-8 lg:px-10">
-        <Link href="/" className="justify-self-start text-[22px] font-semibold tracking-tight text-[#1a1a1a]">
+        <Link href="/" className="justify-self-start text-[22px] font-semibold leading-[33px] tracking-[-1px] text-[#1a1a1a]">
           AutoDoc
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
           {MARKETING_NAV.map((group) => (
             <div key={group.label} className="group relative">
-              <Link href={group.href} className="inline-flex items-center gap-1 text-[15px] text-[#1a1a1a]">
+              <Link href={group.href} className="inline-flex items-center gap-1 text-[15px] leading-[22.5px] tracking-[-0.6px] text-[#1a1a1a]">
                 {group.label}
                 <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </Link>
@@ -38,7 +38,7 @@ export function MarketingHeader({ loginHref = APP_SIGN_IN }: { loginHref?: strin
 
         <a
           href={loginHref}
-          className="justify-self-end rounded-full bg-[#1a1a1a] px-5 py-2 text-sm font-medium text-white"
+          className="justify-self-end rounded-full bg-[#1a1a1a] px-5 py-2 text-[15px] font-medium leading-5 text-white"
         >
           Login
         </a>

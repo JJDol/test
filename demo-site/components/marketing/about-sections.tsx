@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Instrument_Serif } from "next/font/google";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import { marketingMono } from "@/lib/marketing/fonts";
 
 type AboutTab = "vision" | "careers" | "contact";
 
@@ -86,9 +80,9 @@ export function AboutSections() {
           id="panel-vision"
           role="tabpanel"
           aria-labelledby="tab-vision"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[1.7] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
         >
-          <h2 className={`${instrumentSerif.className} text-4xl leading-[1.12] md:text-5xl`}>Our vision</h2>
+          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Our vision</h2>
           <p>
             Project knowledge should be entered once, stay current, and appear correctly in every
             document that depends on it. That is the job AutoDoc is built to do.
@@ -111,9 +105,9 @@ export function AboutSections() {
           id="panel-careers"
           role="tabpanel"
           aria-labelledby="tab-careers"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[1.7] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
         >
-          <h2 className={`${instrumentSerif.className} text-4xl leading-[1.12] md:text-5xl`}>Careers</h2>
+          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Careers</h2>
           <p>
             We are a small team in Copenhagen, working with colleagues in Seoul. The work sits
             between product, design, and the reality of Danish building documentation.
@@ -126,7 +120,7 @@ export function AboutSections() {
           <button
             type="button"
             onClick={() => selectTab("contact")}
-            className="inline-flex rounded-full bg-[#1a1a1a] px-6 py-3 text-sm font-medium tracking-[0.06em] text-white"
+            className="inline-flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 tracking-normal text-white"
           >
             SEND A NOTE
           </button>
@@ -138,13 +132,13 @@ export function AboutSections() {
           id="panel-contact"
           role="tabpanel"
           aria-labelledby="tab-contact"
-          className="mt-12 max-w-[720px] space-y-8 text-[17px] leading-[1.7] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-8 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
         >
-          <h2 className={`${instrumentSerif.className} text-4xl leading-[1.12] md:text-5xl`}>Contact</h2>
+          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Contact</h2>
           <p>For AutoDoc and ATI:lab, start here.</p>
           <dl className="grid gap-6 sm:grid-cols-2">
             <div>
-              <dt className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">STUDIO</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>STUDIO</dt>
               <dd className="mt-2">
                 ATI:lab
                 <br />
@@ -154,7 +148,7 @@ export function AboutSections() {
               </dd>
             </div>
             <div>
-              <dt className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">PHONE</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>PHONE</dt>
               <dd className="mt-2">
                 <a href="tel:+4541952400" className="hover:underline">
                   +45 41 95 24 00
@@ -162,7 +156,7 @@ export function AboutSections() {
               </dd>
             </div>
             <div>
-              <dt className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">TECH SUPPORT</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>TECH SUPPORT</dt>
               <dd className="mt-2">
                 <a href="/support" className="hover:underline">
                   AutoDoc support

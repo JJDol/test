@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Instrument_Serif } from "next/font/google";
 import { APP_SIGN_IN } from "@/lib/marketing/links";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import { marketingMono } from "@/lib/marketing/fonts";
 
 type AccountTab = "company-admin" | "individual";
 
@@ -18,7 +12,7 @@ const TABS: { id: AccountTab; label: string }[] = [
 ];
 
 const inputClass =
-  "mt-2 w-full rounded-full border border-[#1a1a1a]/15 bg-[#F5F2EB] px-5 py-3 text-[15px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
+  "mt-2 h-[46px] w-full rounded-full border border-[#1a1a1a]/15 bg-[#F5F2EB] px-5 text-[15px] leading-[24px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
 
 function readTabFromHash(): AccountTab {
   if (typeof window === "undefined") return "company-admin";
@@ -77,11 +71,11 @@ export function SignupAccountTabs() {
           aria-labelledby="tab-company-admin"
           className="mt-12 max-w-[640px]"
         >
-          <p className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">COMPANY ADMIN</p>
-          <h2 className={`${instrumentSerif.className} mt-4 text-4xl leading-[1.12] md:text-6xl`}>
+          <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>COMPANY ADMIN</p>
+          <h2 className="mt-4 text-[36px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
             First account for the practice
           </h2>
-          <p className="mt-6 text-[17px] leading-relaxed text-[#1a1a1a]/75">
+          <p className="mt-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/75">
             Created by ATI:lab. This person owns the company workspace, invites colleagues, and
             manages who can use AutoDoc.
           </p>
@@ -118,11 +112,11 @@ export function SignupAccountTabs() {
             </label>
             <a
               href="/about#contact"
-              className="mt-8 flex w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white sm:w-auto"
+              className="mt-8 flex h-11 w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
             >
               REQUEST COMPANY ADMIN
             </a>
-            <p className="mt-4 text-[13px] leading-relaxed text-[#1a1a1a]/45">
+            <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#1a1a1a]/45`}>
               This is a request to ATI:lab. It does not open a login by itself.
             </p>
           </form>
@@ -134,31 +128,31 @@ export function SignupAccountTabs() {
           aria-labelledby="tab-individual"
           className="mt-12 max-w-[640px]"
         >
-          <p className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">INDIVIDUAL ACCOUNT</p>
-          <h2 className={`${instrumentSerif.className} mt-4 text-4xl leading-[1.12] md:text-6xl`}>
+          <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>INDIVIDUAL ACCOUNT</p>
+          <h2 className="mt-4 text-[36px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
             Join the company workspace
           </h2>
-          <p className="mt-6 text-[17px] leading-relaxed text-[#1a1a1a]/75">
+          <p className="mt-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/75">
             Created by your company admin, not on this page. You get an email invite, set a
             password, and then you only log in.
           </p>
           <ol className="mt-8 space-y-4 text-[16px] leading-relaxed text-[#1a1a1a]/70">
             <li>
-              <span className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">01 — </span>
+              <span className={`${marketingMono.className} text-[12px] text-[#1a1a1a]/45`}>01 — </span>
               Ask the company admin to invite you.
             </li>
             <li>
-              <span className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">02 — </span>
+              <span className={`${marketingMono.className} text-[12px] text-[#1a1a1a]/45`}>02 — </span>
               Open the invitation email and finish account setup.
             </li>
             <li>
-              <span className="font-mono text-[12px] tracking-[0.08em] text-[#1a1a1a]/45">03 — </span>
+              <span className={`${marketingMono.className} text-[12px] text-[#1a1a1a]/45`}>03 — </span>
               After that, sign in with the same email.
             </li>
           </ol>
           <a
             href={APP_SIGN_IN}
-            className="mt-10 flex w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white sm:w-auto"
+            className="mt-10 flex h-11 w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
           >
             LOG IN
           </a>

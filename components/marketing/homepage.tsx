@@ -5,10 +5,11 @@ import { KeyFeaturesSection } from "@/components/marketing/key-features-section"
 import { LatestNewsSection } from "@/components/marketing/latest-news-section";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
+import { marketingSans } from "@/lib/marketing/fonts";
 
 export function MarketingHomepage() {
   return (
-    <div className="bg-[#F5F2EB] text-[#1a1a1a]">
+    <div className={`${marketingSans.className} bg-[#F5F2EB] text-[#1a1a1a]`}>
       <div className="flex min-h-svh flex-col">
         <MarketingHeader />
 
@@ -18,7 +19,7 @@ export function MarketingHomepage() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-8 md:pb-10">
             <Link
               href="#how-it-works"
-              className="pointer-events-auto rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white"
+              className="pointer-events-auto flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
             >
               TRY DEMO
             </Link>
