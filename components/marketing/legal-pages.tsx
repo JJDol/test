@@ -1,11 +1,5 @@
-import { Instrument_Serif } from "next/font/google";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import { marketingMono } from "@/lib/marketing/fonts";
 
 export type LegalSection = {
   heading: string;
@@ -28,16 +22,16 @@ export function LegalPage({
   return (
     <MarketingPageShell>
       <article className="mx-auto w-full max-w-[880px] px-5 py-16 md:px-8 md:py-24">
-        <p className="text-[13px] text-[#1a1a1a]/45">{eyebrow}</p>
-        <h1 className={`${instrumentSerif.className} mt-4 text-5xl leading-[1.08] md:text-6xl`}>{title}</h1>
-        <p className="mt-4 text-[13px] text-[#1a1a1a]/45">{updated}</p>
-        <p className="mt-8 text-[17px] leading-relaxed text-[#1a1a1a]/75">{intro}</p>
+        <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>{eyebrow}</p>
+        <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">{title}</h1>
+        <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#1a1a1a]/45`}>{updated}</p>
+        <p className="mt-8 text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/75">{intro}</p>
         <div className="mt-12 space-y-10">
           {sections.map((section) => (
             <section key={section.heading}>
-              <h2 className="text-[22px] font-medium tracking-tight">{section.heading}</h2>
+              <h2 className="text-[22px] font-medium leading-[30px] tracking-[-1.76px]">{section.heading}</h2>
               {section.paragraphs.map((paragraph) => (
-                <p key={paragraph} className="mt-4 text-[17px] leading-[1.7] text-[#1a1a1a]/80">
+                <p key={paragraph} className="mt-4 text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80">
                   {paragraph}
                 </p>
               ))}

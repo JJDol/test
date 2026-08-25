@@ -1,6 +1,5 @@
 "use client";
 
-import { Instrument_Serif } from "next/font/google";
 import { useCallback, useState } from "react";
 import {
   DEMO_STEPS,
@@ -17,12 +16,7 @@ import { CreateProjectScene } from "@/components/marketing/scenes/create-project
 import { TypeOnceScene } from "@/components/marketing/scenes/type-once-scene";
 import { GenerateScene } from "@/components/marketing/scenes/generate-scene";
 import { AskAutodocScene } from "@/components/marketing/scenes/static-scenes";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import { marketingMono } from "@/lib/marketing/fonts";
 
 export function HowItWorksSection() {
   const [activeId, setActiveId] = useState<DemoStepId>("upload");
@@ -97,14 +91,12 @@ export function HowItWorksSection() {
 
   return (
     <section id="how-it-works" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
-      <p className="text-sm text-[#1a1a1a]/45">How it works - try it</p>
-      <h2
-        className={`${instrumentSerif.className} mt-4 max-w-4xl text-4xl leading-[1.12] text-[#1a1a1a] md:text-6xl`}
-      >
+      <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>How it works - try it</p>
+      <h2 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#1a1a1a] md:whitespace-nowrap md:text-[48px] md:leading-[60px]">
         From contract to finished documents in one sitting.
       </h2>
 
-      <div className="mt-14 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-10 xl:gap-x-12">
+      <div className="mt-14 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12">
         <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#1a1a1a]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
           {step.caption}
         </p>
@@ -166,7 +158,7 @@ export function HowItWorksSection() {
       <div className="mt-12 flex justify-center md:mt-16">
         <a
           href="/signup"
-          className="rounded-full bg-[#1a1a1a] px-8 py-3 text-sm font-medium tracking-[0.08em] text-white"
+          className="flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
         >
           SIGN UP
         </a>
