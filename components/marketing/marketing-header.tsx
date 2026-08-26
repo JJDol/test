@@ -15,10 +15,14 @@ export function MarketingHeader({ loginHref = APP_SIGN_IN }: { loginHref?: strin
         <nav className="hidden items-center gap-7 md:flex">
           {MARKETING_NAV.map((group) => (
             <div key={group.label} className="group relative">
-              <Link href={group.href} className="inline-flex items-center gap-1 text-[15px] leading-[22.5px] tracking-[-0.6px] text-[#1a1a1a]">
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                className="inline-flex cursor-pointer items-center gap-1 text-[15px] leading-[22.5px] tracking-[-0.6px] text-[#1a1a1a]"
+              >
                 {group.label}
                 <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-              </Link>
+              </button>
               <div className="invisible absolute left-1/2 top-full z-50 min-w-[160px] -translate-x-1/2 pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                 <div className="rounded-xl border border-black/10 bg-[#F5F2EB] py-2 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
                   {group.items.map((item) => (

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileText, Info, Loader2 } from "lucide-react";
 import {
   DEMO_DISCIPLINES,
-  resolvePickedDocs,
   selectedDemoDocuments,
   type DemoDisciplineId,
   type DemoPickedDocs,
@@ -84,7 +83,7 @@ export function GenerateScene({
   onStatusChange: (status: string) => void;
 }) {
   const documents = useMemo(
-    () => selectedDemoDocuments(resolvePickedDocs(pickedDocs)),
+    () => selectedDemoDocuments(pickedDocs),
     [pickedDocs]
   );
   const groups = DEMO_DISCIPLINES.map((discipline) => ({
@@ -141,14 +140,30 @@ export function GenerateScene({
 
   useEffect(() => {
     if (userPicked || written === 0) return;
-    setPreviewId(documents[written - 1]?.id ?? null);
-  }, [written, documents, userPicked]);
+    const previewIndex = written === total ? 0 : written - 1;
+    setPreviewId(documents[previewIndex]?.id ?? null);
+  }, [written, total, documents, userPicked]);
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden p-3 md:grid-cols-[0.72fr_1.28fr] md:gap-3 md:p-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div
+        role="note"
+        className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-300/70 bg-amber-100 px-4 py-2 text-center text-[12px] leading-snug text-amber-950"
+      >
+        <Info className="h-4 w-4 shrink-0" aria-hidden />
+        <p>
+          <strong className="font-semibold">SAMPLE PREVIEW ONLY</strong>
+          {" — "}
+          This simplified document is illustrative. AutoDoc generates your documents from your
+          company&apos;s own templates.
+        </p>
+      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden p-3 md:grid-cols-[0.72fr_1.28fr] md:gap-3 md:p-4">
       {total === 0 ? (
         <div className="flex h-full items-center justify-center md:col-span-2">
-          <p className="text-sm text-zinc-500">Choose documents in Create project.</p>
+          <p className="text-center text-sm text-zinc-500">
+            No documents selected. Return to “Create project” to choose documents.
+          </p>
         </div>
       ) : (
         <>
@@ -222,6 +237,7 @@ export function GenerateScene({
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

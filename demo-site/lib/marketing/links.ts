@@ -7,8 +7,8 @@ export const MARKETING_NAV = [
     href: "/#how-it-works",
     items: [
       { label: "Sign up", href: "/signup" },
-      { label: "Tutorials", href: "/#how-it-works" },
-      { label: "Demo", href: "/#how-it-works" },
+      { label: "Tutorials", href: "/tutorials" },
+      { label: "Product tour", href: "/#how-it-works" },
     ],
   },
   {
@@ -38,8 +38,8 @@ export const FOOTER_COLUMNS = [
     title: "PRODUCT",
     links: [
       { label: "Sign up", href: "/signup" },
-      { label: "Tutorials", href: "/#how-it-works" },
-      { label: "Demo", href: "/#how-it-works" },
+      { label: "Tutorials", href: "/tutorials" },
+      { label: "Product tour", href: "/#how-it-works" },
     ],
   },
   {
@@ -68,6 +68,7 @@ export function isMarketingPath(pathname: string | null) {
     pathname === "/" ||
     pathname === "/new" ||
     pathname === "/signup" ||
+    pathname === "/tutorials" ||
     pathname === "/about" ||
     pathname === "/news" ||
     pathname.startsWith("/news/") ||

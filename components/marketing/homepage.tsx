@@ -21,7 +21,7 @@ export function MarketingHomepage() {
               href="#how-it-works"
               className="pointer-events-auto flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
             >
-              TRY DEMO
+              VIEW PRODUCT TOUR
             </Link>
           </div>
         </section>

@@ -20,7 +20,7 @@ export function DemoAppFrame({ title, status, onReplay, children }: DemoAppFrame
           {title}
         </p>
         <span className="ml-auto font-mono text-[10px] font-medium tracking-[0.18em] text-[#1a1a1a]/40">
-          SIMULATED DEMO
+          SIMULATED PRODUCT TOUR
         </span>
       </div>
 

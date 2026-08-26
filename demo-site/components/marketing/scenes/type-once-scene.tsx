@@ -109,10 +109,12 @@ function documentProgress(
 export function TypeOnceScene({
   replayKey,
   pickedDocs,
+  onValuesChange,
   onNext,
 }: {
   replayKey: number;
   pickedDocs: DemoPickedDocs;
+  onValuesChange: (values: DemoTypedValues) => void;
   onNext: (values: DemoTypedValues) => void;
 }) {
   const [general, setGeneral] = useState<Record<string, string>>({});
@@ -134,6 +136,10 @@ export function TypeOnceScene({
     setActiveCategory(selectedDemoDocuments(pickedDocs)[0]?.disciplineId ?? "architecture");
   }, [replayKey]);
 
+  useEffect(() => {
+    onValuesChange({ general, category });
+  }, [general, category, onValuesChange]);
+
   const generalFilled = DEMO_GENERAL_FIELDS.filter((field) => (general[field.id] ?? "").trim())
     .length;
   const categoryFilled = {
@@ -153,9 +159,9 @@ export function TypeOnceScene({
     <div className="flex h-full min-h-0 flex-col">
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden p-3 md:grid-cols-[1.15fr_0.85fr] md:p-4">
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
-          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#1a1a1a]/10 bg-white p-3">
-            <p className="text-[10px] font-semibold tracking-[0.18em] text-[#1a1a1a]/40">
-              GENERAL VARIABLES
+          <section className="demo-card-pop flex min-h-0 flex-1 flex-col rounded-xl border border-[#1a1a1a]/10 bg-white p-3">
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#1a1a1a]/75">
+              1. GENERAL VARIABLES
             </p>
             <p className="mt-1 text-[11px] text-[#1a1a1a]/45">
               These fields raise every selected document together.
@@ -173,9 +179,12 @@ export function TypeOnceScene({
             </div>
           </section>
 
-          <section className="shrink-0 rounded-xl border border-[#1a1a1a]/10 bg-white p-2.5">
-            <p className="text-[10px] font-semibold tracking-[0.18em] text-[#1a1a1a]/40">
-              DISCIPLINE VARIABLES
+          <section
+            className="demo-card-pop shrink-0 rounded-xl border border-[#1a1a1a]/10 bg-white p-2.5"
+            style={{ animationDelay: "120ms" }}
+          >
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#1a1a1a]/75">
+              2. DISCIPLINE VARIABLES
             </p>
             <div className="mt-1.5 flex gap-1">
               {tabDisciplines.map((item) => (

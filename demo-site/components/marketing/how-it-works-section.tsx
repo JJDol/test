@@ -91,12 +91,18 @@ export function HowItWorksSection() {
 
   return (
     <section id="how-it-works" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
-      <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>How it works - try it</p>
+      <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>
+        How it works — product tour
+      </p>
       <h2 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#1a1a1a] md:whitespace-nowrap md:text-[48px] md:leading-[60px]">
         From contract to finished documents in one sitting.
       </h2>
+      <p className="mt-5 max-w-[760px] text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#1a1a1a]/60">
+        An interactive walkthrough using sample data. No files are uploaded or production
+        documents generated.
+      </p>
 
-      <div className="mt-14 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12">
+      <div className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12">
         <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#1a1a1a]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
           {step.caption}
         </p>
@@ -134,6 +140,7 @@ export function HowItWorksSection() {
                 key={replayKey}
                 replayKey={replayKey}
                 pickedDocs={pickedDocs}
+                onValuesChange={setTypedValues}
                 onNext={(values) => {
                   setTypedValues(values);
                   setReplayKey((key) => key + 1);
@@ -150,7 +157,13 @@ export function HowItWorksSection() {
                 onStatusChange={setGenerateStatus}
               />
             )}
-            {activeId === "ask" && <AskAutodocScene key={replayKey} />}
+            {activeId === "ask" && (
+              <AskAutodocScene
+                key={replayKey}
+                typedValues={typedValues}
+                pickedDocs={pickedDocs}
+              />
+            )}
           </DemoAppFrame>
         </div>
       </div>

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SAMPLE_PROJECT } from "@/lib/marketing/havnegade-demo";
+import {
+  DEMO_DISCIPLINES,
+  SAMPLE_PROJECT,
+  selectedDemoDocuments,
+  type DemoPickedDocs,
+  type DemoTypedValues,
+} from "@/lib/marketing/havnegade-demo";
 import { cn } from "@/lib/utils";
 
 const QUESTIONS = [
@@ -17,21 +23,131 @@ const QUESTIONS = [
     answer: `The client is ${SAMPLE_PROJECT.client} (CVR ${SAMPLE_PROJECT.clientCvr}). The architect is ${SAMPLE_PROJECT.architect}. The site is ${SAMPLE_PROJECT.address}.`,
     sources: ["Enterprise agreement", `Project: ${SAMPLE_PROJECT.shortName}`],
   },
-  {
-    id: "fire",
-    question: "What fire safety class applies here?",
-    answer: `${SAMPLE_PROJECT.shortName} is a residential building with sleeping accommodation in ${SAMPLE_PROJECT.units}. Fire class and risk class follow BR18 for that use, with compartmentation at the stair cores.`,
-    sources: ["BR18 § 82–158", "Fire strategy"],
-  },
-  {
-    id: "building",
-    question: "How large is the building?",
-    answer: `The conversion provides ${SAMPLE_PROJECT.units} over ${SAMPLE_PROJECT.storeys}. Gross floor area is ${SAMPLE_PROJECT.area}. Completion is ${SAMPLE_PROJECT.deadline}.`,
-    sources: ["Enterprise agreement", `GFA ${SAMPLE_PROJECT.area}`],
-  },
 ] as const;
 
 const THINK_MS = 1200;
+
+function joinFacts(facts: string[]) {
+  if (facts.length < 2) return facts[0];
+  return `${facts.slice(0, -1).join(", ")}, and ${facts[facts.length - 1]}`;
+}
+
+function buildingSizeQuestion(typedValues: DemoTypedValues) {
+  const facts: string[] = [];
+  const sources = new Set<string>();
+  const general = typedValues.general;
+  const architecture = typedValues.category.architecture;
+
+  if (general.gfa?.trim()) {
+    facts.push(`a gross floor area of ${general.gfa.trim()} m²`);
+    sources.add("Type once · General variables");
+  }
+  if (general.basement?.trim()) {
+    facts.push(`a basement area of ${general.basement.trim()} m²`);
+    sources.add("Type once · General variables");
+  }
+  if (architecture.height?.trim()) {
+    facts.push(`a permitted height of ${architecture.height.trim()} m`);
+    sources.add("Type once · Architecture");
+  }
+  if (architecture.storeys?.trim()) {
+    facts.push(`${architecture.storeys.trim()} permitted storeys`);
+    sources.add("Type once · Architecture");
+  }
+
+  const summary = joinFacts(facts);
+
+  return {
+    id: "building",
+    question: "How large is the building?",
+    answer: summary
+      ? `The building has ${summary}.`
+      : `The conversion provides ${SAMPLE_PROJECT.units} over ${SAMPLE_PROJECT.storeys}. Gross floor area is ${SAMPLE_PROJECT.area}. Completion is ${SAMPLE_PROJECT.deadline}.`,
+    sources:
+      sources.size > 0
+        ? Array.from(sources)
+        : ["Enterprise agreement", `GFA ${SAMPLE_PROJECT.area}`],
+  };
+}
+
+function responsibilityQuestion(typedValues: DemoTypedValues, pickedDocs: DemoPickedDocs) {
+  const selected = selectedDemoDocuments(pickedDocs);
+  const document =
+    selected.find((item) => typedValues.category[item.disciplineId].responsible?.trim()) ??
+    selected[0] ?? {
+      ...DEMO_DISCIPLINES[0].documents[0],
+      disciplineId: DEMO_DISCIPLINES[0].id,
+    };
+  const discipline = DEMO_DISCIPLINES.find((item) => item.id === document.disciplineId)!;
+  const responsible = typedValues.category[document.disciplineId].responsible?.trim();
+
+  return {
+    id: "responsible",
+    question: `Who is responsible for ${document.name}.docx?`,
+    answer: responsible
+      ? `${responsible} is responsible for ${document.name}.docx.`
+      : `No responsible person has been entered for ${document.name}.docx. Add one under ${discipline.label} in “Type once.”`,
+    sources: [
+      responsible ? "Type once · Discipline variables" : "Type once · No value entered",
+      `${discipline.label} · ${document.name}.docx`,
+    ],
+  };
+}
+
+function projectSetupQuestion(typedValues: DemoTypedValues) {
+  const facts: string[] = [];
+  const projectNumber = typedValues.general.projectNumber?.trim();
+  const geo = typedValues.general.geo?.trim();
+  if (projectNumber) facts.push(`project number is ${projectNumber}`);
+  if (geo) facts.push(`geotechnical category is ${geo}`);
+
+  return {
+    id: "project-setup",
+    question: "What are the project identifiers?",
+    answer: facts.length
+      ? `The ${joinFacts(facts)}.`
+      : "No project number or geotechnical category has been entered in “Type once.”",
+    sources: ["Type once · General variables"],
+  };
+}
+
+function constructionQuestion(typedValues: DemoTypedValues) {
+  const values = typedValues.category.construction;
+  const facts: string[] = [];
+  if (values.cc?.trim()) facts.push(`the consequence class is ${values.cc.trim()}`);
+  if (values.kk?.trim()) facts.push(`the construction class is ${values.kk.trim()}`);
+  if (values.complexity?.trim()) {
+    facts.push(`the structural complexity is ${values.complexity.trim().toLowerCase()}`);
+  }
+
+  return {
+    id: "construction",
+    question: "What are the structural classifications?",
+    answer: facts.length
+      ? `For Construction, ${joinFacts(facts)}.`
+      : "No structural classifications have been entered under Construction in “Type once.”",
+    sources: ["Type once · Construction variables"],
+  };
+}
+
+function fireQuestion(typedValues: DemoTypedValues) {
+  const values = typedValues.category.fire;
+  const facts: string[] = [];
+  if (values.bk?.trim()) facts.push(`the fire class is ${values.bk.trim()}`);
+  if (values.rk?.trim()) facts.push(`the risk class is ${values.rk.trim()}`);
+  if (values.sleeping?.trim()) {
+    facts.push(`sleeping accommodation is marked ${values.sleeping.trim().toLowerCase()}`);
+  }
+
+  return {
+    id: "fire",
+    question: "What are the fire classifications?",
+    answer: facts.length
+      ? `For Fire safety, ${joinFacts(facts)}.`
+      : "No fire classifications have been entered under Fire safety in “Type once.”",
+    sources: ["Type once · Fire safety variables"],
+  };
+}
 
 function TypingBubble() {
   return (
@@ -46,11 +162,25 @@ function TypingBubble() {
   );
 }
 
-export function AskAutodocScene() {
+export function AskAutodocScene({
+  typedValues,
+  pickedDocs,
+}: {
+  typedValues: DemoTypedValues;
+  pickedDocs: DemoPickedDocs;
+}) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const timerRef = useRef<number | null>(null);
-  const active = QUESTIONS.find((item) => item.id === activeId) ?? null;
+  const questions = [
+    ...QUESTIONS,
+    responsibilityQuestion(typedValues, pickedDocs),
+    buildingSizeQuestion(typedValues),
+    projectSetupQuestion(typedValues),
+    constructionQuestion(typedValues),
+    fireQuestion(typedValues),
+  ];
+  const active = questions.find((item) => item.id === activeId) ?? null;
 
   useEffect(() => {
     return () => {
@@ -80,8 +210,8 @@ export function AskAutodocScene() {
         <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-[#1a1a1a]/40">
           QUESTIONS
         </p>
-        <div className="space-y-1.5">
-          {QUESTIONS.map((item) => {
+        <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+          {questions.map((item) => {
             const on = item.id === activeId;
             return (
               <button
