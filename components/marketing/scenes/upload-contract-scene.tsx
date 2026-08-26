@@ -152,7 +152,12 @@ export function UploadContractScene({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 md:grid-cols-[3fr_2fr] md:p-6">
-      <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+      <div
+        className={cn(
+          "relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]",
+          showDocument ? "h-[97%] self-start" : "h-full"
+        )}
+      >
         {(phase === "idle" || phase === "drop") && (
           <div
             className={cn(
@@ -202,7 +207,9 @@ export function UploadContractScene({
                 )}
               >
                 <p className="text-sm font-medium text-zinc-800">Drop a PDF contract</p>
-                <p className="mt-1 text-xs text-zinc-500">Watching demo · no upload needed</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Interactive product tour · no upload needed
+                </p>
               </div>
               <div
                 className={cn(
@@ -241,7 +248,7 @@ export function UploadContractScene({
         )}
 
         {showDocument && (
-          <div className="relative h-full bg-white p-5 md:px-7 md:py-6">
+          <div className="relative h-full overflow-y-auto bg-white p-5 md:px-7 md:py-6">
             {phase === "parse" && (
               <div className="demo-scan pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-sky-400/25 to-transparent" />
             )}
