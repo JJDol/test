@@ -10,11 +10,11 @@ import { marketingSans } from "@/lib/marketing/fonts";
 export function MarketingHomepage() {
   return (
     <div className={`${marketingSans.className} bg-[#F5F2EB] text-[#1a1a1a]`}>
-      <div className="flex min-h-svh flex-col">
-        <MarketingHeader />
+      <div className="relative min-h-svh">
+        <MarketingHeader overlay />
 
-        <section className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#2134c4]">
-          <h1 className="sr-only">Project Knowledge Made Consistent</h1>
+        <section className="relative isolate h-svh overflow-hidden bg-[#F5F2EB]">
+          <h1 className="sr-only">Less Fragmented, More Connected</h1>
           <InformationFlowBackdrop />
         </section>
       </div>
@@ -22,7 +22,7 @@ export function MarketingHomepage() {
       <div className="relative mt-12">
         <Link
           href="#how-it-works"
-          className="absolute left-5 top-0 z-20 flex h-11 w-[254px] items-center justify-center rounded-full bg-[#202306] text-[14px] font-medium leading-5 tracking-[1.12px] text-white md:left-8 lg:left-[max(2.5rem,calc((100vw-1760px)/2))]"
+          className="absolute left-1/2 top-0 z-20 flex h-11 w-[254px] -translate-x-1/2 items-center justify-center rounded-full bg-[#202306] text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
         >
           VIEW PRODUCT TOUR
         </Link>
