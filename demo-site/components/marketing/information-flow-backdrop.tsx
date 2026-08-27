@@ -49,13 +49,13 @@ type HeroParams = {
 };
 
 const DEFAULT_HERO: HeroParams = {
-  bgColor: "#2134c4",
-  bgOpacity: 0.46,
+  bgColor: "#7697e5",
+  bgOpacity: 0.28,
   inkColor: "#e9e9e9",
   wordColor: "#e9e9e9",
-  wordText: "Project, Knowledge, Made, Consistent",
+  wordText: "Less Fragmented, More Connected",
   wordCount: 4,
-  wordSize: 150,
+  wordSize: 220,
   parallax: 1,
   depth: 0.35,
   speed: 2.9,
@@ -63,7 +63,7 @@ const DEFAULT_HERO: HeroParams = {
   weight: 400,
   lineSpacing: 0.4,
   tableRate: 1.1,
-  imageRate: 0.5,
+  imageRate: 0,
   lineOpacity: 1.1,
   glide: 0,
   threadRate: 1,
@@ -88,8 +88,8 @@ type HeroWordSpec = { id: WordId; text: string; locked: boolean };
 type Positions = Partial<Record<WordId, { x: number; y: number }>>;
 
 const DEFAULT_POSITIONS: Positions = {
-  w1: { x: 4, y: 12 },
-  w2: { x: 24, y: 34 },
+  w1: { x: 4, y: 50 },
+  w2: { x: 4, y: 75 },
   w3: { x: 62, y: 56 },
   w4: { x: 3, y: 76 },
   w5: { x: 46, y: 6 },
@@ -773,11 +773,13 @@ export function InformationFlowBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const photoRef = useRef<HTMLImageElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const creamRef = useRef<HTMLDivElement>(null);
   const backWordsRef = useRef<HTMLDivElement>(null);
   const frontWordsRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<Positions>({ ...DEFAULT_POSITIONS });
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const posRef = useRef(pos);
   const uiRef = useRef(ui);
   posRef.current = pos;
@@ -848,13 +850,25 @@ export function InformationFlowBackdrop() {
       const cycle = 5200 / Math.max(0.3, params.speed);
       const sy = window.scrollY || 0;
       const px = params.parallax;
+      const vh = window.innerHeight || 1;
+      const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+      const bgFade = clamp01(sy / (vh * 0.95));
+      const inkFade = clamp01((sy - vh * 0.65) / (vh * 0.3));
       const move = (el: HTMLElement | null, k: number) => {
         if (el) el.style.transform = `translate3d(0, ${-sy * k * px}px, 0)`;
       };
       move(backWordsRef.current, 0.42);
       move(frontWordsRef.current, 0.42);
       move(canvas, 0.14);
-      move(photoRef.current, 0.05);
+      if (photoRef.current) photoRef.current.style.opacity = String(1 - bgFade);
+      if (creamRef.current) creamRef.current.style.opacity = String(bgFade);
+      if (scrimRef.current) {
+        scrimRef.current.style.background = params.bgColor;
+        scrimRef.current.style.opacity = String(params.bgOpacity * (1 - bgFade));
+      }
+      canvas.style.opacity = String(1 - inkFade);
+      if (backWordsRef.current) backWordsRef.current.style.opacity = String(1 - inkFade);
+      if (frontWordsRef.current) frontWordsRef.current.style.opacity = String(1 - inkFade);
       engine.paint(ctx, (now - t0) / cycle, reduced, now - t0);
       if (!reduced) raf = requestAnimationFrame(frame);
     };
@@ -892,8 +906,12 @@ export function InformationFlowBackdrop() {
   return (
     <div
       ref={wrapRef}
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden [container-type:inline-size]`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#F5F2EB] [container-type:inline-size]`}
     >
+      <div
+        ref={creamRef}
+        className="pointer-events-none absolute inset-0 z-0 bg-[#F5F2EB] opacity-0"
+      />
       <img
         ref={photoRef}
         src="/images/marketing/hero-site.jpg"
@@ -901,6 +919,7 @@ export function InformationFlowBackdrop() {
         className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
       />
       <div
+        ref={scrimRef}
         className="absolute inset-0 z-[1]"
         style={{ background: ui.bgColor, opacity: ui.bgOpacity }}
       />
@@ -1092,7 +1111,7 @@ function HeroControls({
   const val = "w-[30px] text-right text-[#e9e9e9]";
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col items-start gap-2 p-3.5 md:p-[14px_18px]">
+    <div className="pointer-events-none absolute inset-x-0 top-[72px] z-30 flex flex-col items-start gap-2 p-3.5 md:p-[14px_18px]">
       <button
         type="button"
         onClick={onToggle}
