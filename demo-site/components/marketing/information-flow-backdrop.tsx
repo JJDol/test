@@ -29,6 +29,8 @@ type HeroParams = {
   bgOpacity: number;
   inkColor: string;
   wordColor: string;
+  wordText: string;
+  wordCount: number;
   wordSize: number;
   parallax: number;
   depth: number;
@@ -48,9 +50,11 @@ type HeroParams = {
 
 const DEFAULT_HERO: HeroParams = {
   bgColor: "#2134c4",
-  bgOpacity: 0.6,
+  bgOpacity: 0.46,
   inkColor: "#e9e9e9",
   wordColor: "#e9e9e9",
+  wordText: "Project, Knowledge, Made, Consistent",
+  wordCount: 4,
   wordSize: 150,
   parallax: 1,
   depth: 0.35,
@@ -77,19 +81,37 @@ function fmt(value: number) {
   return (Math.round(value * 100) / 100).toFixed(2);
 }
 
-const HERO_LINES = [
-  [{ id: "w1", text: "Project", locked: false }],
-  [{ id: "w2", text: "Knowledge", locked: false }],
-  [{ id: "w3", text: "Made", locked: false }],
-  [{ id: "w4", text: "Consistent", locked: false }],
-] as const;
-
-const HERO_WORDS = HERO_LINES.flat();
-
 const EDGE_PCT = 1.5;
 
-type WordId = (typeof HERO_WORDS)[number]["id"];
+type WordId = `w${number}`;
+type HeroWordSpec = { id: WordId; text: string; locked: boolean };
 type Positions = Partial<Record<WordId, { x: number; y: number }>>;
+
+const DEFAULT_POSITIONS: Positions = {
+  w1: { x: 4, y: 12 },
+  w2: { x: 24, y: 34 },
+  w3: { x: 62, y: 56 },
+  w4: { x: 3, y: 76 },
+  w5: { x: 46, y: 6 },
+  w6: { x: 66, y: 26 },
+  w7: { x: 14, y: 54 },
+  w8: { x: 40, y: 72 },
+  w9: { x: 70, y: 78 },
+  w10: { x: 26, y: 90 },
+};
+
+function getHeroWords(ui: HeroParams): HeroWordSpec[] {
+  const words = ui.wordText
+    .split(/[,\n]/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const count = Math.max(0, Math.min(words.length, Math.round(ui.wordCount)));
+  return words.slice(0, count).map((text, index) => ({
+    id: `w${index + 1}` as WordId,
+    text,
+    locked: false,
+  }));
+}
 
 type TextBlock = {
   kind: "text";
@@ -753,17 +775,16 @@ export function InformationFlowBackdrop() {
   const photoRef = useRef<HTMLImageElement>(null);
   const backWordsRef = useRef<HTMLDivElement>(null);
   const frontWordsRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<Positions>({});
+  const [pos, setPos] = useState<Positions>({ ...DEFAULT_POSITIONS });
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
   const [panelOpen, setPanelOpen] = useState(true);
   const posRef = useRef(pos);
   const uiRef = useRef(ui);
   posRef.current = pos;
   uiRef.current = ui;
+  const words = getHeroWords(ui);
 
   const startDrag = (id: WordId, event: MouseEvent<HTMLDivElement>) => {
-    const word = HERO_WORDS.find((item) => item.id === id);
-    if (!word || word.locked) return;
     event.preventDefault();
     const host = wrapRef.current;
     if (!host) return;
@@ -886,6 +907,7 @@ export function InformationFlowBackdrop() {
       <HeroWords
         ref={backWordsRef}
         layer="back"
+        words={words}
         pos={pos}
         wordColor={ui.wordColor}
         wordSize={ui.wordSize}
@@ -899,6 +921,7 @@ export function InformationFlowBackdrop() {
       <HeroWords
         ref={frontWordsRef}
         layer="front"
+        words={words}
         pos={pos}
         wordColor={ui.wordColor}
         wordSize={ui.wordSize}
@@ -955,15 +978,16 @@ const HeroWords = forwardRef<
   HTMLDivElement,
   {
     layer: "back" | "front";
+    words: HeroWordSpec[];
     pos: Positions;
     wordColor: string;
     wordSize: number;
     depth: number;
     onDragStart: (id: WordId, event: MouseEvent<HTMLDivElement>) => void;
   }
->(function HeroWords({ layer, pos, wordColor, wordSize, depth, onDragStart }, ref) {
+>(function HeroWords({ layer, words, pos, wordColor, wordSize, depth, onDragStart }, ref) {
   const wordStyle = {
-    font: `500 ${wordSize / 19.2}cqw/0.95 ${workSans.style.fontFamily}, sans-serif`,
+    font: `500 ${wordSize / 19.2}cqw/0.92 ${workSans.style.fontFamily}, sans-serif`,
     letterSpacing: "-0.03em",
     color: wordColor,
   } as const;
@@ -974,38 +998,8 @@ const HeroWords = forwardRef<
       aria-hidden
       className={`pointer-events-none absolute inset-0 ${layer === "back" ? "z-[2]" : "z-[4]"} ${workSans.className}`}
     >
-      <div
-        className="absolute inset-x-0 top-[18%] mx-auto flex w-full max-w-6xl flex-col items-start px-4 md:px-6"
-        style={{ ...wordStyle, gap: "0.14em" }}
-      >
-        {HERO_LINES.map((line, lineIdx) => (
-          <div
-            key={lineIdx}
-            className="flex items-baseline justify-start"
-            style={{
-              ...wordStyle,
-              gap: "0.32em",
-            }}
-          >
-            {line.map((word) => {
-              if (pos[word.id]) return null;
-              return (
-                <HeroWord
-                  key={`${layer}-${word.id}`}
-                  word={word}
-                  layer={layer}
-                  style={wordStyle}
-                  depth={depth}
-                  onDragStart={onDragStart}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      {HERO_WORDS.map((word) => {
-        const place = pos[word.id];
-        if (!place) return null;
+      {words.map((word) => {
+        const place = pos[word.id] ?? DEFAULT_POSITIONS[word.id] ?? { x: 10, y: 10 };
         return (
           <HeroWord
             key={`${layer}-free-${word.id}`}
@@ -1030,7 +1024,7 @@ function HeroWord({
   onDragStart,
   place,
 }: {
-  word: (typeof HERO_WORDS)[number];
+  word: HeroWordSpec;
   layer: "back" | "front";
   style: { font: string; letterSpacing: string; color: string };
   depth: number;
@@ -1085,6 +1079,10 @@ function HeroControls({
     (event: { target: { value: string } }) => {
       setUi({ ...ui, [name]: event.target.value });
     };
+  const setText =
+    (name: "wordText") => (event: { target: { value: string } }) => {
+      setUi({ ...ui, [name]: event.target.value });
+    };
 
   const row = "flex items-center gap-2 text-[10px] font-light tracking-[0.06em] text-white/80";
   const swatch =
@@ -1132,6 +1130,30 @@ function HeroControls({
             <span className="w-[88px]">word color</span>
             <input type="color" value={ui.wordColor} onChange={setColor("wordColor")} className={swatch} />
             <span className={hex}>{ui.wordColor}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">large text</span>
+            <input
+              type="text"
+              placeholder="Project, Knowledge, Made"
+              value={ui.wordText}
+              onChange={setText("wordText")}
+              className="w-[258px] border border-white/20 bg-white/[0.06] px-[7px] py-[5px] text-[10px] font-light tracking-[0.04em] text-[#e9e9e9]"
+            />
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">word count</span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={ui.wordCount}
+              onChange={setNum("wordCount")}
+              className={slider}
+              style={{ accentColor: "#e9e9e9" }}
+            />
+            <span className={val}>{String(ui.wordCount)}</span>
           </label>
           <label className={row}>
             <span className="w-[88px]">word size</span>

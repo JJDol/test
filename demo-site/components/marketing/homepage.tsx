@@ -16,18 +16,18 @@ export function MarketingHomepage() {
         <section className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#2134c4]">
           <h1 className="sr-only">Project Knowledge Made Consistent</h1>
           <InformationFlowBackdrop />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-8 md:pb-10">
-            <Link
-              href="#how-it-works"
-              className="pointer-events-auto flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
-            >
-              VIEW PRODUCT TOUR
-            </Link>
-          </div>
         </section>
       </div>
 
-      <KeyFeaturesSection />
+      <div className="relative mt-12">
+        <Link
+          href="#how-it-works"
+          className="absolute left-5 top-0 z-20 flex h-11 w-[254px] items-center justify-center rounded-full bg-[#202306] text-[14px] font-medium leading-5 tracking-[1.12px] text-white md:left-8 lg:left-[max(2.5rem,calc((100vw-1760px)/2))]"
+        >
+          VIEW PRODUCT TOUR
+        </Link>
+        <KeyFeaturesSection />
+      </div>
       <HowItWorksSection />
       <LatestNewsSection />
       <MarketingFooter />
