@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, FileText, Info, Loader2 } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Info,
+  Loader2,
+  MessageCircle,
+} from "lucide-react";
 import {
   DEMO_DISCIPLINES,
   selectedDemoDocuments,
@@ -76,11 +84,13 @@ export function GenerateScene({
   pickedDocs,
   typedValues,
   onStatusChange,
+  onAskAutoDoc,
 }: {
   replayKey: number;
   pickedDocs: DemoPickedDocs;
   typedValues: DemoTypedValues;
   onStatusChange: (status: string) => void;
+  onAskAutoDoc: () => void;
 }) {
   const documents = useMemo(
     () => selectedDemoDocuments(pickedDocs),
@@ -237,6 +247,17 @@ export function GenerateScene({
           </div>
         </>
       )}
+      </div>
+      <div className="shrink-0 px-4 py-1.5 md:px-5">
+        <button
+          type="button"
+          onClick={onAskAutoDoc}
+          disabled={total === 0 || written < total}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Ask AutoDoc
+          <MessageCircle className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );

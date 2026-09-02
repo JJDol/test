@@ -197,6 +197,10 @@ export function HowItWorksSection() {
                 pickedDocs={pickedDocs}
                 typedValues={typedValues}
                 onStatusChange={setGenerateStatus}
+                onAskAutoDoc={() => {
+                  setReplayKey((key) => key + 1);
+                  setActiveId("ask");
+                }}
               />
             )}
             {activeId === "ask" && (
