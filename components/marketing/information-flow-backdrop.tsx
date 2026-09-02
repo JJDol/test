@@ -37,6 +37,10 @@ type HeroParams = {
   speed: number;
   textScale: number;
   weight: number;
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
   lineSpacing: number;
   tableRate: number;
   imageRate: number;
@@ -61,6 +65,10 @@ const DEFAULT_HERO: HeroParams = {
   speed: 2.9,
   textScale: 0.75,
   weight: 400,
+  marginTop: 68,
+  marginBottom: 68,
+  marginLeft: 140,
+  marginRight: 140,
   lineSpacing: 0.4,
   tableRate: 1.1,
   imageRate: 0,
@@ -309,24 +317,28 @@ class FlowEngine {
       params.imageRate,
       params.threadRate,
       params.weight,
+      params.marginTop,
+      params.marginBottom,
+      params.marginLeft,
+      params.marginRight,
       params.inkColor,
       params.bgColor,
       params.showImageField,
     ].join("|");
     if (key === this._cacheKey) return;
     this._cacheKey = key;
-    this.colCache.clear();
-    this.links.clear();
-    this.buildAtmos();
+    this.layout(this.W || SOURCE_W, this.H || SOURCE_H);
   }
 
   layout(width: number, height: number) {
     this.W = width;
     this.H = height;
-    this.colW = 232;
-    this.gutter = 120;
+    const band = Math.max(320, this.W - this.params.marginLeft - this.params.marginRight);
+    const unit = band / (SLOTS + (SLOTS - 1) * 0.517);
+    this.colW = unit;
+    this.gutter = unit * 0.517;
     const total = SLOTS * this.colW + (SLOTS - 1) * this.gutter;
-    this.startX = (this.W - total) / 2;
+    this.startX = this.params.marginLeft + (band - total) / 2;
     this.pitch = this.colW + this.gutter;
     this.colCache.clear();
     this.links.clear();
@@ -406,9 +418,8 @@ class FlowEngine {
       return groups[groups.length - 1];
     };
 
-    const marginY = 68;
-    const bottom = this.H - marginY;
-    let y = marginY + R() * 36;
+    const bottom = this.H - this.params.marginBottom;
+    let y = this.params.marginTop + R() * 36;
     const blocks: Block[] = [];
     let chars = 0;
     const family = fontFamily();
@@ -916,13 +927,13 @@ export function InformationFlowBackdrop() {
           src="/images/marketing/hero-edge-left.png"
           alt=""
           className="absolute inset-y-0 left-0 h-full"
-          style={{ width: "max(0px, calc(50% - 88.8889svh + 160px))" }}
+          style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
         />
         <img
           src="/images/marketing/hero-edge-right.png"
           alt=""
           className="absolute inset-y-0 right-0 h-full"
-          style={{ width: "max(0px, calc(50% - 88.8889svh + 160px))" }}
+          style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
         />
         <img
           src="/images/marketing/hero-site.jpg"
@@ -968,6 +979,10 @@ export function InformationFlowBackdrop() {
           wordSize={ui.wordSize}
           depth={ui.depth}
           onDragStart={startDrag}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[180px] bg-gradient-to-b from-[#F5F2EB]/85 via-[#F5F2EB]/45 to-transparent"
         />
         <HeroControls
           ui={ui}
@@ -1285,6 +1300,62 @@ function HeroControls({
               style={{ accentColor: "#ff6a4d" }}
             />
             <span className={val}>{String(ui.weight)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">margin top</span>
+            <input
+              type="range"
+              min={0}
+              max={400}
+              step={2}
+              value={ui.marginTop}
+              onChange={setNum("marginTop")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{String(ui.marginTop)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">margin bottom</span>
+            <input
+              type="range"
+              min={0}
+              max={400}
+              step={2}
+              value={ui.marginBottom}
+              onChange={setNum("marginBottom")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{String(ui.marginBottom)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">margin left</span>
+            <input
+              type="range"
+              min={0}
+              max={700}
+              step={2}
+              value={ui.marginLeft}
+              onChange={setNum("marginLeft")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{String(ui.marginLeft)}</span>
+          </label>
+          <label className={row}>
+            <span className="w-[88px]">margin right</span>
+            <input
+              type="range"
+              min={0}
+              max={700}
+              step={2}
+              value={ui.marginRight}
+              onChange={setNum("marginRight")}
+              className={slider}
+              style={{ accentColor: "#5b8dd9" }}
+            />
+            <span className={val}>{String(ui.marginRight)}</span>
           </label>
           <label className={row}>
             <span className="w-[88px]">line spacing</span>
