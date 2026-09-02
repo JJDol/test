@@ -63,7 +63,7 @@ export function MarketingHeader({
     };
   }, [activeGroup, isClosing, menuOpen]);
 
-  const foreground = overlay ? "text-white" : "text-[#1a1a1a]";
+  const foreground = "text-[#1a1a1a]";
 
   return (
     <header className={`${overlay ? "absolute inset-x-0 top-0 bg-transparent" : "relative bg-[#F5F2EB]"} z-40`}>
@@ -144,7 +144,9 @@ export function MarketingHeader({
               }, 500);
             }}
             className={`flex size-10 items-center justify-center rounded-full border ${
-              overlay ? "border-white/40 text-white hover:bg-white/10" : "border-black/15 text-[#1a1a1a] hover:bg-black/[0.04]"
+              overlay
+                ? "border-black/30 text-[#1a1a1a] hover:bg-black/[0.06]"
+                : "border-black/15 text-[#1a1a1a] hover:bg-black/[0.04]"
             }`}
           >
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
