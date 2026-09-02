@@ -772,7 +772,7 @@ class FlowEngine {
 export function InformationFlowBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const photoRef = useRef<HTMLImageElement>(null);
+  const photoRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
   const creamRef = useRef<HTMLDivElement>(null);
   const backWordsRef = useRef<HTMLDivElement>(null);
@@ -905,49 +905,77 @@ export function InformationFlowBackdrop() {
 
   return (
     <div
-      ref={wrapRef}
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#F5F2EB] [container-type:inline-size]`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#b6aaa7]`}
     >
       <div
         ref={creamRef}
         className="pointer-events-none absolute inset-0 z-0 bg-[#F5F2EB] opacity-0"
       />
-      <img
-        ref={photoRef}
-        src="/images/marketing/hero-site.jpg"
-        alt=""
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
-      />
+      <div ref={photoRef} className="pointer-events-none absolute inset-0 z-0">
+        <img
+          src="/images/marketing/hero-edge-left.png"
+          alt=""
+          className="absolute inset-y-0 left-0 h-full"
+          style={{ width: "max(0px, calc(50% - 88.8889svh + 160px))" }}
+        />
+        <img
+          src="/images/marketing/hero-edge-right.png"
+          alt=""
+          className="absolute inset-y-0 right-0 h-full"
+          style={{ width: "max(0px, calc(50% - 88.8889svh + 160px))" }}
+        />
+        <img
+          src="/images/marketing/hero-site.jpg"
+          alt=""
+          className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+          style={{
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent, black 7%, black 93%, transparent)",
+            maskImage:
+              "linear-gradient(to right, transparent, black 7%, black 93%, transparent)",
+          }}
+        />
+      </div>
       <div
         ref={scrimRef}
         className="absolute inset-0 z-[1]"
         style={{ background: ui.bgColor, opacity: ui.bgOpacity }}
       />
-      <HeroWords
-        ref={backWordsRef}
-        layer="back"
-        words={words}
-        pos={pos}
-        wordColor={ui.wordColor}
-        wordSize={ui.wordSize}
-        depth={ui.depth}
-        onDragStart={startDrag}
-      />
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute inset-0 z-[3] h-full w-full object-cover"
-      />
-      <HeroWords
-        ref={frontWordsRef}
-        layer="front"
-        words={words}
-        pos={pos}
-        wordColor={ui.wordColor}
-        wordSize={ui.wordSize}
-        depth={ui.depth}
-        onDragStart={startDrag}
-      />
-      <HeroControls ui={ui} setUi={setUi} open={panelOpen} onToggle={() => setPanelOpen((v) => !v)} />
+      <div
+        ref={wrapRef}
+        className="pointer-events-none absolute inset-y-0 left-1/2 z-[2] w-full max-w-[1920px] -translate-x-1/2 overflow-hidden [container-type:inline-size]"
+      >
+        <HeroWords
+          ref={backWordsRef}
+          layer="back"
+          words={words}
+          pos={pos}
+          wordColor={ui.wordColor}
+          wordSize={ui.wordSize}
+          depth={ui.depth}
+          onDragStart={startDrag}
+        />
+        <canvas
+          ref={canvasRef}
+          className="pointer-events-none absolute inset-0 z-[3] h-full w-full object-cover"
+        />
+        <HeroWords
+          ref={frontWordsRef}
+          layer="front"
+          words={words}
+          pos={pos}
+          wordColor={ui.wordColor}
+          wordSize={ui.wordSize}
+          depth={ui.depth}
+          onDragStart={startDrag}
+        />
+        <HeroControls
+          ui={ui}
+          setUi={setUi}
+          open={panelOpen}
+          onToggle={() => setPanelOpen((v) => !v)}
+        />
+      </div>
     </div>
   );
 }
