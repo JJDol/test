@@ -791,11 +791,61 @@ export function InformationFlowBackdrop() {
   const [pos, setPos] = useState<Positions>({ ...DEFAULT_POSITIONS });
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
   const [panelOpen, setPanelOpen] = useState(false);
+  const [heroImage, setHeroImage] = useState({
+    center: "/images/marketing/hero-site.jpg",
+    left: "/images/marketing/hero-edge-left.png",
+    right: "/images/marketing/hero-edge-right.png",
+    name: "Default image",
+  });
+  const uploadedImageUrl = useRef<string | null>(null);
   const posRef = useRef(pos);
   const uiRef = useRef(ui);
   posRef.current = pos;
   uiRef.current = ui;
   const words = getHeroWords(ui);
+
+  const changeHeroImage = (file: File) => {
+    const nextUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const edgeDataUrl = (sourceX: number) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        context?.drawImage(
+          image,
+          sourceX,
+          0,
+          1,
+          image.naturalHeight,
+          0,
+          0,
+          1,
+          image.naturalHeight,
+        );
+        return canvas.toDataURL("image/png");
+      };
+
+      if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
+      uploadedImageUrl.current = nextUrl;
+      setHeroImage({
+        center: nextUrl,
+        left: edgeDataUrl(0),
+        right: edgeDataUrl(image.naturalWidth - 1),
+        name: file.name,
+      });
+    };
+    image.onerror = () => URL.revokeObjectURL(nextUrl);
+    image.src = nextUrl;
+  };
+
+  useEffect(
+    () => () => {
+      if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
+    },
+    [],
+  );
 
   const startDrag = (id: WordId, event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -924,19 +974,19 @@ export function InformationFlowBackdrop() {
       />
       <div ref={photoRef} className="pointer-events-none absolute inset-0 z-0">
         <img
-          src="/images/marketing/hero-edge-left.png"
+          src={heroImage.left}
           alt=""
           className="absolute inset-y-0 left-0 h-full"
           style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
         />
         <img
-          src="/images/marketing/hero-edge-right.png"
+          src={heroImage.right}
           alt=""
           className="absolute inset-y-0 right-0 h-full"
           style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
         />
         <img
-          src="/images/marketing/hero-site.jpg"
+          src={heroImage.center}
           alt=""
           className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
           style={{
@@ -951,6 +1001,10 @@ export function InformationFlowBackdrop() {
         ref={scrimRef}
         className="absolute inset-0 z-[1]"
         style={{ background: ui.bgColor, opacity: ui.bgOpacity }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-[3] h-[180px] bg-gradient-to-b from-[#F5F2EB]/85 via-[#F5F2EB]/45 to-transparent"
       />
       <div
         ref={wrapRef}
@@ -980,17 +1034,15 @@ export function InformationFlowBackdrop() {
           depth={ui.depth}
           onDragStart={startDrag}
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[180px] bg-gradient-to-b from-[#F5F2EB]/85 via-[#F5F2EB]/45 to-transparent"
-        />
-        <HeroControls
-          ui={ui}
-          setUi={setUi}
-          open={panelOpen}
-          onToggle={() => setPanelOpen((v) => !v)}
-        />
       </div>
+      <HeroControls
+        ui={ui}
+        setUi={setUi}
+        imageName={heroImage.name}
+        onImageChange={changeHeroImage}
+        open={panelOpen}
+        onToggle={() => setPanelOpen((v) => !v)}
+      />
     </div>
   );
 }
@@ -1124,11 +1176,15 @@ function HeroWord({
 function HeroControls({
   ui,
   setUi,
+  imageName,
+  onImageChange,
   open,
   onToggle,
 }: {
   ui: HeroParams;
   setUi: (update: HeroParams | ((prev: HeroParams) => HeroParams)) => void;
+  imageName: string;
+  onImageChange: (file: File) => void;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -1164,6 +1220,23 @@ function HeroControls({
       </button>
       {open ? (
         <div className="pointer-events-auto flex max-w-[620px] flex-wrap items-center gap-x-[22px] gap-y-2 border border-white/15 bg-black/70 px-3.5 py-2.5">
+          <label className={`${row} cursor-pointer`}>
+            <span className="w-[88px]">hero image</span>
+            <span className="border border-white/25 bg-white/[0.06] px-[9px] py-[5px] uppercase text-[#e9e9e9]">
+              change image
+            </span>
+            <span className="max-w-[150px] truncate text-[#e9e9e9]/70">{imageName}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onImageChange(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
           <label className={row}>
             <span className="w-[88px]">background</span>
             <input type="color" value={ui.bgColor} onChange={setColor("bgColor")} className={swatch} />
