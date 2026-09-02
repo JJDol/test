@@ -13,6 +13,7 @@ type Phase = "idle" | "drop" | "parse" | "extract" | "done";
 
 interface UploadContractSceneProps {
   replayKey: number;
+  play: boolean;
   onStatusChange: (status: string) => void;
   onCreateProject: () => void;
 }
@@ -77,6 +78,7 @@ const TIMING = {
 
 export function UploadContractScene({
   replayKey,
+  play,
   onStatusChange,
   onCreateProject,
 }: UploadContractSceneProps) {
@@ -87,6 +89,13 @@ export function UploadContractScene({
   onStatusRef.current = onStatusChange;
 
   useEffect(() => {
+    setPhase("idle");
+    setRevealed([]);
+    setCreating(false);
+    onStatusRef.current(STATUS.idle);
+
+    if (!play) return;
+
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -97,11 +106,6 @@ export function UploadContractScene({
       onStatusRef.current("READY TO CREATE PROJECT");
       return;
     }
-
-    setPhase("idle");
-    setRevealed([]);
-    setCreating(false);
-    onStatusRef.current(STATUS.idle);
 
     const timers: number[] = [];
     timers.push(
@@ -135,7 +139,7 @@ export function UploadContractScene({
     );
 
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [replayKey]);
+  }, [play, replayKey]);
 
   const handleCreate = () => {
     if (creating) return;
