@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEMO_STEPS,
   emptyTypedValues,
@@ -19,7 +19,9 @@ import { AskAutodocScene } from "@/components/marketing/scenes/static-scenes";
 import { marketingMono } from "@/lib/marketing/fonts";
 
 export function HowItWorksSection() {
+  const demoRef = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<DemoStepId>("upload");
+  const [demoStarted, setDemoStarted] = useState(false);
   const [replayKey, setReplayKey] = useState(0);
   const [uploadStatus, setUploadStatus] = useState(DEMO_STEPS[0].status);
   const [selected, setSelected] = useState<DemoDisciplineId[]>([]);
@@ -27,6 +29,42 @@ export function HowItWorksSection() {
   const [typedValues, setTypedValues] = useState<DemoTypedValues>(emptyTypedValues);
 
   const [generateStatus, setGenerateStatus] = useState(DEMO_STEPS[3].status);
+
+  useEffect(() => {
+    const demo = demoRef.current;
+    if (!demo) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setDemoStarted(true);
+        observer.disconnect();
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(demo);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const restartFromProductTourLink = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest<HTMLAnchorElement>("a[href]");
+      if (!link) return;
+      const destination = new URL(link.href, window.location.href);
+      if (destination.hash !== "#how-it-works") return;
+
+      setActiveId("upload");
+      setSelected([]);
+      setPickedDocs({});
+      setTypedValues(emptyTypedValues());
+      setReplayKey((key) => key + 1);
+    };
+
+    document.addEventListener("click", restartFromProductTourLink);
+    return () => document.removeEventListener("click", restartFromProductTourLink);
+  }, []);
 
   const step = DEMO_STEPS.find((item) => item.id === activeId) ?? DEMO_STEPS[0];
   const status =
@@ -102,7 +140,10 @@ export function HowItWorksSection() {
         documents generated.
       </p>
 
-      <div className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12">
+      <div
+        ref={demoRef}
+        className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12"
+      >
         <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#1a1a1a]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
           {step.caption}
         </p>
@@ -114,6 +155,7 @@ export function HowItWorksSection() {
             {activeId === "upload" && (
               <UploadContractScene
                 replayKey={replayKey}
+                play={demoStarted}
                 onStatusChange={handleStatusChange}
                 onCreateProject={() => {
                   resetPicks();

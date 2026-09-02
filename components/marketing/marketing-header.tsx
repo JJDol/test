@@ -110,6 +110,15 @@ export function MarketingHeader({
           <a href={loginHref} className={`text-[15px] font-medium leading-5 ${foreground}`}>
             Login
           </a>
+          <span aria-hidden className={`text-[15px] font-medium leading-5 opacity-60 ${foreground}`}>
+            /
+          </span>
+          <Link
+            href="/signup"
+            className={`text-[15px] font-medium leading-5 ${foreground}`}
+          >
+            Sign up
+          </Link>
           <button
             type="button"
             aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
