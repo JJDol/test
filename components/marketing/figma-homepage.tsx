@@ -59,7 +59,7 @@ export function FigmaHomepage() {
           </a>
           <a
             href="#benefits"
-            className="inline-flex items-center justify-center gap-[2px] rounded-[1000px] bg-[#202326] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#F2EFE8]"
+            className="inline-flex items-center justify-center gap-[2px] rounded-[12px] bg-[#202326] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#F2EFE8]"
           >
             Learn More
             <span className="inline-flex h-[6px] w-[7px] items-center">
@@ -68,7 +68,7 @@ export function FigmaHomepage() {
           </a>
         </nav>
 
-        <div className="absolute left-1/2 top-4 z-10 hidden -translate-x-1/2 items-center gap-[27px] overflow-hidden rounded-[100px] bg-white/40 px-6 py-5 text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] backdrop-blur-[15px] md:flex">
+        <div className="absolute left-1/2 top-4 z-10 hidden -translate-x-1/2 items-center gap-[27px] overflow-hidden rounded-[12px] bg-white/40 px-6 py-5 text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] backdrop-blur-[15px] md:flex">
           {NAV.map((item) => (
             <a key={item.label} href={item.href} className="whitespace-nowrap">
               {item.label}
@@ -78,7 +78,7 @@ export function FigmaHomepage() {
 
         <header
           className={`w-full md:hidden ${
-            menuOpen ? "rounded-b-[20px] bg-[#FDC57E] shadow-[0px_2px_4px_rgba(0,0,0,0.05)]" : ""
+            menuOpen ? "rounded-b-[12px] bg-[#FDC57E] shadow-[0px_2px_4px_rgba(0,0,0,0.05)]" : ""
           }`}
         >
           <div className="flex items-center justify-between px-5 pb-[50px] pt-5">
@@ -111,7 +111,7 @@ export function FigmaHomepage() {
               <a
                 href="#benefits"
                 onClick={() => setMenuOpen(false)}
-                className="inline-flex w-fit items-center justify-center rounded-[1000px] bg-[#F2EFE8] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#202326]"
+                className="inline-flex w-fit items-center justify-center rounded-[12px] bg-[#F2EFE8] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#202326]"
               >
                 Learn More
               </a>
@@ -151,7 +151,7 @@ export function FigmaHomepage() {
               <a
                 id="how-to"
                 href="#benefits"
-                className="inline-flex items-center justify-center rounded-[1000px] bg-[#F2EFE8] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#202326]"
+                className="inline-flex items-center justify-center rounded-[12px] bg-[#F2EFE8] px-[22px] py-[14px] text-[14px] font-semibold leading-[1.4] tracking-[-0.35px] text-[#202326]"
               >
                 Discover More
               </a>

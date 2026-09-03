@@ -100,7 +100,7 @@ export function TutorialsPage() {
                 key={material.title}
                 className="flex items-center gap-5 border-b border-[#1a1a1a]/15 py-6"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#E8E2D6]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#E8E2D6]">
                   <FileText className="h-5 w-5 text-[#202306]" aria-hidden />
                 </span>
                 <div className="min-w-0 flex-1">

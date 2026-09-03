@@ -52,7 +52,7 @@ export function AboutSections() {
       <div
         role="tablist"
         aria-label="About us"
-        className="mt-8 inline-flex rounded-full border border-[#1a1a1a]/15 p-1"
+        className="mt-8 inline-flex rounded-[12px] border border-[#1a1a1a]/15 p-1"
       >
         {TABS.map((item) => {
           const selected = tab === item.id;
@@ -65,7 +65,7 @@ export function AboutSections() {
               aria-selected={selected}
               aria-controls={`panel-${item.id}`}
               onClick={() => selectTab(item.id)}
-              className={`rounded-full px-4 py-2 text-[15px] transition ${
+              className={`rounded-[12px] px-4 py-2 text-[15px] transition ${
                 selected ? "bg-[#1a1a1a] text-white" : "text-[#1a1a1a]/55 hover:text-[#1a1a1a]"
               }`}
             >
@@ -120,7 +120,7 @@ export function AboutSections() {
           <button
             type="button"
             onClick={() => selectTab("contact")}
-            className="inline-flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 tracking-normal text-white"
+            className="inline-flex h-11 items-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 tracking-normal text-white"
           >
             SEND A NOTE
           </button>

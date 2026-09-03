@@ -6,11 +6,11 @@ export function MarketingFooter() {
     <footer id="site-footer" className="border-t border-[#1a1a1a]/12 bg-[#F5F2EB] text-[#1a1a1a]">
       <div className="mx-auto grid w-full max-w-[1760px] gap-12 px-5 py-14 md:grid-cols-[1.2fr_1fr_1fr_1fr] md:px-8 md:py-16 lg:px-10">
         <img
-          src="/images/marketing/atilab-logo.png"
+          src="/images/marketing/atilab-logo.svg"
           alt="ATI:lab"
-          width={262}
-          height={126}
-          className="h-[126px] w-[262px] object-contain"
+          width={268}
+          height={55}
+          className="h-auto w-[268px]"
         />
 
         {FOOTER_COLUMNS.map((column) => (

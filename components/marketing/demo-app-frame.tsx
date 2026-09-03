@@ -9,7 +9,7 @@ interface DemoAppFrameProps {
 
 export function DemoAppFrame({ title, status, onReplay, children }: DemoAppFrameProps) {
   return (
-    <div className="relative flex min-h-[28rem] w-full flex-col overflow-hidden rounded-[16px] border border-[#1a1a1a]/20 bg-[#202326]/15 md:aspect-[16/9] md:min-h-0">
+    <div className="relative flex min-h-[28rem] w-full flex-col overflow-hidden rounded-[12px] border border-[#1a1a1a]/20 bg-[#202326]/15 md:aspect-[16/9] md:min-h-0">
       <div className="relative flex shrink-0 items-center px-5 py-3.5">
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-[#C9C4BA]" />
@@ -31,7 +31,7 @@ export function DemoAppFrame({ title, status, onReplay, children }: DemoAppFrame
         <button
           type="button"
           onClick={onReplay}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium tracking-wide text-[#1a1a1a]/45 transition hover:bg-[#1a1a1a]/5 hover:text-[#1a1a1a]"
+          className="inline-flex items-center gap-1.5 rounded-[12px] px-2 py-1 text-[11px] font-medium tracking-wide text-[#1a1a1a]/45 transition hover:bg-[#1a1a1a]/5 hover:text-[#1a1a1a]"
         >
           <RotateCcw className="h-3 w-3" />
           REPLAY

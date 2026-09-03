@@ -24,7 +24,7 @@ export function NewsIndex() {
                 <img
                   src={article.image}
                   alt=""
-                  className="h-20 w-[7.5rem] shrink-0 rounded-lg object-cover sm:h-24 sm:w-40 md:h-28 md:w-48"
+                  className="h-20 w-[7.5rem] shrink-0 rounded-[12px] object-cover sm:h-24 sm:w-40 md:h-28 md:w-48"
                 />
                 <div className="min-w-0 flex-1">
                   <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>{article.date}</p>

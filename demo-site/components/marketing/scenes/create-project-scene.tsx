@@ -53,7 +53,7 @@ export function CreateProjectScene({
           <div className="mb-2 flex items-start justify-between gap-2">
             <h3 className="text-base font-semibold leading-snug text-[#1a1a1a]">{project.name}</h3>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="rounded-full bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#1a1a1a]/70">
+              <span className="rounded-[12px] bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#1a1a1a]/70">
                 NEW
               </span>
               <MoreVertical className="h-4 w-4 text-[#1a1a1a]/35" />
@@ -84,7 +84,7 @@ export function CreateProjectScene({
                     type="button"
                     onClick={() => onToggleDiscipline(discipline.id)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition",
+                      "flex w-full items-center gap-3 rounded-[12px] border px-3 py-2.5 text-left transition",
                       on
                         ? "border-[#1a1a1a]/20 bg-[#E8E2D6]"
                         : "border-[#1a1a1a]/10 hover:border-[#1a1a1a]/20"
@@ -102,7 +102,7 @@ export function CreateProjectScene({
                       {discipline.label}
                     </span>
                     {on && count > 0 && (
-                      <span className="rounded-full bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#1a1a1a]/70">
+                      <span className="rounded-[12px] bg-[#1a1a1a]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#1a1a1a]/70">
                         {count}
                       </span>
                     )}
@@ -144,7 +144,7 @@ export function CreateProjectScene({
                         <label
                           key={doc.id}
                           className={cn(
-                            "flex cursor-pointer items-center gap-3.5 rounded-md px-2.5 py-1 transition",
+                            "flex cursor-pointer items-center gap-3.5 rounded-[12px] px-2.5 py-1 transition",
                             checked ? "bg-[#E8E2D6]" : "hover:bg-[#1a1a1a]/5"
                           )}
                         >

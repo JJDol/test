@@ -39,7 +39,7 @@ function FactValue({
   return (
     <span
       className={cn(
-        "rounded-[2px] px-0.5 text-zinc-900",
+        "rounded-[12px] px-0.5 text-zinc-900",
         tone === "discipline" && "bg-sky-200 shadow-[inset_0_-1px_0_rgba(14,165,233,0.35)]",
         tone === "general" && "bg-violet-300 shadow-[inset_0_-1px_0_rgba(109,40,217,0.35)]",
         tone === "contract" && "bg-amber-200 shadow-[inset_0_-1px_0_rgba(217,119,6,0.35)]"

@@ -45,9 +45,9 @@ function DocumentPreview({
       </div>
 
       <div className="relative min-h-0 flex-1 pr-1.5 pb-1.5">
-        <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-md border border-zinc-300 bg-zinc-200" />
-        <div className="absolute inset-0 translate-x-0.5 translate-y-0.5 rounded-md border border-zinc-300 bg-zinc-100" />
-        <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-zinc-200 bg-white px-8 py-2.5 text-zinc-900 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+        <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-[12px] border border-zinc-300 bg-zinc-200" />
+        <div className="absolute inset-0 translate-x-0.5 translate-y-0.5 rounded-[12px] border border-zinc-300 bg-zinc-100" />
+        <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[12px] border border-zinc-200 bg-white px-8 py-2.5 text-zinc-900 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
           <div className="min-h-0 flex-1 overflow-hidden">
             <DocumentBody docId={docId} page={page} facts={facts} />
           </div>
@@ -198,7 +198,7 @@ export function GenerateScene({
                           setUserPicked(true);
                         }}
                         className={cn(
-                          "flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors",
+                          "flex w-full items-center gap-2 rounded-[12px] border px-2 py-1.5 text-left transition-colors",
                           isWritten
                             ? "border-[#1a1a1a]/10 bg-white hover:bg-[#F5F2EB]"
                             : "cursor-default border-[#1a1a1a]/10 bg-white/50",
@@ -240,7 +240,7 @@ export function GenerateScene({
                 typedValues={typedValues}
               />
             ) : (
-              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#1a1a1a]/15">
+              <div className="flex h-full items-center justify-center rounded-[12px] border border-dashed border-[#1a1a1a]/15">
                 <p className="text-[12px] text-zinc-500">Writing preview…</p>
               </div>
             )}

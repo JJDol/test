@@ -39,7 +39,7 @@ function Mark({
   return (
     <span
       className={cn(
-        "rounded-[2px] px-0.5 transition-all duration-500",
+        "rounded-[12px] px-0.5 transition-all duration-500",
         isOn
           ? "bg-amber-200 text-zinc-900 shadow-[inset_0_-1px_0_rgba(217,119,6,0.35)]"
           : "text-zinc-800"
@@ -53,7 +53,7 @@ function Mark({
 function PdfFileIcon() {
   return (
     <div className="relative h-[92px] w-[70px]" aria-hidden>
-      <div className="absolute inset-0 rounded-md border border-zinc-300 bg-white">
+      <div className="absolute inset-0 rounded-[12px] border border-zinc-300 bg-white">
         <div className="absolute right-0 top-0 h-5 w-5 bg-zinc-100 [clip-path:polygon(100%_0,0_0,100%_100%)]" />
         <div className="absolute right-0 top-0 h-5 w-5 border-b border-l border-zinc-300 bg-zinc-50 [clip-path:polygon(0_0,100%_100%,0_100%)]" />
         <div className="space-y-1.5 px-2.5 pt-5">
@@ -61,7 +61,7 @@ function PdfFileIcon() {
           <div className="h-1 w-8 rounded-full bg-zinc-200" />
           <div className="h-1 w-9 rounded-full bg-zinc-200" />
         </div>
-        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-sm bg-red-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white">
+        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-[12px] bg-red-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white">
           PDF
         </span>
       </div>
@@ -187,7 +187,7 @@ export function UploadContractScene({
             <div className="relative z-10 flex h-[92px] w-[70px] items-center justify-center">
               <div
                 className={cn(
-                  "absolute flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-200 bg-white transition-all duration-500 ease-out",
+                  "absolute flex h-16 w-16 items-center justify-center rounded-[12px] border border-zinc-200 bg-white transition-all duration-500 ease-out",
                   dropped ? "scale-50 opacity-0" : "demo-icon-bob scale-100 opacity-100"
                 )}
               >
@@ -237,11 +237,11 @@ export function UploadContractScene({
               <div className="relative -translate-x-1/4">
                 <div
                   className={cn(
-                    "h-10 w-8 rounded-sm border border-zinc-300 bg-white shadow-md transition-opacity duration-200",
+                    "h-10 w-8 rounded-[12px] border border-zinc-300 bg-white shadow-md transition-opacity duration-200",
                     dropped && "opacity-0"
                   )}
                 >
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-[2px] bg-red-600 px-1 text-[7px] font-bold text-white">
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-[12px] bg-red-600 px-1 text-[7px] font-bold text-white">
                     PDF
                   </span>
                 </div>
@@ -355,7 +355,7 @@ function ExtractedRow({ field, visible }: { field: ExtractedField; visible: bool
   return (
     <li
       className={cn(
-        "flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-xs transition-all duration-300",
+        "flex items-start justify-between gap-3 rounded-[12px] border px-3 py-2 text-xs transition-all duration-300",
         visible
           ? "demo-fade-up border-[#1a1a1a]/10 bg-white text-[#1a1a1a]"
           : "border-[#1a1a1a]/10 bg-white/40 text-transparent"

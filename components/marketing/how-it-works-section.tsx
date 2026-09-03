@@ -217,7 +217,7 @@ export function HowItWorksSection() {
       <div className="mt-12 flex justify-center md:mt-16">
         <a
           href="/signup"
-          className="flex h-11 items-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
+          className="flex h-11 items-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
         >
           SIGN UP
         </a>

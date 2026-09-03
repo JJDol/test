@@ -12,7 +12,7 @@ const TABS: { id: AccountTab; label: string }[] = [
 ];
 
 const inputClass =
-  "mt-2 h-[46px] w-full rounded-full border border-[#1a1a1a]/15 bg-[#F5F2EB] px-5 text-[15px] leading-[24px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
+  "mt-2 h-[46px] w-full rounded-[12px] border border-[#1a1a1a]/15 bg-[#F5F2EB] px-5 text-[15px] leading-[24px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
 
 function readTabFromHash(): AccountTab {
   if (typeof window === "undefined") return "company-admin";
@@ -39,7 +39,7 @@ export function SignupAccountTabs() {
       <div
         role="tablist"
         aria-label="Account type"
-        className="mt-8 inline-flex rounded-full border border-[#1a1a1a]/15 p-1"
+        className="mt-8 inline-flex rounded-[12px] border border-[#1a1a1a]/15 p-1"
       >
         {TABS.map((item) => {
           const selected = tab === item.id;
@@ -52,7 +52,7 @@ export function SignupAccountTabs() {
               aria-selected={selected}
               aria-controls={`panel-${item.id}`}
               onClick={() => selectTab(item.id)}
-              className={`rounded-full px-4 py-2 text-[15px] transition ${
+              className={`rounded-[12px] px-4 py-2 text-[15px] transition ${
                 selected
                   ? "bg-[#1a1a1a] text-white"
                   : "text-[#1a1a1a]/55 hover:text-[#1a1a1a]"
@@ -112,7 +112,7 @@ export function SignupAccountTabs() {
             </label>
             <a
               href="/about#contact"
-              className="mt-8 flex h-11 w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
+              className="mt-8 flex h-11 w-full items-center justify-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
             >
               REQUEST COMPANY ADMIN
             </a>
@@ -152,7 +152,7 @@ export function SignupAccountTabs() {
           </ol>
           <a
             href={APP_SIGN_IN}
-            className="mt-10 flex h-11 w-full items-center justify-center rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
+            className="mt-10 flex h-11 w-full items-center justify-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
           >
             LOG IN
           </a>

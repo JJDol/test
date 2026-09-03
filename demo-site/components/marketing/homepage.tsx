@@ -18,7 +18,7 @@ export function MarketingHomepage() {
           <InformationFlowBackdrop />
           <Link
             href="#how-it-works"
-            className="absolute bottom-[5%] left-[4%] z-20 flex h-11 w-[254px] items-center justify-center rounded-full bg-[#202306] text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
+            className="absolute bottom-[5%] left-[4%] z-20 flex h-11 w-[254px] items-center justify-center rounded-[12px] bg-[#202306] text-[14px] font-medium leading-5 tracking-[1.12px] text-white"
           >
             VIEW PRODUCT TOUR
           </Link>
