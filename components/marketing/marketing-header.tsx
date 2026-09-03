@@ -101,7 +101,7 @@ export function MarketingHeader({
           }
         }
       `}</style>
-      <div className="mx-auto flex h-[72px] w-full max-w-[1760px] items-center justify-between px-5 md:px-8 lg:px-10">
+      <div className="flex h-[72px] w-full items-center justify-between px-[4%]">
         <Link href="/" className={`text-[40px] font-semibold leading-[44px] tracking-[-2px] ${foreground}`}>
           AutoDoc
         </Link>

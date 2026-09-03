@@ -28,6 +28,11 @@ type HeroParams = {
   bgColor: string;
   bgOpacity: number;
   inkColor: string;
+  inkColor2: string;
+  inkColor3: string;
+  inkColor4: string;
+  inkCycle: boolean;
+  cycleSeconds: number;
   wordColor: string;
   wordText: string;
   wordCount: number;
@@ -56,6 +61,11 @@ const DEFAULT_HERO: HeroParams = {
   bgColor: "#7697e5",
   bgOpacity: 0.28,
   inkColor: "#e9e9e9",
+  inkColor2: "#ff6a4d",
+  inkColor3: "#5b8dd9",
+  inkColor4: "#4cae7a",
+  inkCycle: false,
+  cycleSeconds: 14,
   wordColor: "#e9e9e9",
   wordText: "Less Fragmented, More Connected",
   wordCount: 4,
@@ -82,11 +92,31 @@ const DEFAULT_HERO: HeroParams = {
 
 const SOURCE_W = 1920;
 const SOURCE_H = 1080;
-const SLOTS = 5;
-const LOOP_COLS = 10;
+const WIDE_SOURCE_H = 1440;
+const WIDE_BREAKPOINT = 1920;
 
 function fmt(value: number) {
   return (Math.round(value * 100) / 100).toFixed(2);
+}
+
+function mixHex(a: string, b: string, amount: number) {
+  const toRgb = (hex: string) => {
+    let value = hex.trim().replace("#", "");
+    if (value.length === 3) value = value.split("").map((part) => part + part).join("");
+    const number = Number.parseInt(value, 16);
+    return [(number >> 16) & 255, (number >> 8) & 255, number & 255];
+  };
+  const from = toRgb(a);
+  const to = toRgb(b);
+  const smooth = amount * amount * (3 - 2 * amount);
+  return `#${from
+    .map((channel, index) => {
+      const linearFrom = Math.pow(channel / 255, 2.2);
+      const linearTo = Math.pow(to[index] / 255, 2.2);
+      const mixed = Math.pow(linearFrom + (linearTo - linearFrom) * smooth, 1 / 2.2);
+      return Math.round(mixed * 255).toString(16).padStart(2, "0");
+    })
+    .join("")}`;
 }
 
 const EDGE_PCT = 1.5;
@@ -97,7 +127,7 @@ type Positions = Partial<Record<WordId, { x: number; y: number }>>;
 
 const DEFAULT_POSITIONS: Positions = {
   w1: { x: 4, y: 50 },
-  w2: { x: 4, y: 75 },
+  w2: { x: 4, y: 68 },
   w3: { x: 62, y: 56 },
   w4: { x: 3, y: 76 },
   w5: { x: 46, y: 6 },
@@ -292,11 +322,24 @@ class FlowEngine {
   fields: ColorField[] = [];
   _itf = DEFAULT_HERO.interference;
   _itfT = 0;
+  _now = 0;
+  slots = 5;
+  loopCols = 10;
   params: HeroParams = { ...DEFAULT_HERO };
   _cacheKey = "";
 
   ink() {
-    return this.params.inkColor;
+    if (!this.params.inkCycle) return this.params.inkColor;
+    const colors = [
+      this.params.inkColor,
+      this.params.inkColor2,
+      this.params.inkColor3,
+      this.params.inkColor4,
+    ];
+    const duration = Math.max(1, this.params.cycleSeconds);
+    const phase = ((this._now / 1000 / duration) % 1) * colors.length;
+    const index = Math.floor(phase) % colors.length;
+    return mixHex(colors[index], colors[(index + 1) % colors.length], phase - Math.floor(phase));
   }
 
   bg() {
@@ -333,11 +376,13 @@ class FlowEngine {
   layout(width: number, height: number) {
     this.W = width;
     this.H = height;
+    this.slots = width > WIDE_BREAKPOINT ? 8 : 5;
+    this.loopCols = this.slots * 2;
     const band = Math.max(320, this.W - this.params.marginLeft - this.params.marginRight);
-    const unit = band / (SLOTS + (SLOTS - 1) * 0.517);
+    const unit = band / (this.slots + (this.slots - 1) * 0.517);
     this.colW = unit;
     this.gutter = unit * 0.517;
-    const total = SLOTS * this.colW + (SLOTS - 1) * this.gutter;
+    const total = this.slots * this.colW + (this.slots - 1) * this.gutter;
     this.startX = this.params.marginLeft + (band - total) / 2;
     this.pitch = this.colW + this.gutter;
     this.colCache.clear();
@@ -346,7 +391,7 @@ class FlowEngine {
   }
 
   slotX(slot: number) {
-    return this.startX + (SLOTS - slot) * this.pitch;
+    return this.startX + (this.slots - slot) * this.pitch;
   }
 
   buildAtmos() {
@@ -402,7 +447,7 @@ class FlowEngine {
   }
 
   column(idx: number, ctx: CanvasRenderingContext2D) {
-    const key = ((idx % LOOP_COLS) + LOOP_COLS) % LOOP_COLS;
+    const key = ((idx % this.loopCols) + this.loopCols) % this.loopCols;
     const cached = this.colCache.get(key);
     if (cached) return cached;
 
@@ -679,6 +724,7 @@ class FlowEngine {
 
   paint(ctx: CanvasRenderingContext2D, tGlobal: number, reduced: boolean, nowMs: number) {
     ctx.clearRect(0, 0, this.W, this.H);
+    this._now = nowMs;
     this._itf = reduced ? 0 : this.params.interference;
     this._itfT = nowMs / 1000;
     const ink = this.ink();
@@ -689,7 +735,7 @@ class FlowEngine {
     const frac = reduced ? typeFrac : tGlobal - Math.floor(tGlobal);
     const staged = reduced || frac < typeFrac ? 0 : ease((frac - typeFrac) / (1 - typeFrac));
     const shift = staged + (frac - staged) * this.params.glide;
-    const loopT = (tGlobal / LOOP_COLS) % 1;
+    const loopT = (tGlobal / this.loopCols) % 1;
 
     if (this.params.showImageField) {
       for (const f of this.fields) {
@@ -724,12 +770,12 @@ class FlowEngine {
     }
 
     const live = [];
-    for (let i = k; i >= k - SLOTS; i--) {
+    for (let i = k; i >= k - this.slots; i--) {
       const col = this.column(i, ctx);
       const slot = 1 + (k - i) + shift;
       const typed = reduced || i < k ? 1 : Math.min(1, frac / typeFrac);
       let alpha = 1;
-      if (slot > SLOTS) alpha = Math.max(0, 1 - (slot - SLOTS));
+      if (slot > this.slots) alpha = Math.max(0, 1 - (slot - this.slots));
       live.push({ i, col, slot, x: this.slotX(slot), typed, alpha });
     }
 
@@ -739,13 +785,15 @@ class FlowEngine {
       for (let n = 0; n + span < live.length; n++) {
         const newer = live[n];
         const older = live[n + span];
-        const key = `${span}:${((newer.i % LOOP_COLS) + LOOP_COLS) % LOOP_COLS}`;
+        const key = `${span}:${((newer.i % this.loopCols) + this.loopCols) % this.loopCols}`;
         let links = this.links.get(key);
         if (!links) {
           links = this.buildLinks(
             newer.col,
             older.col,
-            31337 + span * 4241 + (((newer.i % LOOP_COLS) + LOOP_COLS) % LOOP_COLS) * 7717,
+            31337 +
+              span * 4241 +
+              (((newer.i % this.loopCols) + this.loopCols) % this.loopCols) * 7717,
             span,
           );
           this.links.set(key, links);
@@ -840,6 +888,17 @@ export function InformationFlowBackdrop() {
     image.src = nextUrl;
   };
 
+  const resetHeroImage = () => {
+    if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
+    uploadedImageUrl.current = null;
+    setHeroImage({
+      center: "/images/marketing/hero-site.jpg",
+      left: "/images/marketing/hero-edge-left.png",
+      right: "/images/marketing/hero-edge-right.png",
+      name: "Default image",
+    });
+  };
+
   useEffect(
     () => () => {
       if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
@@ -897,10 +956,16 @@ export function InformationFlowBackdrop() {
 
     const sizeCanvas = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = SOURCE_W * dpr;
-      canvas.height = SOURCE_H * dpr;
+      const rect = wrap.getBoundingClientRect();
+      const isWide = rect.width > WIDE_BREAKPOINT;
+      const logicalHeight = isWide ? WIDE_SOURCE_H : SOURCE_H;
+      const logicalWidth = isWide
+        ? Math.round(logicalHeight * (rect.width / Math.max(1, rect.height)))
+        : SOURCE_W;
+      canvas.width = logicalWidth * dpr;
+      canvas.height = logicalHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      engine.layout(SOURCE_W, SOURCE_H);
+      engine.layout(logicalWidth, logicalHeight);
     };
 
     const frame = (now: number) => {
@@ -949,17 +1014,17 @@ export function InformationFlowBackdrop() {
       start();
     });
 
+    let resizeRaf = 0;
     const ro = new ResizeObserver(() => {
-      if (reduced) {
-        engine.syncFrom(uiRef.current);
-        engine.paint(ctx, 4, true, 0);
-      }
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(start);
     });
     ro.observe(wrap);
 
     return () => {
       running = false;
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(resizeRaf);
       ro.disconnect();
     };
   }, []);
@@ -1008,7 +1073,7 @@ export function InformationFlowBackdrop() {
       />
       <div
         ref={wrapRef}
-        className="pointer-events-none absolute inset-y-0 left-1/2 z-[2] w-full max-w-[1920px] -translate-x-1/2 overflow-hidden [container-type:inline-size]"
+        className="pointer-events-none absolute inset-0 z-[2] overflow-hidden [container-type:inline-size]"
       >
         <HeroWords
           ref={backWordsRef}
@@ -1040,6 +1105,7 @@ export function InformationFlowBackdrop() {
         setUi={setUi}
         imageName={heroImage.name}
         onImageChange={changeHeroImage}
+        onImageReset={resetHeroImage}
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
       />
@@ -1101,7 +1167,7 @@ const HeroWords = forwardRef<
   }
 >(function HeroWords({ layer, words, pos, wordColor, wordSize, depth, onDragStart }, ref) {
   const wordStyle = {
-    font: `500 ${wordSize / 19.2}cqw/0.92 ${workSans.style.fontFamily}, sans-serif`,
+    font: `500 min(${wordSize / 19.2}cqw, ${wordSize}px)/0.92 ${workSans.style.fontFamily}, sans-serif`,
     letterSpacing: "-0.03em",
     color: wordColor,
   } as const;
@@ -1178,6 +1244,7 @@ function HeroControls({
   setUi,
   imageName,
   onImageChange,
+  onImageReset,
   open,
   onToggle,
 }: {
@@ -1185,6 +1252,7 @@ function HeroControls({
   setUi: (update: HeroParams | ((prev: HeroParams) => HeroParams)) => void;
   imageName: string;
   onImageChange: (file: File) => void;
+  onImageReset: () => void;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -1193,7 +1261,7 @@ function HeroControls({
       setUi({ ...ui, [name]: parseFloat(event.target.value) });
     };
   const setColor =
-    (name: "bgColor" | "inkColor" | "wordColor") =>
+    (name: "bgColor" | "inkColor" | "inkColor2" | "inkColor3" | "inkColor4" | "wordColor") =>
     (event: { target: { value: string } }) => {
       setUi({ ...ui, [name]: event.target.value });
     };
@@ -1236,6 +1304,16 @@ function HeroControls({
                 event.target.value = "";
               }}
             />
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                onImageReset();
+              }}
+              className="border border-white/25 bg-transparent px-2 py-[5px] text-[#e9e9e9]/70"
+            >
+              reset
+            </button>
           </label>
           <label className={row}>
             <span className="w-[88px]">background</span>
@@ -1256,10 +1334,33 @@ function HeroControls({
             />
             <span className={val}>{fmt(ui.bgOpacity)}</span>
           </label>
-          <label className={row}>
+          <div className={row}>
             <span className="w-[88px]">text / threads</span>
-            <input type="color" value={ui.inkColor} onChange={setColor("inkColor")} className={swatch} />
-            <span className={hex}>{ui.inkColor}</span>
+            <input type="color" value={ui.inkColor} onChange={setColor("inkColor")} className="h-[22px] w-[30px] cursor-pointer border border-white/25 bg-transparent p-0" />
+            <input type="color" value={ui.inkColor2} onChange={setColor("inkColor2")} className="h-[22px] w-[30px] cursor-pointer border border-white/25 bg-transparent p-0" />
+            <input type="color" value={ui.inkColor3} onChange={setColor("inkColor3")} className="h-[22px] w-[30px] cursor-pointer border border-white/25 bg-transparent p-0" />
+            <input type="color" value={ui.inkColor4} onChange={setColor("inkColor4")} className="h-[22px] w-[30px] cursor-pointer border border-white/25 bg-transparent p-0" />
+            <button
+              type="button"
+              onClick={() => setUi({ ...ui, inkCycle: !ui.inkCycle })}
+              className="border border-white/25 bg-transparent px-2 py-[5px] text-white/80"
+            >
+              {ui.inkCycle ? "color cycle  ON" : "color cycle  OFF"}
+            </button>
+          </div>
+          <label className={row}>
+            <span className="w-[88px]">cycle time</span>
+            <input
+              type="range"
+              min={2}
+              max={90}
+              step={1}
+              value={ui.cycleSeconds}
+              onChange={setNum("cycleSeconds")}
+              className={slider}
+              style={{ accentColor: "#4cae7a" }}
+            />
+            <span className={val}>{String(Math.round(ui.cycleSeconds))}</span>
           </label>
           <label className={row}>
             <span className="w-[88px]">word color</span>
@@ -1407,8 +1508,8 @@ function HeroControls({
             <input
               type="range"
               min={0}
-              max={700}
-              step={2}
+              max={1400}
+              step={4}
               value={ui.marginLeft}
               onChange={setNum("marginLeft")}
               className={slider}
@@ -1421,8 +1522,8 @@ function HeroControls({
             <input
               type="range"
               min={0}
-              max={700}
-              step={2}
+              max={1400}
+              step={4}
               value={ui.marginRight}
               onChange={setNum("marginRight")}
               className={slider}
