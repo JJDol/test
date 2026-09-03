@@ -59,31 +59,31 @@ type HeroParams = {
 
 const DEFAULT_HERO: HeroParams = {
   bgColor: "#7697e5",
-  bgOpacity: 0.28,
-  inkColor: "#e9e9e9",
+  bgOpacity: 0.4,
+  inkColor: "#ffffff",
   inkColor2: "#ff6a4d",
   inkColor3: "#5b8dd9",
   inkColor4: "#4cae7a",
   inkCycle: false,
   cycleSeconds: 14,
-  wordColor: "#e9e9e9",
+  wordColor: "#ffffff",
   wordText: "Less Fragmented, More Connected",
   wordCount: 4,
   wordSize: 220,
-  parallax: 1,
-  depth: 0.35,
+  parallax: 2,
+  depth: 0.74,
   speed: 2.9,
   textScale: 0.75,
   weight: 400,
-  marginTop: 68,
-  marginBottom: 68,
+  marginTop: 118,
+  marginBottom: 42,
   marginLeft: 140,
   marginRight: 140,
   lineSpacing: 0.4,
-  tableRate: 1.1,
+  tableRate: 0.9,
   imageRate: 0,
-  lineOpacity: 1.1,
-  glide: 0,
+  lineOpacity: 0.6,
+  glide: 0.2,
   threadRate: 1,
   interference: 1,
   showTables: true,
@@ -945,8 +945,12 @@ export function InformationFlowBackdrop() {
       const px = params.parallax;
       const vh = window.innerHeight || 1;
       const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
-      const bgFade = clamp01(sy / (vh * 0.95));
-      const inkFade = clamp01((sy - vh * 0.65) / (vh * 0.3));
+      const fadeStart = vh * 0.52;
+      const fadeEnd = vh * 0.78;
+      const linearFade = clamp01((sy - fadeStart) / (fadeEnd - fadeStart));
+      const bgFade = 1 - (1 - linearFade) ** 2;
+      const inkLinear = clamp01((sy - vh * 0.54) / (vh * 0.24));
+      const inkFade = 1 - (1 - inkLinear) ** 2;
       const move = (el: HTMLElement | null, k: number) => {
         if (el) el.style.transform = `translate3d(0, ${-sy * k * px}px, 0)`;
       };

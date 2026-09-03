@@ -129,13 +129,13 @@ export function HowItWorksSection() {
 
   return (
     <section id="how-it-works" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
-      <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>
+      <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>
         How it works — product tour
       </p>
-      <h2 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#1a1a1a] md:whitespace-nowrap md:text-[48px] md:leading-[60px]">
+      <h2 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#202326] md:whitespace-nowrap md:text-[48px] md:leading-[60px]">
         From contract to finished documents in one sitting.
       </h2>
-      <p className="mt-5 max-w-[760px] text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#1a1a1a]/60">
+      <p className="mt-5 max-w-[760px] text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#202326]/60">
         An interactive walkthrough using sample data. No files are uploaded or production
         documents generated.
       </p>
@@ -144,7 +144,7 @@ export function HowItWorksSection() {
         ref={demoRef}
         className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12"
       >
-        <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#1a1a1a]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
+        <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#202326]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
           {step.caption}
         </p>
         <div className="order-2 mb-6 lg:order-none lg:col-start-1 lg:row-start-2 lg:mb-0 lg:flex lg:h-full lg:min-h-0">
@@ -217,7 +217,7 @@ export function HowItWorksSection() {
       <div className="mt-12 flex justify-center md:mt-16">
         <a
           href="/signup"
-          className="flex h-11 items-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
+          className="flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
         >
           SIGN UP
         </a>

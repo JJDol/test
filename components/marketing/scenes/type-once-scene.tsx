@@ -31,14 +31,14 @@ function FieldControl({
 }) {
   const filled = value.trim().length > 0;
   const isGeneral = tone === "general";
-  const border = filled ? "border-[#1a1a1a]/25" : "border-[#1a1a1a]/10";
+  const border = filled ? "border-[#202326]/25" : "border-[#202326]/10";
   const valueColor = filled
     ? isGeneral
       ? "text-violet-700"
       : "text-sky-800"
-    : "text-[#1a1a1a]/40";
+    : "text-[#202326]/40";
   const inputClass = cn(
-    "w-full rounded-[12px] border bg-white px-2 outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/35",
+    "w-full rounded-[12px] border bg-white px-2 outline-none placeholder:text-[#202326]/35 focus:border-[#202326]/35",
     valueColor,
     layout === "row" ? "h-7 text-[13px]" : "h-9 text-sm"
   );
@@ -68,7 +68,7 @@ function FieldControl({
           className={cn(inputClass, border, field.suffix && "pr-9")}
         />
         {field.suffix && (
-          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-[#1a1a1a]/40">
+          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-[#202326]/40">
             {field.suffix}
           </span>
         )}
@@ -78,7 +78,7 @@ function FieldControl({
   if (layout === "row") {
     return (
       <label className="flex items-center gap-3">
-        <span className="w-[52%] shrink-0 text-[12px] leading-tight text-[#1a1a1a]/70">
+        <span className="w-[52%] shrink-0 text-[12px] leading-tight text-[#202326]/70">
           {field.label}:
         </span>
         <div className="min-w-0 flex-1">{control}</div>
@@ -88,7 +88,7 @@ function FieldControl({
 
   return (
     <label className="flex h-full flex-col justify-center">
-      <span className="mb-1 block text-[12px] text-[#1a1a1a]/50">{field.label}</span>
+      <span className="mb-1 block text-[12px] text-[#202326]/50">{field.label}</span>
       {control}
     </label>
   );
@@ -159,11 +159,11 @@ export function TypeOnceScene({
     <div className="flex h-full min-h-0 flex-col">
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden p-3 md:grid-cols-[1.15fr_0.85fr] md:p-4">
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
-          <section className="demo-card-pop flex min-h-0 flex-1 flex-col rounded-xl border border-[#1a1a1a]/10 bg-white p-3">
-            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#1a1a1a]/75">
+          <section className="demo-card-pop flex min-h-0 flex-1 flex-col rounded-xl border border-[#202326]/10 bg-white p-3">
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#202326]/75">
               1. GENERAL VARIABLES
             </p>
-            <p className="mt-1 text-[11px] text-[#1a1a1a]/45">
+            <p className="mt-1 text-[11px] text-[#202326]/45">
               These fields raise every selected document together.
             </p>
             <div className="mt-2 grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-3">
@@ -180,10 +180,10 @@ export function TypeOnceScene({
           </section>
 
           <section
-            className="demo-card-pop shrink-0 rounded-xl border border-[#1a1a1a]/10 bg-white p-2.5"
+            className="demo-card-pop shrink-0 rounded-xl border border-[#202326]/10 bg-white p-2.5"
             style={{ animationDelay: "120ms" }}
           >
-            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#1a1a1a]/75">
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-[#202326]/75">
               2. DISCIPLINE VARIABLES
             </p>
             <div className="mt-1.5 flex gap-1">
@@ -195,8 +195,8 @@ export function TypeOnceScene({
                   className={cn(
                     "rounded-[12px] px-2 py-0.5 text-[11px] font-medium transition",
                     activeCategory === item.id
-                      ? "bg-[#E8E2D6] text-[#1a1a1a]"
-                      : "text-[#1a1a1a]/45 hover:text-[#1a1a1a]"
+                      ? "bg-[#E8E2D6] text-[#202326]"
+                      : "text-[#202326]/45 hover:text-[#202326]"
                   )}
                 >
                   {item.label}
@@ -223,11 +223,11 @@ export function TypeOnceScene({
           </section>
         </div>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#1a1a1a]/10 bg-white p-2.5">
-          <p className="text-[10px] font-semibold tracking-[0.18em] text-[#1a1a1a]/40">DOCUMENTS</p>
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#202326]/10 bg-white p-2.5">
+          <p className="text-[10px] font-semibold tracking-[0.18em] text-[#202326]/40">DOCUMENTS</p>
           <div className="mt-2 min-h-0 space-y-2.5 overflow-y-auto">
             {documents.length === 0 ? (
-              <p className="pt-6 text-center text-[12px] text-[#1a1a1a]/45">
+              <p className="pt-6 text-center text-[12px] text-[#202326]/45">
                 Choose documents in Create project.
               </p>
             ) : (
@@ -236,7 +236,7 @@ export function TypeOnceScene({
                 if (docs.length === 0) return null;
                 return (
                   <div key={discipline.id}>
-                    <p className="mb-1 text-[11px] font-semibold text-[#1a1a1a]">{discipline.label}</p>
+                    <p className="mb-1 text-[11px] font-semibold text-[#202326]">{discipline.label}</p>
                     <div className="space-y-0.5">
                       {docs.map((doc) => {
                         const value = documentProgress(
@@ -247,7 +247,7 @@ export function TypeOnceScene({
                         return (
                           <div key={doc.id} className="rounded-[12px] px-1.5 py-0.5">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="truncate text-[11px] text-[#1a1a1a]/75">{doc.name}</p>
+                              <p className="truncate text-[11px] text-[#202326]/75">{doc.name}</p>
                               <p
                                 className={cn(
                                   "shrink-0 font-mono text-[11px]",
@@ -257,7 +257,7 @@ export function TypeOnceScene({
                                 {value}%
                               </p>
                             </div>
-                            <div className="mt-0.5 h-1 overflow-hidden rounded bg-[#1a1a1a]/10">
+                            <div className="mt-0.5 h-1 overflow-hidden rounded bg-[#202326]/10">
                               <div
                                 className={cn(
                                   "h-1 rounded transition-[width] duration-500 ease-out",
@@ -282,7 +282,7 @@ export function TypeOnceScene({
         <button
           type="button"
           onClick={() => onNext({ general, category })}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#202326] transition hover:bg-[#ddd6c8]"
         >
             Generate Documents
             <Download className="h-4 w-4" />

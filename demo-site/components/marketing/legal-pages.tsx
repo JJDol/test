@@ -56,13 +56,13 @@ export function LegalPage({
   return (
     <MarketingPageShell>
       <article className="mx-auto w-full max-w-[880px] px-5 py-16 md:px-8 md:py-24">
-        <p className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>{eyebrow}</p>
+        <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>{eyebrow}</p>
         <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">{title}</h1>
-        <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#1a1a1a]/45`}>{updated}</p>
+        <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#202326]/45`}>{updated}</p>
         {introParagraphs.map((paragraph, index) => (
           <p
             key={paragraph}
-            className={`${index === 0 ? "mt-8" : "mt-4"} whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/75`}
+            className={`${index === 0 ? "mt-8" : "mt-4"} whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/75`}
           >
             <LegalText text={paragraph} />
           </p>
@@ -72,12 +72,12 @@ export function LegalPage({
             <section key={section.heading}>
               <h2 className="text-[22px] font-medium leading-[30px] tracking-[-1.76px]">{section.heading}</h2>
               {section.paragraphs?.map((paragraph) => (
-                <p key={paragraph} className="mt-4 whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80">
+                <p key={paragraph} className="mt-4 whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80">
                   <LegalText text={paragraph} />
                 </p>
               ))}
               {section.bullets && (
-                <ul className="mt-4 list-disc space-y-2 pl-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80">
+                <ul className="mt-4 list-disc space-y-2 pl-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80">
                   {section.bullets.map((bullet) => (
                     <li key={bullet}>
                       <LegalText text={bullet} />
@@ -86,7 +86,7 @@ export function LegalPage({
                 </ul>
               )}
               {section.trailingParagraphs?.map((paragraph) => (
-                <p key={paragraph} className="mt-4 whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80">
+                <p key={paragraph} className="mt-4 whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80">
                   <LegalText text={paragraph} />
                 </p>
               ))}
