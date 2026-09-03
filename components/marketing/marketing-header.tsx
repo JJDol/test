@@ -63,7 +63,7 @@ export function MarketingHeader({
     };
   }, [activeGroup, isClosing, menuOpen]);
 
-  const foreground = "text-[#1a1a1a]";
+  const foreground = "text-[#202326]";
 
   return (
     <header className={`${overlay ? "absolute inset-x-0 top-0 bg-transparent" : "relative bg-[#F5F2EB]"} z-40`}>
@@ -145,8 +145,8 @@ export function MarketingHeader({
             }}
             className={`flex size-10 items-center justify-center rounded-full border ${
               overlay
-                ? "border-black/30 text-[#1a1a1a] hover:bg-black/[0.06]"
-                : "border-black/15 text-[#1a1a1a] hover:bg-black/[0.04]"
+                ? "border-black/30 text-[#202326] hover:bg-black/[0.06]"
+                : "border-black/15 text-[#202326] hover:bg-black/[0.04]"
             }`}
           >
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -154,7 +154,7 @@ export function MarketingHeader({
 
           <nav
             aria-label="Main navigation"
-            className="absolute right-0 top-[52px] w-[164px] text-[#1a1a1a]"
+            className="absolute right-0 top-[52px] w-[164px] text-[#202326]"
           >
             <div
               className={`overflow-hidden rounded-xl [will-change:max-height] ${
@@ -249,7 +249,7 @@ export function MarketingHeader({
                             setMenuOpen(false);
                             setActiveGroup(null);
                           }}
-                          className="block px-4 py-2.5 text-sm text-[#1a1a1a]/75 hover:bg-black/[0.04] hover:text-[#1a1a1a]"
+                          className="block px-4 py-2.5 text-sm text-[#202326]/75 hover:bg-black/[0.04] hover:text-[#202326]"
                         >
                           {item.label}
                         </Link>

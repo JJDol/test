@@ -52,7 +52,7 @@ export function AboutSections() {
       <div
         role="tablist"
         aria-label="About us"
-        className="mt-8 inline-flex rounded-[12px] border border-[#1a1a1a]/15 p-1"
+        className="mt-8 inline-flex rounded-[12px] border border-[#202326]/15 p-1"
       >
         {TABS.map((item) => {
           const selected = tab === item.id;
@@ -66,7 +66,7 @@ export function AboutSections() {
               aria-controls={`panel-${item.id}`}
               onClick={() => selectTab(item.id)}
               className={`rounded-[12px] px-4 py-2 text-[15px] transition ${
-                selected ? "bg-[#1a1a1a] text-white" : "text-[#1a1a1a]/55 hover:text-[#1a1a1a]"
+                selected ? "bg-[#202326] text-white" : "text-[#202326]/55 hover:text-[#202326]"
               }`}
             >
               {item.label}
@@ -80,7 +80,7 @@ export function AboutSections() {
           id="panel-vision"
           role="tabpanel"
           aria-labelledby="tab-vision"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
           <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Our vision</h2>
           <p>
@@ -105,7 +105,7 @@ export function AboutSections() {
           id="panel-careers"
           role="tabpanel"
           aria-labelledby="tab-careers"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
           <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Careers</h2>
           <p>
@@ -120,7 +120,7 @@ export function AboutSections() {
           <button
             type="button"
             onClick={() => selectTab("contact")}
-            className="inline-flex h-11 items-center rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 tracking-normal text-white"
+            className="inline-flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 tracking-normal text-white"
           >
             SEND A NOTE
           </button>
@@ -132,13 +132,13 @@ export function AboutSections() {
           id="panel-contact"
           role="tabpanel"
           aria-labelledby="tab-contact"
-          className="mt-12 max-w-[720px] space-y-8 text-[17px] leading-[24.375px] tracking-[-1px] text-[#1a1a1a]/80"
+          className="mt-12 max-w-[720px] space-y-8 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
           <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Contact</h2>
           <p>For AutoDoc and ATI:lab, start here.</p>
           <dl className="grid gap-6 sm:grid-cols-2">
             <div>
-              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>STUDIO</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>STUDIO</dt>
               <dd className="mt-2">
                 ATI:lab
                 <br />
@@ -148,7 +148,7 @@ export function AboutSections() {
               </dd>
             </div>
             <div>
-              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>PHONE</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>PHONE</dt>
               <dd className="mt-2">
                 <a href="tel:+4541952400" className="hover:underline">
                   +45 41 95 24 00
@@ -156,7 +156,7 @@ export function AboutSections() {
               </dd>
             </div>
             <div>
-              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#1a1a1a]/45`}>TECH SUPPORT</dt>
+              <dt className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>TECH SUPPORT</dt>
               <dd className="mt-2">
                 <a href="/support" className="hover:underline">
                   AutoDoc support

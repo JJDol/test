@@ -180,7 +180,7 @@ export function GenerateScene({
           <div className="min-h-0 space-y-2 overflow-y-auto pr-0.5">
             {groups.map((group) => (
               <div key={group.id}>
-                <p className="mb-1 text-[11px] font-semibold text-[#1a1a1a]">{group.label}</p>
+                <p className="mb-1 text-[11px] font-semibold text-[#202326]">{group.label}</p>
                 <div className="space-y-1">
                   {group.docs.map((doc) => {
                     const index = documents.findIndex(
@@ -200,18 +200,18 @@ export function GenerateScene({
                         className={cn(
                           "flex w-full items-center gap-2 rounded-[12px] border px-2 py-1.5 text-left transition-colors",
                           isWritten
-                            ? "border-[#1a1a1a]/10 bg-white hover:bg-[#F5F2EB]"
-                            : "cursor-default border-[#1a1a1a]/10 bg-white/50",
-                          isPreview && "border-[#1a1a1a]/25 bg-[#E8E2D6]"
+                            ? "border-[#202326]/10 bg-white hover:bg-[#F5F2EB]"
+                            : "cursor-default border-[#202326]/10 bg-white/50",
+                          isPreview && "border-[#202326]/25 bg-[#E8E2D6]"
                         )}
                       >
                         <FileText
                           className={cn(
                             "h-3.5 w-3.5 shrink-0",
-                            isWritten ? "text-[#1a1a1a]" : "text-[#1a1a1a]/35"
+                            isWritten ? "text-[#202326]" : "text-[#202326]/35"
                           )}
                         />
-                        <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#1a1a1a]">
+                        <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#202326]">
                           {isWritten ? `${doc.name}.docx` : doc.name}
                         </p>
                         {isWritten ? (
@@ -240,7 +240,7 @@ export function GenerateScene({
                 typedValues={typedValues}
               />
             ) : (
-              <div className="flex h-full items-center justify-center rounded-[12px] border border-dashed border-[#1a1a1a]/15">
+              <div className="flex h-full items-center justify-center rounded-[12px] border border-dashed border-[#202326]/15">
                 <p className="text-[12px] text-zinc-500">Writing preview…</p>
               </div>
             )}
@@ -253,7 +253,7 @@ export function GenerateScene({
           type="button"
           onClick={onAskAutoDoc}
           disabled={total === 0 || written < total}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#202326] transition hover:bg-[#ddd6c8] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Ask AutoDoc
           <MessageCircle className="h-4 w-4" />

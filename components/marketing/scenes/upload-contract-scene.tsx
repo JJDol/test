@@ -334,7 +334,7 @@ export function UploadContractScene({
             type="button"
             onClick={handleCreate}
             disabled={creating}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2.5 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#ddd6c8] disabled:cursor-wait disabled:opacity-80"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2.5 text-sm font-medium text-[#202326] transition hover:bg-[#ddd6c8] disabled:cursor-wait disabled:opacity-80"
           >
             {creating ? (
               <>
@@ -357,17 +357,17 @@ function ExtractedRow({ field, visible }: { field: ExtractedField; visible: bool
       className={cn(
         "flex items-start justify-between gap-3 rounded-[12px] border px-3 py-2 text-xs transition-all duration-300",
         visible
-          ? "demo-fade-up border-[#1a1a1a]/10 bg-white text-[#1a1a1a]"
-          : "border-[#1a1a1a]/10 bg-white/40 text-transparent"
+          ? "demo-fade-up border-[#202326]/10 bg-white text-[#202326]"
+          : "border-[#202326]/10 bg-white/40 text-transparent"
       )}
     >
       <div className="min-w-0">
-        <p className={cn("text-[10px] tracking-wide", visible ? "text-[#1a1a1a]/45" : "text-transparent")}>
+        <p className={cn("text-[10px] tracking-wide", visible ? "text-[#202326]/45" : "text-transparent")}>
           {field.label}
         </p>
         <p className="truncate font-medium">{field.value}</p>
       </div>
-      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1a1a1a]/40" />}
+      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#202326]/40" />}
     </li>
   );
 }

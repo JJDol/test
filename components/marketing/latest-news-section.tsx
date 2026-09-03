@@ -17,7 +17,7 @@ const featuredArticles = FEATURED_ORDER.flatMap((slug) => {
 export function LatestNewsSection() {
   return (
     <section id="news" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
-      <h2 className="max-w-[896px] text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#1a1a1a] md:text-[48px] md:leading-[60px]">
+      <h2 className="max-w-[896px] text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#202326] md:text-[48px] md:leading-[60px]">
         See the latest from AutoDoc
       </h2>
 
@@ -31,12 +31,12 @@ export function LatestNewsSection() {
             />
             <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
               <div>
-                <h3 className="text-[22px] font-medium leading-[30px] tracking-[-1.76px] text-[#1a1a1a] md:text-[28px] md:tracking-[-2.24px]">{item.title}</h3>
-                <p className="mt-2 line-clamp-3 text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#1a1a1a]/55">{item.preview}</p>
+                <h3 className="text-[22px] font-medium leading-[30px] tracking-[-1.76px] text-[#202326] md:text-[28px] md:tracking-[-2.24px]">{item.title}</h3>
+                <p className="mt-2 line-clamp-3 text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#202326]/55">{item.preview}</p>
               </div>
               <Link
                 href={`/news/${item.slug}`}
-                className="mt-2 inline-flex items-center gap-0.5 text-[14px] font-medium text-[#1a1a1a]"
+                className="mt-2 inline-flex items-center gap-0.5 text-[14px] font-medium text-[#202326]"
               >
                 Learn more
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
