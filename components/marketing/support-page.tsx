@@ -5,7 +5,7 @@ import { MarketingPageShell } from "@/components/marketing/marketing-page-shell"
 import { marketingMono } from "@/lib/marketing/fonts";
 
 const inputClass =
-  "mt-2 h-[46px] w-full rounded-full border border-[#1a1a1a]/15 bg-white/50 px-5 text-[15px] leading-[24.375px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
+  "mt-2 h-[46px] w-full rounded-[12px] border border-[#1a1a1a]/15 bg-white/50 px-5 text-[15px] leading-[24.375px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40";
 
 export function SupportPage() {
   return (
@@ -54,12 +54,12 @@ export function SupportPage() {
                 required
                 rows={6}
                 placeholder="What you need help with"
-                className="mt-2 h-[146px] w-full resize-none rounded-2xl border border-[#1a1a1a]/15 bg-white/50 px-5 py-3 text-[15px] leading-[24.375px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40"
+                className="mt-2 h-[146px] w-full resize-none rounded-[12px] border border-[#1a1a1a]/15 bg-white/50 px-5 py-3 text-[15px] leading-[24.375px] tracking-[-0.6px] outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/40"
               />
             </label>
             <button
               type="submit"
-              className="mt-8 h-11 rounded-full bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
+              className="mt-8 h-11 rounded-[12px] bg-[#1a1a1a] px-8 text-[15px] font-medium leading-5 text-white"
             >
               SEND
             </button>

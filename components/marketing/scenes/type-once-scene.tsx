@@ -38,7 +38,7 @@ function FieldControl({
       : "text-sky-800"
     : "text-[#1a1a1a]/40";
   const inputClass = cn(
-    "w-full rounded-md border bg-white px-2 outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/35",
+    "w-full rounded-[12px] border bg-white px-2 outline-none placeholder:text-[#1a1a1a]/35 focus:border-[#1a1a1a]/35",
     valueColor,
     layout === "row" ? "h-7 text-[13px]" : "h-9 text-sm"
   );
@@ -193,7 +193,7 @@ export function TypeOnceScene({
                   type="button"
                   onClick={() => setActiveCategory(item.id)}
                   className={cn(
-                    "rounded-md px-2 py-0.5 text-[11px] font-medium transition",
+                    "rounded-[12px] px-2 py-0.5 text-[11px] font-medium transition",
                     activeCategory === item.id
                       ? "bg-[#E8E2D6] text-[#1a1a1a]"
                       : "text-[#1a1a1a]/45 hover:text-[#1a1a1a]"
@@ -245,7 +245,7 @@ export function TypeOnceScene({
                           categoryFilled
                         );
                         return (
-                          <div key={doc.id} className="rounded-md px-1.5 py-0.5">
+                          <div key={doc.id} className="rounded-[12px] px-1.5 py-0.5">
                             <div className="flex items-center justify-between gap-2">
                               <p className="truncate text-[11px] text-[#1a1a1a]/75">{doc.name}</p>
                               <p

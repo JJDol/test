@@ -840,9 +840,7 @@ export function InformationFlowBackdrop() {
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
   const [panelOpen, setPanelOpen] = useState(false);
   const [heroImage, setHeroImage] = useState({
-    center: "/images/marketing/hero-site.jpg",
-    left: "/images/marketing/hero-edge-left.png",
-    right: "/images/marketing/hero-edge-right.png",
+    src: "/images/marketing/hero-site.jpg",
     name: "Default image",
   });
   const uploadedImageUrl = useRef<string | null>(null);
@@ -854,47 +852,16 @@ export function InformationFlowBackdrop() {
 
   const changeHeroImage = (file: File) => {
     const nextUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const edgeDataUrl = (sourceX: number) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 1;
-        canvas.height = image.naturalHeight;
-        const context = canvas.getContext("2d");
-        context?.drawImage(
-          image,
-          sourceX,
-          0,
-          1,
-          image.naturalHeight,
-          0,
-          0,
-          1,
-          image.naturalHeight,
-        );
-        return canvas.toDataURL("image/png");
-      };
-
-      if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
-      uploadedImageUrl.current = nextUrl;
-      setHeroImage({
-        center: nextUrl,
-        left: edgeDataUrl(0),
-        right: edgeDataUrl(image.naturalWidth - 1),
-        name: file.name,
-      });
-    };
-    image.onerror = () => URL.revokeObjectURL(nextUrl);
-    image.src = nextUrl;
+    if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
+    uploadedImageUrl.current = nextUrl;
+    setHeroImage({ src: nextUrl, name: file.name });
   };
 
   const resetHeroImage = () => {
     if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
     uploadedImageUrl.current = null;
     setHeroImage({
-      center: "/images/marketing/hero-site.jpg",
-      left: "/images/marketing/hero-edge-left.png",
-      right: "/images/marketing/hero-edge-right.png",
+      src: "/images/marketing/hero-site.jpg",
       name: "Default image",
     });
   };
@@ -1039,27 +1006,9 @@ export function InformationFlowBackdrop() {
       />
       <div ref={photoRef} className="pointer-events-none absolute inset-0 z-0">
         <img
-          src={heroImage.left}
-          alt=""
-          className="absolute inset-y-0 left-0 h-full"
-          style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
-        />
-        <img
-          src={heroImage.right}
-          alt=""
-          className="absolute inset-y-0 right-0 h-full"
-          style={{ width: "max(0px, calc(50% - 80svh + 160px))" }}
-        />
-        <img
-          src={heroImage.center}
+          src={heroImage.src}
           alt=""
           className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
-          style={{
-            WebkitMaskImage:
-              "linear-gradient(to right, transparent, black 7%, black 93%, transparent)",
-            maskImage:
-              "linear-gradient(to right, transparent, black 7%, black 93%, transparent)",
-          }}
         />
       </div>
       <div

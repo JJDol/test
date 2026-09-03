@@ -169,7 +169,7 @@ export function MarketingHeader({
                   : "none",
               }}
             >
-              <div className="rounded-xl border border-black/10 bg-[#F5F2EB] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
+              <div className="rounded-xl border border-black/10 bg-white py-2 shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
                 {MARKETING_NAV.map((group, index) => (
                   <div
                     key={group.label}
@@ -224,12 +224,28 @@ export function MarketingHeader({
                         : "none",
                     }}
                   >
-                    <div className="w-[176px] rounded-xl border border-black/10 bg-[#F5F2EB] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
+                    <div className="w-[176px] rounded-xl border border-black/10 bg-white py-2 shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
                       {group.items.map((item) => (
                         <Link
                           key={item.label}
                           href={item.href}
-                          onClick={() => {
+                          onClick={(event) => {
+                            const destination = new URL(item.href, window.location.origin);
+                            const currentPath = window.location.pathname.replace(/\/$/, "");
+                            const destinationPath = destination.pathname.replace(/\/$/, "");
+                            if (
+                              currentPath === "/about" &&
+                              destinationPath === "/about" &&
+                              destination.hash
+                            ) {
+                              event.preventDefault();
+                              window.history.pushState(
+                                null,
+                                "",
+                                `${destination.pathname}${destination.hash}`,
+                              );
+                              window.dispatchEvent(new Event("hashchange"));
+                            }
                             setMenuOpen(false);
                             setActiveGroup(null);
                           }}

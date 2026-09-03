@@ -53,7 +53,7 @@ export function NewsArticlePage({ article }: { article: NewsArticle }) {
         ) : null}
       </article>
 
-      <section className="mx-auto w-full max-w-[1760px] px-5 pb-24 md:px-8 lg:px-10">
+      <section className="mx-auto w-full max-w-[1120px] px-5 pb-24 md:px-8 lg:px-10">
         <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Discover more</h2>
         <div className="mt-10 grid gap-10 sm:grid-cols-3">
           {related.map((item) => (
