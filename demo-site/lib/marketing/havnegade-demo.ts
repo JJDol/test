@@ -71,7 +71,8 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "ask",
     number: 5,
     label: "Ask AutoDoc",
-    caption: "Choose a question. AutoDoc answers from this project and from BR18.",
+    caption:
+      "Sample questions are for this demo. In AutoDoc, ask your own — answers draw on project data and BR18.",
     windowTitle: "AUTODOC — ASSISTANT",
     status: "ANSWERED FROM PROJECT + BR18",
   },

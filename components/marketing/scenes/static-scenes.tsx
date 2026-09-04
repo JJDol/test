@@ -262,7 +262,8 @@ export function AskAutodocScene({
           </div>
         ) : (
           <div className="max-w-[92%] rounded-[12px] border border-[#202326]/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/70">
-            I can answer from this project and from BR18. Choose a question above.
+            Pick a sample question above. In AutoDoc, you can ask anything — answers draw on
+            this project and BR18.
           </div>
         )}
       </div>
