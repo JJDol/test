@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleSection } from "@/lib/marketing/fonts";
 
 type AboutTab = "vision" | "careers" | "contact";
 
@@ -80,9 +80,10 @@ export function AboutSections() {
           id="panel-vision"
           role="tabpanel"
           aria-labelledby="tab-vision"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
+          className="mt-12 space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
-          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Our vision</h2>
+          <h2 className={marketingTitleSection}>Our vision</h2>
+          <div className="max-w-[720px] space-y-5">
           <p>
             Project knowledge should be entered once, stay current, and appear correctly in every
             document that depends on it. That is the job AutoDoc is built to do.
@@ -97,6 +98,7 @@ export function AboutSections() {
             joint-development partner. The aim is a tool that feels native to architecture and
             construction — not a generic document generator dropped onto a building project.
           </p>
+          </div>
         </section>
       ) : null}
 
@@ -105,9 +107,10 @@ export function AboutSections() {
           id="panel-careers"
           role="tabpanel"
           aria-labelledby="tab-careers"
-          className="mt-12 max-w-[720px] space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
+          className="mt-12 space-y-5 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
-          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Careers</h2>
+          <h2 className={marketingTitleSection}>Careers</h2>
+          <div className="max-w-[720px] space-y-5">
           <p>
             We are a small team in Copenhagen, working with colleagues in Seoul. The work sits
             between product, design, and the reality of Danish building documentation.
@@ -124,6 +127,7 @@ export function AboutSections() {
           >
             SEND A NOTE
           </button>
+          </div>
         </section>
       ) : null}
 
@@ -132,9 +136,10 @@ export function AboutSections() {
           id="panel-contact"
           role="tabpanel"
           aria-labelledby="tab-contact"
-          className="mt-12 max-w-[720px] space-y-8 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
+          className="mt-12 space-y-8 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80"
         >
-          <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Contact</h2>
+          <h2 className={marketingTitleSection}>Contact</h2>
+          <div className="max-w-[720px] space-y-8">
           <p>For AutoDoc and ATI:lab, start here.</p>
           <dl className="grid gap-6 sm:grid-cols-2">
             <div>
@@ -164,6 +169,7 @@ export function AboutSections() {
               </dd>
             </div>
           </dl>
+          </div>
         </section>
       ) : null}
     </>

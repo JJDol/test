@@ -1,6 +1,6 @@
 import { FileText, Play } from "lucide-react";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleCard, marketingTitleDisplayNowrap, marketingTitleSectionWide } from "@/lib/marketing/fonts";
 
 const TUTORIALS = [
   {
@@ -35,7 +35,7 @@ export function TutorialsPage() {
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>
           Product
         </p>
-        <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
+        <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>
           Tutorials
         </h1>
         <p className="mt-6 max-w-[720px] text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/70">
@@ -47,7 +47,7 @@ export function TutorialsPage() {
           <p className={`${marketingMono.className} text-[11px] leading-5 text-[#202326]/45`}>
             IN PROGRESS
           </p>
-          <p className="mt-1 text-[22px] font-medium leading-[30px] tracking-[-1.76px]">
+          <p className="mt-1 text-[22px] font-medium leading-[30px] tracking-[-1.76px] md:whitespace-nowrap">
             Tutorials are currently in production.
           </p>
           <p className="mt-2 text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#202326]/65">
@@ -58,7 +58,7 @@ export function TutorialsPage() {
 
         <section className="mt-16">
           <div className="flex items-end justify-between gap-6 border-b border-[#202326]/15 pb-4">
-            <h2 className="text-[28px] font-medium leading-[36px] tracking-[-2px]">
+            <h2 className={marketingTitleSectionWide}>
               Video tutorials
             </h2>
             <p className={`${marketingMono.className} text-[11px] leading-5 text-[#202326]/45`}>
@@ -77,7 +77,7 @@ export function TutorialsPage() {
                 <p className={`${marketingMono.className} mt-5 text-[11px] leading-5 text-[#202326]/45`}>
                   TUTORIAL {String(index + 1).padStart(2, "0")}
                 </p>
-                <h3 className="mt-1 text-[22px] font-medium leading-[30px] tracking-[-1.76px]">
+                <h3 className={`${marketingTitleCard} mt-1`}>
                   {tutorial.title}
                 </h3>
                 <p className="mt-2 text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#202326]/60">
@@ -90,7 +90,7 @@ export function TutorialsPage() {
 
         <section className="mt-20">
           <div className="border-b border-[#202326]/15 pb-4">
-            <h2 className="text-[28px] font-medium leading-[36px] tracking-[-2px]">
+            <h2 className={marketingTitleSectionWide}>
               Guides and materials
             </h2>
           </div>

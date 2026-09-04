@@ -16,7 +16,7 @@ import { CreateProjectScene } from "@/components/marketing/scenes/create-project
 import { TypeOnceScene } from "@/components/marketing/scenes/type-once-scene";
 import { GenerateScene } from "@/components/marketing/scenes/generate-scene";
 import { AskAutodocScene } from "@/components/marketing/scenes/static-scenes";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleDisplay } from "@/lib/marketing/fonts";
 
 export function HowItWorksSection() {
   const demoRef = useRef<HTMLDivElement>(null);
@@ -132,8 +132,8 @@ export function HowItWorksSection() {
       <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>
         How it works — product tour
       </p>
-      <h2 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#202326] md:whitespace-nowrap md:text-[48px] md:leading-[60px]">
-        From contract to finished documents in one sitting.
+      <h2 className={`mt-4 ${marketingTitleDisplay} text-[#202326]`}>
+        From Contract to Project Documents in one seamless flow
       </h2>
       <p className="mt-5 max-w-[760px] text-[15px] leading-[24.375px] tracking-[-0.6px] text-[#202326]/60">
         An interactive walkthrough using sample data. No files are uploaded or production
@@ -214,13 +214,16 @@ export function HowItWorksSection() {
         </div>
       </div>
 
-      <div className="mt-12 flex justify-center md:mt-16">
-        <a
-          href="/signup"
-          className="flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
-        >
-          SIGN UP
-        </a>
+      <div className="mt-12 grid md:mt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:gap-x-12">
+        <div aria-hidden className="hidden lg:block" />
+        <div className="flex justify-center lg:justify-end">
+          <a
+            href="/signup"
+            className="flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
+          >
+            SIGN UP
+          </a>
+        </div>
       </div>
     </section>
   );

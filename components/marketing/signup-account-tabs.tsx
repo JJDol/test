@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { APP_SIGN_IN } from "@/lib/marketing/links";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleTab } from "@/lib/marketing/fonts";
 
 type AccountTab = "company-admin" | "individual";
 
@@ -69,17 +69,17 @@ export function SignupAccountTabs() {
           id="panel-company-admin"
           role="tabpanel"
           aria-labelledby="tab-company-admin"
-          className="mt-12 max-w-[640px]"
+          className="mt-12"
         >
           <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>COMPANY ADMIN</p>
-          <h2 className="mt-4 text-[36px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
+          <h2 className={`mt-4 ${marketingTitleTab}`}>
             First account for the practice
           </h2>
-          <p className="mt-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/75">
+          <p className="mt-6 max-w-[640px] text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/75">
             Created by ATI:lab. This person owns the company workspace, invites colleagues, and
             manages who can use AutoDoc.
           </p>
-          <form className="mt-10">
+          <form className="mt-10 max-w-[640px]">
             <label className="block text-sm text-[#202326]/70">
               Company
               <input
@@ -126,17 +126,17 @@ export function SignupAccountTabs() {
           id="panel-individual"
           role="tabpanel"
           aria-labelledby="tab-individual"
-          className="mt-12 max-w-[640px]"
+          className="mt-12"
         >
           <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>INDIVIDUAL ACCOUNT</p>
-          <h2 className="mt-4 text-[36px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
+          <h2 className={`mt-4 ${marketingTitleTab}`}>
             Join the company workspace
           </h2>
-          <p className="mt-6 text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/75">
+          <p className="mt-6 max-w-[640px] text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/75">
             Created by your company admin, not on this page. You get an email invite, set a
             password, and then you only log in.
           </p>
-          <ol className="mt-8 space-y-4 text-[16px] leading-relaxed text-[#202326]/70">
+          <ol className="mt-8 max-w-[640px] space-y-4 text-[16px] leading-relaxed text-[#202326]/70">
             <li>
               <span className={`${marketingMono.className} text-[12px] text-[#202326]/45`}>01 — </span>
               Ask the company admin to invite you.
@@ -152,11 +152,11 @@ export function SignupAccountTabs() {
           </ol>
           <a
             href={APP_SIGN_IN}
-            className="mt-10 flex h-11 w-full items-center justify-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
+            className="mt-10 flex h-11 w-full max-w-[640px] items-center justify-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
           >
             LOG IN
           </a>
-          <p className="mt-4 text-[13px] leading-relaxed text-[#202326]/45">
+          <p className="mt-4 max-w-[640px] text-[13px] leading-relaxed text-[#202326]/45">
             No invite yet? Ask the person who runs AutoDoc in your practice, or write to{" "}
             <a href="/support" className="underline underline-offset-2">
               tech support
