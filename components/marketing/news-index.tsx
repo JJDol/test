@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { NEWS_ARTICLES } from "@/lib/marketing/news";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleDisplayNowrap } from "@/lib/marketing/fonts";
 
 const articles = [...NEWS_ARTICLES].sort(
   (a, b) => Date.parse(b.date) - Date.parse(a.date),
@@ -12,7 +12,7 @@ export function NewsIndex() {
     <MarketingPageShell>
       <main className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>Resources</p>
-        <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">News</h1>
+        <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>News</h1>
 
         <ul className="mt-12 border-t border-[#202326]/12">
           {articles.map((article) => (

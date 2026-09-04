@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { NEWS_ARTICLES } from "@/lib/marketing/news";
+import { marketingTitleDisplayNowrap } from "@/lib/marketing/fonts";
 
 const FEATURED_ORDER = [
   "atilab-buildersgate-partnership",
@@ -17,7 +18,7 @@ const featuredArticles = FEATURED_ORDER.flatMap((slug) => {
 export function LatestNewsSection() {
   return (
     <section id="news" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
-      <h2 className="max-w-[896px] text-[40px] font-normal leading-[1.15] tracking-[-1px] text-[#202326] md:text-[48px] md:leading-[60px]">
+      <h2 className={`${marketingTitleDisplayNowrap} text-[#202326]`}>
         See the latest from AutoDoc
       </h2>
 

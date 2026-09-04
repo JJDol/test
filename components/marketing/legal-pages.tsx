@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleDisplayNowrap, marketingTitleSection } from "@/lib/marketing/fonts";
 
 export type LegalSection = {
   heading: string;
@@ -57,7 +57,7 @@ export function LegalPage({
     <MarketingPageShell>
       <article className="mx-auto w-full max-w-[880px] px-5 py-16 md:px-8 md:py-24">
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>{eyebrow}</p>
-        <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">{title}</h1>
+        <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>{title}</h1>
         <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#202326]/45`}>{updated}</p>
         {introParagraphs.map((paragraph, index) => (
           <p
@@ -70,7 +70,7 @@ export function LegalPage({
         <div className="mt-12 space-y-10">
           {sections.map((section) => (
             <section key={section.heading}>
-              <h2 className="text-[22px] font-medium leading-[30px] tracking-[-1.76px]">{section.heading}</h2>
+              <h2 className={`${marketingTitleSection} text-[22px] leading-[30px] tracking-[-1.76px]`}>{section.heading}</h2>
               {section.paragraphs?.map((paragraph) => (
                 <p key={paragraph} className="mt-4 whitespace-pre-line text-justify text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/80">
                   <LegalText text={paragraph} />

@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleDisplayNowrap } from "@/lib/marketing/fonts";
 
 const inputClass =
   "mt-2 h-[46px] w-full rounded-[12px] border border-[#202326]/15 bg-white/50 px-5 text-[15px] leading-[24.375px] tracking-[-0.6px] outline-none placeholder:text-[#202326]/35 focus:border-[#202326]/40";
@@ -12,7 +12,7 @@ export function SupportPage() {
     <MarketingPageShell>
       <main className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>Resources</p>
-        <h1 className="mt-4 max-w-[860px] text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
+        <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>
           Tech support
         </h1>
 

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { DiscoverMoreNews } from "@/components/marketing/discover-more-news";
 import { getOtherNews, type NewsArticle } from "@/lib/marketing/news";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
 import { marketingMono } from "@/lib/marketing/fonts";
 
 export function NewsArticlePage({ article }: { article: NewsArticle }) {
-  const related = getOtherNews(article.slug).slice(0, 3);
+  const related = getOtherNews(article.slug);
 
   return (
     <MarketingPageShell>
@@ -53,18 +54,7 @@ export function NewsArticlePage({ article }: { article: NewsArticle }) {
         ) : null}
       </article>
 
-      <section className="mx-auto w-full max-w-[1120px] px-5 pb-24 md:px-8 lg:px-10">
-        <h2 className="text-[28px] font-medium leading-[30px] tracking-[-2.24px]">Discover more</h2>
-        <div className="mt-10 grid gap-10 sm:grid-cols-3">
-          {related.map((item) => (
-            <Link key={item.slug} href={`/news/${item.slug}`} className="group block">
-              <img src={item.image} alt="" className="aspect-[16/9] w-full rounded-xl object-cover" />
-              <p className={`${marketingMono.className} mt-4 text-[12px] leading-5 text-[#202326]/45`}>{item.date}</p>
-              <h3 className="mt-1 text-[17px] font-medium leading-[24.375px] tracking-[-1px] group-hover:underline">{item.title}</h3>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <DiscoverMoreNews articles={related} />
 
     </MarketingPageShell>
   );

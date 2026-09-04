@@ -1,6 +1,7 @@
 import { MARKETING_FEATURES } from "@/components/marketing/key-features-section";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
-import { marketingMono } from "@/lib/marketing/fonts";
+import { marketingMono, marketingTitleDisplayNowrap, marketingTitleFeature } from "@/lib/marketing/fonts";
+import { cn } from "@/lib/utils";
 
 export function FeaturesPage() {
   return (
@@ -9,7 +10,7 @@ export function FeaturesPage() {
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>
           PRODUCT
         </p>
-        <h1 className="mt-4 text-[40px] font-normal leading-[1.15] tracking-[-1px] md:text-[48px] md:leading-[60px]">
+        <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>
           Features
         </h1>
         <p className="mt-6 max-w-[760px] text-[17px] leading-[24.375px] tracking-[-1px] text-[#202326]/70">
@@ -37,7 +38,12 @@ export function FeaturesPage() {
                 >
                   FEATURE {String(index + 1).padStart(2, "0")}
                 </p>
-                <h2 className="mt-3 text-[30px] font-medium leading-[38px] tracking-[-2px] md:text-[38px] md:leading-[46px]">
+                <h2
+                  className={cn(
+                    marketingTitleFeature,
+                    feature.title.length <= 24 && "md:whitespace-nowrap",
+                  )}
+                >
                   {feature.title}
                 </h2>
                 <p className="mt-6 text-[22px] font-medium leading-[30px] tracking-[-1.92px] text-[#202326]/45 md:text-[24px]">

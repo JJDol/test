@@ -278,11 +278,11 @@ export function TypeOnceScene({
         </section>
       </div>
 
-      <div className="shrink-0 px-4 py-1.5 md:px-5">
+      <div className="shrink-0 px-3 py-1.5 md:px-4">
         <button
           type="button"
           onClick={() => onNext({ general, category })}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2 text-sm font-medium text-[#202326] transition hover:bg-[#ddd6c8]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#8B8B89] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7d7d7b]"
         >
             Generate Documents
             <Download className="h-4 w-4" />

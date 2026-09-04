@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { marketingMono } from "@/lib/marketing/fonts";
+import { cn } from "@/lib/utils";
 
 export const MARKETING_FEATURES = [
   {
@@ -42,7 +43,12 @@ export function KeyFeaturesSection() {
       <div className="mt-2 grid gap-12 md:grid-cols-3 md:gap-x-10 lg:gap-x-16">
         {MARKETING_FEATURES.map((feature) => (
           <article key={feature.title} className="flex flex-col">
-            <h3 className="text-[24px] font-medium leading-[30px] tracking-[-1.92px] text-[#202326] md:text-[28px] md:tracking-[-2.24px]">
+            <h3
+              className={cn(
+                "text-[24px] font-medium leading-[30px] tracking-[-1.92px] text-[#202326] md:text-[28px] md:tracking-[-2.24px]",
+                feature.title.length <= 24 && "md:whitespace-nowrap",
+              )}
+            >
               {feature.title}
             </h3>
             <Link

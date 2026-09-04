@@ -334,7 +334,7 @@ export function UploadContractScene({
             type="button"
             onClick={handleCreate}
             disabled={creating}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8E2D6] px-4 py-2.5 text-sm font-medium text-[#202326] transition hover:bg-[#ddd6c8] disabled:cursor-wait disabled:opacity-80"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#8B8B89] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#7d7d7b] disabled:cursor-wait disabled:opacity-80"
           >
             {creating ? (
               <>
