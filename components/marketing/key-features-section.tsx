@@ -75,7 +75,7 @@ function FeatureImage({ feature }: { feature: MarketingFeature }) {
 
 export function KeyFeaturesSection() {
   return (
-    <section id="features" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:pb-24 md:pt-[136px] lg:px-10">
+    <section id="features" className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:pb-24 md:pt-[146px] lg:px-10">
       <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>Why choose Autodoc?</p>
 
       <div className="mt-2 grid gap-12 md:grid-cols-3 md:gap-x-10 lg:gap-x-16">

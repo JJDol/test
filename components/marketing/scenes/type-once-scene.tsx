@@ -14,6 +14,7 @@ import {
   type DemoPickedDocs,
   type DemoTypedValues,
 } from "@/lib/marketing/havnegade-demo";
+import { demoPanelClass } from "@/lib/marketing/demo-colors";
 import { cn } from "@/lib/utils";
 
 function FieldControl({
@@ -34,8 +35,8 @@ function FieldControl({
   const border = filled ? "border-[#202326]/25" : "border-[#202326]/10";
   const valueColor = filled
     ? isGeneral
-      ? "text-violet-700"
-      : "text-sky-800"
+      ? "text-[#abcfa9]"
+      : "text-[#eea2a2]"
     : "text-[#202326]/40";
   const inputClass = cn(
     "w-full rounded-[12px] border bg-white px-2 outline-none placeholder:text-[#202326]/35 focus:border-[#202326]/35",
@@ -157,9 +158,9 @@ export function TypeOnceScene({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden p-3 md:grid-cols-[1.15fr_0.85fr] md:p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden md:grid-cols-[1.15fr_0.85fr]">
         <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
-          <section className="demo-card-pop flex min-h-0 flex-1 flex-col rounded-xl border border-[#202326]/10 bg-white p-3">
+          <section className={cn(demoPanelClass, "flex min-h-0 flex-1 flex-col")}>
             <p className="text-[12px] font-semibold tracking-[0.16em] text-[#202326]/75">
               1. GENERAL VARIABLES
             </p>
@@ -180,7 +181,7 @@ export function TypeOnceScene({
           </section>
 
           <section
-            className="demo-card-pop shrink-0 rounded-xl border border-[#202326]/10 bg-white p-2.5"
+            className={cn(demoPanelClass, "shrink-0")}
             style={{ animationDelay: "120ms" }}
           >
             <p className="text-[12px] font-semibold tracking-[0.16em] text-[#202326]/75">
@@ -223,7 +224,7 @@ export function TypeOnceScene({
           </section>
         </div>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#202326]/10 bg-white p-2.5">
+        <section className={cn(demoPanelClass, "flex min-h-0 flex-col overflow-hidden")}>
           <p className="text-[10px] font-semibold tracking-[0.18em] text-[#202326]/40">DOCUMENTS</p>
           <div className="mt-2 min-h-0 space-y-2.5 overflow-y-auto">
             {documents.length === 0 ? (
@@ -278,7 +279,7 @@ export function TypeOnceScene({
         </section>
       </div>
 
-      <div className="shrink-0 px-3 py-1.5 md:px-4">
+      <div className="shrink-0 pt-2">
         <button
           type="button"
           onClick={() => onNext({ general, category })}

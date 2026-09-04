@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ArrowUp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEMO_DISCIPLINES,
   SAMPLE_PROJECT,
@@ -9,7 +10,19 @@ import {
   type DemoTypedValues,
 } from "@/lib/marketing/havnegade-demo";
 import { demoColors } from "@/lib/marketing/demo-colors";
+import { marketingMono } from "@/lib/marketing/fonts";
 import { cn } from "@/lib/utils";
+
+type AskItem = {
+  id: string;
+  question: string;
+  answer: string;
+  sources: string[];
+};
+
+type ChatMessage =
+  | { id: string; role: "user"; text: string }
+  | { id: string; role: "assistant"; text: string; sources: string[] };
 
 const QUESTIONS = [
   {
@@ -33,7 +46,7 @@ function joinFacts(facts: string[]) {
   return `${facts.slice(0, -1).join(", ")}, and ${facts[facts.length - 1]}`;
 }
 
-function buildingSizeQuestion(typedValues: DemoTypedValues) {
+function buildingSizeQuestion(typedValues: DemoTypedValues): AskItem {
   const facts: string[] = [];
   const sources = new Set<string>();
   const general = typedValues.general;
@@ -63,15 +76,12 @@ function buildingSizeQuestion(typedValues: DemoTypedValues) {
     question: "How large is the building?",
     answer: summary
       ? `The building has ${summary}.`
-      : `The conversion provides ${SAMPLE_PROJECT.units} over ${SAMPLE_PROJECT.storeys}. Gross floor area is ${SAMPLE_PROJECT.area}. Completion is ${SAMPLE_PROJECT.deadline}.`,
-    sources:
-      sources.size > 0
-        ? Array.from(sources)
-        : ["Enterprise agreement", `GFA ${SAMPLE_PROJECT.area}`],
+      : `Gross floor area and other general variables have not been entered in “Type once” yet. From the enterprise agreement, ${SAMPLE_PROJECT.name} is planned as ${SAMPLE_PROJECT.units} over ${SAMPLE_PROJECT.storeys}, with completion ${SAMPLE_PROJECT.deadline}.`,
+    sources: sources.size > 0 ? Array.from(sources) : ["Enterprise agreement", "Type once · Not entered"],
   };
 }
 
-function responsibilityQuestion(typedValues: DemoTypedValues, pickedDocs: DemoPickedDocs) {
+function responsibilityQuestion(typedValues: DemoTypedValues, pickedDocs: DemoPickedDocs): AskItem {
   const selected = selectedDemoDocuments(pickedDocs);
   const document =
     selected.find((item) => typedValues.category[item.disciplineId].responsible?.trim()) ??
@@ -95,7 +105,7 @@ function responsibilityQuestion(typedValues: DemoTypedValues, pickedDocs: DemoPi
   };
 }
 
-function projectSetupQuestion(typedValues: DemoTypedValues) {
+function projectSetupQuestion(typedValues: DemoTypedValues): AskItem {
   const facts: string[] = [];
   const projectNumber = typedValues.general.projectNumber?.trim();
   const geo = typedValues.general.geo?.trim();
@@ -112,7 +122,7 @@ function projectSetupQuestion(typedValues: DemoTypedValues) {
   };
 }
 
-function constructionQuestion(typedValues: DemoTypedValues) {
+function constructionQuestion(typedValues: DemoTypedValues): AskItem {
   const values = typedValues.category.construction;
   const facts: string[] = [];
   if (values.cc?.trim()) facts.push(`the consequence class is ${values.cc.trim()}`);
@@ -131,7 +141,7 @@ function constructionQuestion(typedValues: DemoTypedValues) {
   };
 }
 
-function fireQuestion(typedValues: DemoTypedValues) {
+function fireQuestion(typedValues: DemoTypedValues): AskItem {
   const values = typedValues.category.fire;
   const facts: string[] = [];
   if (values.bk?.trim()) facts.push(`the fire class is ${values.bk.trim()}`);
@@ -150,15 +160,63 @@ function fireQuestion(typedValues: DemoTypedValues) {
   };
 }
 
+function buildAskCatalog(typedValues: DemoTypedValues, pickedDocs: DemoPickedDocs): AskItem[] {
+  return [
+    ...QUESTIONS,
+    responsibilityQuestion(typedValues, pickedDocs),
+    buildingSizeQuestion(typedValues),
+    projectSetupQuestion(typedValues),
+    constructionQuestion(typedValues),
+    fireQuestion(typedValues),
+  ];
+}
+
+function findAskItem(catalog: AskItem[], text: string) {
+  const normalized = text.trim().toLowerCase();
+  return (
+    catalog.find((item) => item.question.toLowerCase() === normalized) ??
+    catalog.find((item) => normalized.includes(item.question.toLowerCase().slice(0, 24)))
+  );
+}
+
+function welcomeMessage() {
+  return {
+    id: "welcome",
+    role: "assistant" as const,
+    text: `Ask about ${SAMPLE_PROJECT.shortName} or BR18. Answers draw on this project’s data — try a sample question or type your own.`,
+    sources: [] as string[],
+  };
+}
+
 function TypingBubble() {
   return (
-    <div className="max-w-[92%] rounded-[12px] border border-[#202326]/10 bg-white px-3.5 py-2.5">
+    <div className="max-w-[92%] rounded-[12px] border border-white/10 bg-white px-3.5 py-2.5">
       <p className="text-[11px] text-[#202326]/45">Searching project and BR18…</p>
       <div className="mt-2 flex items-center gap-1">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#202326]/40 [animation-delay:-0.3s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#202326]/40 [animation-delay:-0.15s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#202326]/40" />
       </div>
+    </div>
+  );
+}
+
+function AssistantMessage({ text, sources }: { text: string; sources: string[] }) {
+  return (
+    <div className="max-w-[92%] rounded-[12px] border border-white/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/80">
+      {text}
+      {sources.length > 0 ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {sources.map((source) => (
+            <span
+              key={source}
+              className="rounded-[12px] border border-[#202326]/15 px-2 py-0.5 text-[10px] text-[#202326]/55"
+            >
+              {source}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -170,102 +228,153 @@ export function AskAutodocScene({
   typedValues: DemoTypedValues;
   pickedDocs: DemoPickedDocs;
 }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const timerRef = useRef<number | null>(null);
-  const questions = [
-    ...QUESTIONS,
-    responsibilityQuestion(typedValues, pickedDocs),
-    buildingSizeQuestion(typedValues),
-    projectSetupQuestion(typedValues),
-    constructionQuestion(typedValues),
-    fireQuestion(typedValues),
-  ];
-  const active = questions.find((item) => item.id === activeId) ?? null;
+  const catalog = useMemo(
+    () => buildAskCatalog(typedValues, pickedDocs),
+    [typedValues, pickedDocs]
+  );
+  const samplePrompts = useMemo(
+    () =>
+      SAMPLE_PROMPT_IDS.map((id) => catalog.find((item) => item.id === id)).filter(
+        (item): item is AskItem => Boolean(item)
+      ),
+    [catalog]
+  );
+
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage()]);
+  const [draft, setDraft] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [usedPromptIds, setUsedPromptIds] = useState<string[]>([]);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const thinkTimerRef = useRef<number | null>(null);
+  const messageIdRef = useRef(0);
+
+  const visibleSamplePrompts = samplePrompts.filter((item) => !usedPromptIds.includes(item.id));
+
+  const nextMessageId = () => {
+    messageIdRef.current += 1;
+    return String(messageIdRef.current);
+  };
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
+      if (thinkTimerRef.current) window.clearTimeout(thinkTimerRef.current);
     };
   }, []);
 
-  const pick = (id: string) => {
-    setActiveId(id);
-    if (timerRef.current) window.clearTimeout(timerRef.current);
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTop = thread.scrollHeight;
+  }, [messages, isThinking]);
+
+  const sendQuestion = (raw: string) => {
+    const question = raw.trim();
+    if (!question || isThinking) return;
+
+    const match = findAskItem(catalog, question);
+    const answer = match?.answer ??
+      "I can answer questions about this project and BR18. Try one of the sample prompts below.";
+    const sources = match?.sources ?? [];
+
+    if (match && SAMPLE_PROMPT_IDS.includes(match.id as (typeof SAMPLE_PROMPT_IDS)[number])) {
+      setUsedPromptIds((prev) => (prev.includes(match.id) ? prev : [...prev, match.id]));
+    }
+
+    setMessages((prev) => [...prev, { id: nextMessageId(), role: "user", text: question }]);
+    setDraft("");
+    setIsThinking(true);
+
+    if (thinkTimerRef.current) window.clearTimeout(thinkTimerRef.current);
 
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     if (reduced) {
-      setReady(true);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextMessageId(), role: "assistant", text: answer, sources },
+      ]);
+      setIsThinking(false);
       return;
     }
 
-    setReady(false);
-    timerRef.current = window.setTimeout(() => setReady(true), THINK_MS);
+    thinkTimerRef.current = window.setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { id: nextMessageId(), role: "assistant", text: answer, sources },
+      ]);
+      setIsThinking(false);
+    }, THINK_MS);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-white/10 px-3 py-2.5 md:px-4">
-        <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-[#202326]/40">
-          QUESTIONS
-        </p>
-        <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
-          {questions.map((item) => {
-            const on = item.id === activeId;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => pick(item.id)}
-                className={cn(
-                  "w-full rounded-[12px] border px-3 py-1.5 text-left text-[12px] leading-snug transition",
-                  on
-                    ? "border-[#202326]/20 bg-[#E8E2D6] text-[#202326]"
-                    : "border-[#202326]/10 bg-white text-[#202326]/70 hover:border-[#202326]/20"
-                )}
-              >
-                {item.question}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 md:px-5">
-        {active ? (
-          <div className="flex h-full min-h-0 flex-col gap-3">
+      <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pr-0.5">
+        {messages.map((message) =>
+          message.role === "user" ? (
             <div
+              key={message.id}
               className="ml-auto max-w-[85%] rounded-[12px] px-3.5 py-2.5 text-[13px] leading-snug text-white"
               style={{ backgroundColor: demoColors.chatUserBubble }}
             >
-              {active.question}
+              {message.text}
             </div>
-            {ready ? (
-              <div className="max-w-[92%] rounded-[12px] border border-[#202326]/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/80">
-                {active.answer}
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {active.sources.map((source) => (
-                    <span
-                      key={source}
-                      className="rounded-[12px] border border-[#202326]/15 px-2 py-0.5 text-[10px] text-[#202326]/55"
-                    >
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <TypingBubble />
-            )}
-          </div>
-        ) : (
-          <div className="max-w-[92%] rounded-[12px] border border-[#202326]/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/70">
-            Pick a sample question above. In AutoDoc, you can ask anything — answers draw on
-            this project and BR18.
-          </div>
+          ) : (
+            <AssistantMessage key={message.id} text={message.text} sources={message.sources} />
+          )
         )}
+        {isThinking ? <TypingBubble /> : null}
+      </div>
+
+      <div className="shrink-0 border-t border-white/10 pt-3">
+        {visibleSamplePrompts.length > 0 ? (
+          <>
+            <p className={`${marketingMono.className} text-[10px] tracking-[0.16em] text-white/45`}>
+              TRY A SAMPLE QUESTION
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {visibleSamplePrompts.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={isThinking}
+                  onClick={() => sendQuestion(item.question)}
+                  className={cn(
+                    "rounded-full border border-white/15 px-2.5 py-1 text-left text-[11px] leading-snug text-white/75 transition hover:border-white/25 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  )}
+                >
+                  {item.question}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        <form
+          className={cn("flex items-center gap-2 rounded-xl border border-white/15 bg-[#2a2d30] px-3 py-2", visibleSamplePrompts.length > 0 ? "mt-3" : "")}
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendQuestion(draft);
+          }}
+        >
+          <input
+            type="text"
+            value={draft}
+            disabled={isThinking}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Ask about this project or BR18…"
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/40 disabled:cursor-not-allowed"
+          />
+          <button
+            type="submit"
+            disabled={isThinking || !draft.trim()}
+            aria-label="Send question"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7f5f0] text-[#202326] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.25} />
+          </button>
+        </form>
       </div>
     </div>
   );

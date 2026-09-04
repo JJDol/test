@@ -59,8 +59,8 @@ type HeroParams = {
 };
 
 const DEFAULT_HERO: HeroParams = {
-  bgColor: "#7697e5",
-  bgOpacity: 0.26,
+  bgColor: "#b8b8b8",
+  bgOpacity: 0.18,
   inkColor: "#f4c6a8",
   inkColor2: "#b7f0e1",
   inkColor3: "#fff1a6",
@@ -843,8 +843,8 @@ export function InformationFlowBackdrop() {
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
   const [panelOpen, setPanelOpen] = useState(false);
   const [heroImage, setHeroImage] = useState({
-    src: "/images/marketing/hero-widescreen-blue.jpg",
-    name: "Hero widescreen blue",
+    src: "/images/marketing/hero-widescreen-gray.png",
+    name: "Hero widescreen gray",
   });
   const uploadedImageUrl = useRef<string | null>(null);
   const posRef = useRef(pos);
@@ -864,8 +864,8 @@ export function InformationFlowBackdrop() {
     if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
     uploadedImageUrl.current = null;
     setHeroImage({
-      src: "/images/marketing/hero-widescreen-blue.jpg",
-      name: "Hero widescreen blue",
+      src: "/images/marketing/hero-widescreen-gray.png",
+      name: "Hero widescreen gray",
     });
   };
 
@@ -997,7 +997,7 @@ export function InformationFlowBackdrop() {
 
   return (
     <div
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#7697e5]`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#b8b8b8]`}
     >
       <div
         ref={creamRef}
@@ -1017,7 +1017,7 @@ export function InformationFlowBackdrop() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-[3] h-[180px] bg-gradient-to-b from-[#F5F2EB]/85 via-[#F5F2EB]/45 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[3] h-[min(38vh,340px)] bg-[linear-gradient(to_bottom,rgba(245,242,235,0.96)_0%,rgba(245,242,235,0.88)_18%,rgba(245,242,235,0.68)_38%,rgba(245,242,235,0.42)_58%,rgba(245,242,235,0.18)_76%,rgba(245,242,235,0.05)_90%,transparent_100%)]"
       />
       <div
         ref={wrapRef}

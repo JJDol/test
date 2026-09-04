@@ -34,16 +34,23 @@ export function HowItWorksSection() {
     const demo = demoRef.current;
     if (!demo) return;
 
+    let startTimer: number | null = null;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
-        setDemoStarted(true);
-        observer.disconnect();
+        startTimer = window.setTimeout(() => {
+          setDemoStarted(true);
+          observer.disconnect();
+        }, 2000);
       },
       { threshold: 0.25 },
     );
     observer.observe(demo);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (startTimer !== null) window.clearTimeout(startTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -152,6 +159,7 @@ export function HowItWorksSection() {
         >
           {activeId === "upload" && (
             <UploadContractScene
+              key={replayKey}
               replayKey={replayKey}
               play={demoStarted}
               onStatusChange={handleStatusChange}
