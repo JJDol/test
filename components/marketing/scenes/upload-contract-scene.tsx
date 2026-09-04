@@ -7,6 +7,7 @@ import {
   SAMPLE_PROJECT,
   type ExtractedField,
 } from "@/lib/marketing/havnegade-demo";
+import { demoColors } from "@/lib/marketing/demo-colors";
 import { cn } from "@/lib/utils";
 
 type Phase = "idle" | "drop" | "parse" | "extract" | "done";
@@ -61,7 +62,10 @@ function PdfFileIcon() {
           <div className="h-1 w-8 rounded-full bg-zinc-200" />
           <div className="h-1 w-9 rounded-full bg-zinc-200" />
         </div>
-        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-[12px] bg-red-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white">
+        <span
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-[12px] px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white"
+          style={{ backgroundColor: demoColors.pdfBadge }}
+        >
           PDF
         </span>
       </div>
@@ -154,20 +158,22 @@ export function UploadContractScene({
   const dropped = phase === "drop";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 md:grid-cols-[3fr_2fr] md:p-6">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden md:grid-cols-[3fr_2fr]">
       <div
         className={cn(
-          "relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]",
-          showDocument ? "h-[97%] self-start" : "h-full"
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border",
+          showDocument ? "bg-white" : "bg-transparent"
         )}
+        style={{ borderColor: demoColors.sceneBorder }}
       >
         {(phase === "idle" || phase === "drop") && (
           <div
             className={cn(
               "relative m-4 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-xl p-6 md:m-6",
-              phase === "drop" ? "demo-zone-catch bg-sky-50" : "demo-idle-zone bg-zinc-50"
+              phase === "drop" ? "demo-zone-catch" : "demo-idle-zone"
             )}
+            style={{ backgroundColor: demoColors.dropZoneBg }}
           >
             <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
               <rect
@@ -241,7 +247,10 @@ export function UploadContractScene({
                     dropped && "opacity-0"
                   )}
                 >
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-[12px] bg-red-600 px-1 text-[7px] font-bold text-white">
+                  <span
+                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-[12px] px-1 text-[7px] font-bold text-white"
+                    style={{ backgroundColor: demoColors.pdfBadge }}
+                  >
                     PDF
                   </span>
                 </div>
@@ -319,7 +328,12 @@ export function UploadContractScene({
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-[10px] font-semibold tracking-[0.18em] text-zinc-500">EXTRACTED FIELDS</p>
+        <p
+          className="text-[12px] font-semibold tracking-[1.8px]"
+          style={{ color: demoColors.sceneTitle }}
+        >
+          EXTRACTED FIELDS
+        </p>
         <ul className="flex flex-1 flex-col gap-2">
           {EXTRACTED_FIELDS.map((field) => (
             <ExtractedRow key={field.id} field={field} visible={revealed.includes(field.id)} />
@@ -355,19 +369,26 @@ function ExtractedRow({ field, visible }: { field: ExtractedField; visible: bool
   return (
     <li
       className={cn(
-        "flex items-start justify-between gap-3 rounded-[12px] border px-3 py-2 text-xs transition-all duration-300",
-        visible
-          ? "demo-fade-up border-[#202326]/10 bg-white text-[#202326]"
-          : "border-[#202326]/10 bg-white/40 text-transparent"
+        "flex items-start justify-between gap-3 rounded-[8px] border px-3 py-2 text-xs transition-all duration-300",
+        visible ? "demo-fade-up" : "bg-transparent text-transparent"
       )}
+      style={{ borderColor: demoColors.extractedRowBorder }}
     >
       <div className="min-w-0">
-        <p className={cn("text-[10px] tracking-wide", visible ? "text-[#202326]/45" : "text-transparent")}>
+        <p
+          className={cn("text-[10px] tracking-[0.25px]", !visible && "text-transparent")}
+          style={{ color: visible ? demoColors.extractedLabel : undefined }}
+        >
           {field.label}
         </p>
-        <p className="truncate font-medium">{field.value}</p>
+        <p
+          className="truncate font-medium"
+          style={{ color: visible ? demoColors.extractedValue : undefined }}
+        >
+          {field.value}
+        </p>
       </div>
-      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#202326]/40" />}
+      {visible && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />}
     </li>
   );
 }

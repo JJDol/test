@@ -8,6 +8,7 @@ import {
   type DemoPickedDocs,
   type DemoTypedValues,
 } from "@/lib/marketing/havnegade-demo";
+import { demoColors } from "@/lib/marketing/demo-colors";
 import { cn } from "@/lib/utils";
 
 const QUESTIONS = [
@@ -206,7 +207,7 @@ export function AskAutodocScene({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[#202326]/10 px-3 py-2.5 md:px-4">
+      <div className="shrink-0 border-b border-white/10 px-3 py-2.5 md:px-4">
         <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-[#202326]/40">
           QUESTIONS
         </p>
@@ -235,7 +236,10 @@ export function AskAutodocScene({
       <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 md:px-5">
         {active ? (
           <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="ml-auto max-w-[85%] rounded-[12px] bg-[#202326] px-3.5 py-2.5 text-[13px] leading-snug text-white">
+            <div
+              className="ml-auto max-w-[85%] rounded-[12px] px-3.5 py-2.5 text-[13px] leading-snug text-white"
+              style={{ backgroundColor: demoColors.chatUserBubble }}
+            >
               {active.question}
             </div>
             {ready ? (
@@ -258,7 +262,8 @@ export function AskAutodocScene({
           </div>
         ) : (
           <div className="max-w-[92%] rounded-[12px] border border-[#202326]/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/70">
-            I can answer from this project and from BR18. Choose a question above.
+            Pick a sample question above. In AutoDoc, you can ask anything — answers draw on
+            this project and BR18.
           </div>
         )}
       </div>

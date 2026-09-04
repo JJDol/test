@@ -4,5 +4,5 @@ services:
   - type: web
     name: autodoc-simulated-demo
     runtime: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: out

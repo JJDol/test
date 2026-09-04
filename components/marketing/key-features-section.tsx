@@ -2,11 +2,22 @@ import Link from "next/link";
 import { marketingMono } from "@/lib/marketing/fonts";
 import { cn } from "@/lib/utils";
 
-export const MARKETING_FEATURES = [
+export type MarketingFeature = {
+  id: string;
+  title: string;
+  image: string;
+  imageHover?: string;
+  short: string;
+  detail: string;
+  further: string;
+};
+
+export const MARKETING_FEATURES: MarketingFeature[] = [
   {
     id: "automated-generation",
     title: "Automated generation",
-    image: "/images/marketing/feature-generation.png",
+    image: "/images/marketing/features/automated-generation-gray.jpg",
+    imageHover: "/images/marketing/features/automated-generation-color.jpg",
     short:
       "Enter project information once, and AutoDoc automatically applies it wherever it belongs, keeping the information consistent and saving valuable time throughout the project.",
     detail:
@@ -16,7 +27,8 @@ export const MARKETING_FEATURES = [
   {
     id: "ai-powered-information-validation",
     title: "AI-powered information validation",
-    image: "/images/marketing/feature-validation.png",
+    image: "/images/marketing/features/ai-validation-gray.jpg",
+    imageHover: "/images/marketing/features/ai-validation-color.jpg",
     short:
       "AutoDoc’s AI understands the context of the project and its documents, searches trusted knowledge, and brings the most relevant guidance into the workflow.",
     detail:
@@ -26,14 +38,40 @@ export const MARKETING_FEATURES = [
   {
     id: "collaboration",
     title: "Collaboration",
-    image: "/images/marketing/feature-collaboration.png",
+    image: "/images/marketing/features/collaboration-gray.jpg",
+    imageHover: "/images/marketing/features/collaboration-color.jpg",
     short:
       "AutoDoc assists with collaboration and document management, providing a comprehensive overview of documents, progress, and updates.",
     detail:
       "AutoDoc assists with collaboration and document management by giving everyone a shared view of what exists, what is in progress, and what still needs attention. Project leads can see document status at a glance, while contributors know exactly which packages they own and when updates land. That clarity keeps teams aligned without constant check-ins or version confusion across disciplines.",
     further: "Keeping everyone up to date.",
   },
-] as const;
+];
+
+function FeatureImage({ feature }: { feature: MarketingFeature }) {
+  return (
+    <div className="relative h-full w-full">
+      <img
+        src={feature.image}
+        alt=""
+        className={cn(
+          "h-full w-full object-cover transition-all duration-500 ease-out",
+          feature.imageHover && "group-hover:opacity-0",
+          !feature.imageHover && "group-hover:scale-[1.04]"
+        )}
+      />
+      {feature.imageHover ? (
+        <img
+          src={feature.imageHover}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+        />
+      ) : (
+        <span className="pointer-events-none absolute inset-0 bg-[#7697e5]/0 transition-colors duration-500 group-hover:bg-[#7697e5]/10" />
+      )}
+    </div>
+  );
+}
 
 export function KeyFeaturesSection() {
   return (
@@ -56,12 +94,7 @@ export function KeyFeaturesSection() {
               aria-label={`Learn more about ${feature.title}`}
               className="group relative mt-6 block aspect-[4/3] w-full overflow-hidden rounded-xl transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(0,0,0,0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#202326]"
             >
-              <img
-                src={feature.image}
-                alt=""
-                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-              />
-              <span className="pointer-events-none absolute inset-0 bg-[#7697e5]/0 transition-colors duration-500 group-hover:bg-[#7697e5]/10" />
+              <FeatureImage feature={feature} />
             </Link>
             <p className="mt-6 text-[22px] font-medium leading-[30px] tracking-[-1.92px] text-[#202326]/45 md:text-[24px]">
               {feature.further}
