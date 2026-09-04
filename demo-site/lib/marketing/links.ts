@@ -32,7 +32,7 @@ export const MARKETING_NAV = [
 
 export const FOOTER_COLUMNS = [
   {
-    title: "PRODUCT",
+    title: "Product",
     links: [
       { label: "Features", href: "/features" },
       { label: "Sign up", href: "/signup" },
@@ -41,7 +41,7 @@ export const FOOTER_COLUMNS = [
     ],
   },
   {
-    title: "ABOUT US",
+    title: "About us",
     links: [
       { label: "Our Vision", href: "/about#vision" },
       { label: "Careers", href: "/about#careers" },
@@ -49,7 +49,7 @@ export const FOOTER_COLUMNS = [
     ],
   },
   {
-    title: "RESOURCES",
+    title: "Resources",
     links: [
       { label: "News", href: "/news" },
       { label: "Support", href: "/support" },

@@ -1017,7 +1017,7 @@ export function InformationFlowBackdrop() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-[3] h-[180px] bg-gradient-to-b from-[#F5F2EB]/85 via-[#F5F2EB]/45 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[3] h-[min(38vh,340px)] bg-[linear-gradient(to_bottom,rgba(245,242,235,0.96)_0%,rgba(245,242,235,0.88)_18%,rgba(245,242,235,0.68)_38%,rgba(245,242,235,0.42)_58%,rgba(245,242,235,0.18)_76%,rgba(245,242,235,0.05)_90%,transparent_100%)]"
       />
       <div
         ref={wrapRef}

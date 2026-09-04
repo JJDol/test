@@ -8,7 +8,7 @@ export function FeaturesPage() {
     <MarketingPageShell>
       <main className="mx-auto w-full max-w-[1760px] px-5 py-16 md:px-8 md:py-24 lg:px-10">
         <p className={`${marketingMono.className} text-[12px] leading-5 text-[#202326]/45`}>
-          PRODUCT
+          Product
         </p>
         <h1 className={`mt-4 ${marketingTitleDisplayNowrap}`}>
           Features

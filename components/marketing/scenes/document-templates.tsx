@@ -40,9 +40,9 @@ function FactValue({
     <span
       className={cn(
         "rounded-[12px] px-0.5 text-zinc-900",
-        tone === "discipline" && "bg-sky-200 shadow-[inset_0_-1px_0_rgba(14,165,233,0.35)]",
-        tone === "general" && "bg-violet-300 shadow-[inset_0_-1px_0_rgba(109,40,217,0.35)]",
-        tone === "contract" && "bg-amber-200 shadow-[inset_0_-1px_0_rgba(217,119,6,0.35)]"
+        tone === "discipline" && "bg-[#eea2a2] shadow-[inset_0_-1px_0_rgba(200,100,100,0.35)]",
+        tone === "general" && "bg-[#abcfa9] shadow-[inset_0_-1px_0_rgba(120,160,118,0.35)]",
+        tone === "contract" && "bg-[#b0c9e6] shadow-[inset_0_-1px_0_rgba(125,163,204,0.35)]"
       )}
     >
       {value}

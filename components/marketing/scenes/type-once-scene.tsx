@@ -35,8 +35,8 @@ function FieldControl({
   const border = filled ? "border-[#202326]/25" : "border-[#202326]/10";
   const valueColor = filled
     ? isGeneral
-      ? "text-violet-700"
-      : "text-sky-800"
+      ? "text-[#abcfa9]"
+      : "text-[#eea2a2]"
     : "text-[#202326]/40";
   const inputClass = cn(
     "w-full rounded-[12px] border bg-white px-2 outline-none placeholder:text-[#202326]/35 focus:border-[#202326]/35",
