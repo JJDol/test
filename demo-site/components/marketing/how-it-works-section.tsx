@@ -140,90 +140,80 @@ export function HowItWorksSection() {
         documents generated.
       </p>
 
-      <div
-        ref={demoRef}
-        className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:grid-rows-[auto_auto] lg:gap-x-12"
-      >
-        <p className="order-1 mb-3 text-left text-[13px] leading-snug text-[#202326]/50 lg:col-start-2 lg:row-start-1 lg:mb-3">
-          {step.caption}
-        </p>
-        <div className="order-2 mb-6 lg:order-none lg:col-start-1 lg:row-start-2 lg:mb-0 lg:flex lg:h-full lg:min-h-0">
-          <DemoStepper steps={DEMO_STEPS} activeId={activeId} onSelect={handleSelect} />
-        </div>
-        <div className="order-3 min-w-0 lg:col-start-2 lg:row-start-2">
-          <DemoAppFrame title={step.windowTitle} status={status} onReplay={handleReplay}>
-            {activeId === "upload" && (
-              <UploadContractScene
-                replayKey={replayKey}
-                play={demoStarted}
-                onStatusChange={handleStatusChange}
-                onCreateProject={() => {
-                  resetPicks();
-                  setReplayKey((key) => key + 1);
-                  setActiveId("create");
-                }}
-              />
-            )}
-            {activeId === "create" && (
-              <CreateProjectScene
-                replayKey={replayKey}
-                selected={selected}
-                pickedDocs={pickedDocs}
-                onToggleDiscipline={toggleDiscipline}
-                onToggleDocument={toggleDocument}
-                onNext={() => {
-                  setReplayKey((key) => key + 1);
-                  setActiveId("type-once");
-                }}
-              />
-            )}
-            {activeId === "type-once" && (
-              <TypeOnceScene
-                key={replayKey}
-                replayKey={replayKey}
-                pickedDocs={pickedDocs}
-                onValuesChange={setTypedValues}
-                onNext={(values) => {
-                  setTypedValues(values);
-                  setReplayKey((key) => key + 1);
-                  setActiveId("generate");
-                }}
-              />
-            )}
-            {activeId === "generate" && (
-              <GenerateScene
-                key={replayKey}
-                replayKey={replayKey}
-                pickedDocs={pickedDocs}
-                typedValues={typedValues}
-                onStatusChange={setGenerateStatus}
-                onAskAutoDoc={() => {
-                  setReplayKey((key) => key + 1);
-                  setActiveId("ask");
-                }}
-              />
-            )}
-            {activeId === "ask" && (
-              <AskAutodocScene
-                key={replayKey}
-                typedValues={typedValues}
-                pickedDocs={pickedDocs}
-              />
-            )}
-          </DemoAppFrame>
-        </div>
+      <div ref={demoRef} className="mt-5">
+        <DemoAppFrame
+          title={step.windowTitle}
+          status={status}
+          caption={step.caption}
+          onReplay={handleReplay}
+          sidebar={
+            <DemoStepper steps={DEMO_STEPS} activeId={activeId} onSelect={handleSelect} variant="dark" />
+          }
+        >
+          {activeId === "upload" && (
+            <UploadContractScene
+              replayKey={replayKey}
+              play={demoStarted}
+              onStatusChange={handleStatusChange}
+              onCreateProject={() => {
+                resetPicks();
+                setReplayKey((key) => key + 1);
+                setActiveId("create");
+              }}
+            />
+          )}
+          {activeId === "create" && (
+            <CreateProjectScene
+              replayKey={replayKey}
+              selected={selected}
+              pickedDocs={pickedDocs}
+              onToggleDiscipline={toggleDiscipline}
+              onToggleDocument={toggleDocument}
+              onNext={() => {
+                setReplayKey((key) => key + 1);
+                setActiveId("type-once");
+              }}
+            />
+          )}
+          {activeId === "type-once" && (
+            <TypeOnceScene
+              key={replayKey}
+              replayKey={replayKey}
+              pickedDocs={pickedDocs}
+              onValuesChange={setTypedValues}
+              onNext={(values) => {
+                setTypedValues(values);
+                setReplayKey((key) => key + 1);
+                setActiveId("generate");
+              }}
+            />
+          )}
+          {activeId === "generate" && (
+            <GenerateScene
+              key={replayKey}
+              replayKey={replayKey}
+              pickedDocs={pickedDocs}
+              typedValues={typedValues}
+              onStatusChange={setGenerateStatus}
+              onAskAutoDoc={() => {
+                setReplayKey((key) => key + 1);
+                setActiveId("ask");
+              }}
+            />
+          )}
+          {activeId === "ask" && (
+            <AskAutodocScene key={replayKey} typedValues={typedValues} pickedDocs={pickedDocs} />
+          )}
+        </DemoAppFrame>
       </div>
 
-      <div className="mt-12 grid md:mt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:gap-x-12">
-        <div aria-hidden className="hidden lg:block" />
-        <div className="flex justify-center lg:justify-end">
-          <a
-            href="/signup"
-            className="flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
-          >
-            SIGN UP
-          </a>
-        </div>
+      <div className="mt-12 flex justify-center md:mt-16 lg:justify-end">
+        <a
+          href="/signup"
+          className="flex h-11 items-center rounded-[12px] bg-[#202326] px-8 text-[15px] font-medium leading-5 text-white"
+        >
+          SIGN UP
+        </a>
       </div>
     </section>
   );

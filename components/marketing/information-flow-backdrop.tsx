@@ -51,6 +51,7 @@ type HeroParams = {
   imageRate: number;
   lineOpacity: number;
   glide: number;
+  tableStroke: number;
   threadRate: number;
   interference: number;
   showTables: boolean;
@@ -59,7 +60,7 @@ type HeroParams = {
 
 const DEFAULT_HERO: HeroParams = {
   bgColor: "#7697e5",
-  bgOpacity: 0.4,
+  bgOpacity: 0.26,
   inkColor: "#ffffff",
   inkColor2: "#ff6a4d",
   inkColor3: "#5b8dd9",
@@ -69,7 +70,7 @@ const DEFAULT_HERO: HeroParams = {
   wordColor: "#ffffff",
   wordText: "Less Fragmented, More Connected",
   wordCount: 4,
-  wordSize: 220,
+  wordSize: 190,
   parallax: 2,
   depth: 0.74,
   speed: 2.9,
@@ -84,6 +85,7 @@ const DEFAULT_HERO: HeroParams = {
   imageRate: 0,
   lineOpacity: 0.6,
   glide: 0.2,
+  tableStroke: 1,
   threadRate: 1,
   interference: 1,
   showTables: true,
@@ -366,6 +368,7 @@ class FlowEngine {
       params.marginRight,
       params.inkColor,
       params.bgColor,
+      params.tableStroke,
       params.showImageField,
     ].join("|");
     if (key === this._cacheKey) return;
@@ -675,7 +678,7 @@ class FlowEngine {
     if (b.kind === "table") {
       ctx.strokeStyle = this.ink();
       ctx.globalAlpha = b.maxA * alpha * 0.5;
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.8 * this.params.tableStroke;
       const rows = Math.max(1, Math.ceil(b.rows * f));
       ctx.beginPath();
       for (let c = 0; c <= b.cols; c++) {
@@ -712,7 +715,7 @@ class FlowEngine {
     for (let yy = 0; yy < h; yy += 5) ctx.fillRect(x, b.y + yy, b.w, 1.2);
     ctx.globalAlpha = b.maxA * alpha * 0.55;
     ctx.strokeStyle = this.ink();
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 0.8 * this.params.tableStroke;
     ctx.strokeRect(x + 0.5, b.y + 0.5, b.w - 1, h - 1);
     if (f > 0.85) {
       ctx.globalAlpha = b.maxA * alpha * 0.8;
@@ -755,7 +758,7 @@ class FlowEngine {
         const u = (loopT + tb.phase) % 1;
         ctx.globalAlpha = tb.a * (0.5 + 0.5 * Math.sin(2 * Math.PI * u));
         ctx.strokeStyle = ink;
-        ctx.lineWidth = 0.7;
+        ctx.lineWidth = 0.7 * this.params.tableStroke;
         ctx.beginPath();
         for (let c = 0; c <= tb.cols; c++) {
           ctx.moveTo(tb.x + c * tb.cw, tb.y);
@@ -840,8 +843,8 @@ export function InformationFlowBackdrop() {
   const [ui, setUi] = useState<HeroParams>({ ...DEFAULT_HERO });
   const [panelOpen, setPanelOpen] = useState(false);
   const [heroImage, setHeroImage] = useState({
-    src: "/images/marketing/hero-site.jpg",
-    name: "Default image",
+    src: "/images/marketing/hero-widescreen-blue.jpg",
+    name: "Hero widescreen blue",
   });
   const uploadedImageUrl = useRef<string | null>(null);
   const posRef = useRef(pos);
@@ -861,8 +864,8 @@ export function InformationFlowBackdrop() {
     if (uploadedImageUrl.current) URL.revokeObjectURL(uploadedImageUrl.current);
     uploadedImageUrl.current = null;
     setHeroImage({
-      src: "/images/marketing/hero-site.jpg",
-      name: "Default image",
+      src: "/images/marketing/hero-widescreen-blue.jpg",
+      name: "Hero widescreen blue",
     });
   };
 
@@ -943,29 +946,21 @@ export function InformationFlowBackdrop() {
       const cycle = 5200 / Math.max(0.3, params.speed);
       const sy = window.scrollY || 0;
       const px = params.parallax;
-      const vh = window.innerHeight || 1;
-      const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
-      const fadeStart = vh * 0.52;
-      const fadeEnd = vh * 0.78;
-      const linearFade = clamp01((sy - fadeStart) / (fadeEnd - fadeStart));
-      const bgFade = 1 - (1 - linearFade) ** 2;
-      const inkLinear = clamp01((sy - vh * 0.54) / (vh * 0.24));
-      const inkFade = 1 - (1 - inkLinear) ** 2;
       const move = (el: HTMLElement | null, k: number) => {
         if (el) el.style.transform = `translate3d(0, ${-sy * k * px}px, 0)`;
       };
       move(backWordsRef.current, 0.42);
       move(frontWordsRef.current, 0.42);
       move(canvas, 0.14);
-      if (photoRef.current) photoRef.current.style.opacity = String(1 - bgFade);
-      if (creamRef.current) creamRef.current.style.opacity = String(bgFade);
+      if (photoRef.current) photoRef.current.style.opacity = "1";
+      if (creamRef.current) creamRef.current.style.opacity = "0";
       if (scrimRef.current) {
         scrimRef.current.style.background = params.bgColor;
-        scrimRef.current.style.opacity = String(params.bgOpacity * (1 - bgFade));
+        scrimRef.current.style.opacity = String(params.bgOpacity);
       }
-      canvas.style.opacity = String(1 - inkFade);
-      if (backWordsRef.current) backWordsRef.current.style.opacity = String(1 - inkFade);
-      if (frontWordsRef.current) frontWordsRef.current.style.opacity = String(1 - inkFade);
+      canvas.style.opacity = "1";
+      if (backWordsRef.current) backWordsRef.current.style.opacity = "1";
+      if (frontWordsRef.current) frontWordsRef.current.style.opacity = "1";
       engine.paint(ctx, (now - t0) / cycle, reduced, now - t0);
       if (!reduced) raf = requestAnimationFrame(frame);
     };
@@ -1002,7 +997,7 @@ export function InformationFlowBackdrop() {
 
   return (
     <div
-      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#b6aaa7]`}
+      className={`${plexMono.className} pointer-events-none absolute inset-0 overflow-hidden bg-[#7697e5]`}
     >
       <div
         ref={creamRef}
@@ -1012,7 +1007,7 @@ export function InformationFlowBackdrop() {
         <img
           src={heroImage.src}
           alt=""
-          className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+          className="absolute inset-0 h-full w-full object-cover object-[center_right]"
         />
       </div>
       <div
