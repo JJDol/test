@@ -35,3 +35,7 @@ export const demoColors = {
   /** User message bubble in the Ask Autodoc demo. */
   chatUserBubble: "#71717a",
 } as const;
+
+/** Shared shell for white demo panels (article/section cards). */
+export const demoPanelClass =
+  "rounded-xl border border-[#202326]/10 bg-white px-5 py-4 md:px-6 md:py-5";

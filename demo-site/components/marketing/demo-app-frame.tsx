@@ -39,26 +39,26 @@ export function DemoAppFrame({
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="shrink-0 border-b border-white/10 px-5 py-4 lg:w-[min(100%,408px)] lg:border-b-0 lg:border-r lg:px-8 lg:py-6">
+        <aside className="shrink-0 border-b border-white/10 px-5 py-4 lg:flex lg:w-[min(100%,408px)] lg:flex-col lg:justify-center lg:border-b-0 lg:border-r lg:px-8 lg:py-6">
           <div className="lg:translate-x-[45px]">{sidebar}</div>
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <p
-            className={`${marketingMono.className} hidden shrink-0 px-5 pt-5 text-[15px] leading-[16.5px] tracking-[1.76px] lg:block lg:px-6`}
+            className={`${marketingMono.className} hidden shrink-0 px-6 pt-5 text-[15px] leading-[16.5px] tracking-[1.76px] lg:block lg:px-8`}
             style={{ color: demoColors.shellMeta }}
           >
             {title}
           </p>
           {caption ? (
             <p
-              className="shrink-0 px-5 pt-3 text-[13px] leading-snug lg:px-6 lg:pt-4"
+              className="shrink-0 px-6 pt-3 text-[13px] leading-snug lg:px-8 lg:pt-4"
               style={{ color: demoColors.shellMeta }}
             >
               {caption}
             </p>
           ) : null}
-          <div className="relative min-h-0 flex-1 overflow-hidden px-5 pb-4 pt-3 lg:px-6 lg:pb-6 lg:pt-4">
+          <div className="relative min-h-0 flex-1 overflow-hidden px-6 pb-4 pt-3 lg:px-8 lg:pb-6 lg:pt-4">
             {children}
           </div>
         </div>

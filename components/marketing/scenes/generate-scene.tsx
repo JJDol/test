@@ -168,7 +168,7 @@ export function GenerateScene({
           company&apos;s own templates.
         </p>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden p-3 md:grid-cols-[0.72fr_1.28fr] md:gap-3 md:p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[0.72fr_1.28fr] md:gap-3">
       {total === 0 ? (
         <div className="flex h-full items-center justify-center md:col-span-2">
           <p className="text-center text-sm text-zinc-500">
@@ -248,7 +248,7 @@ export function GenerateScene({
         </>
       )}
       </div>
-      <div className="shrink-0 px-3 py-1.5 md:px-4">
+      <div className="shrink-0 pt-2">
         <button
           type="button"
           onClick={onAskAutoDoc}
