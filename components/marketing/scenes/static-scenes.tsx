@@ -17,12 +17,12 @@ type AskItem = {
   id: string;
   question: string;
   answer: string;
-  sources: string[];
+  sources: readonly string[];
 };
 
 type ChatMessage =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "assistant"; text: string; sources: string[] };
+  | { id: string; role: "assistant"; text: string; sources: readonly string[] };
 
 const QUESTIONS = [
   {
@@ -201,7 +201,7 @@ function TypingBubble() {
   );
 }
 
-function AssistantMessage({ text, sources }: { text: string; sources: string[] }) {
+function AssistantMessage({ text, sources }: { text: string; sources: readonly string[] }) {
   return (
     <div className="max-w-[92%] rounded-[12px] border border-white/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#202326]/80">
       {text}
